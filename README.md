@@ -2,6 +2,7 @@
 Periodically read the name of the closest city to your aircraft.
 
 ## Requirements
+* You will need a free account on [Geonames](http://www.geonames.org). Once you create the account, go into your account settings and enable API access.
 * Python 2.7 - 32 bit (due to pyuipc incompatibility with Python 3 and 64 bit)
 * pywin32
 * XPlane with [XPUIPC](http://fsacars.com/downloads/xpuipc/) or MFS, P3D with [FSUIPC](http://www.schiratti.com/dowson.html) or P3D
