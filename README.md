@@ -1,5 +1,6 @@
 # voice flight following
 Periodically read the name of the closest city to your aircraft.
+For a compiled version, see the Releases section.
 
 ## Requirements
 * You will need a free account on [Geonames](http://www.geonames.org). Once you create the account, go into your account settings and enable API access.
