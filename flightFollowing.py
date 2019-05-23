@@ -33,6 +33,7 @@ from contextlib import closing
 from math import *
 import warnings
 import json
+import requests
 from ConfigParser import SafeConfigParser
 
 # Set encoding
@@ -140,25 +141,7 @@ class FlightFollowing(object):
 		# Infinite loop.
 		try:
 			while True:
-				
-				# Get lat and lon from simulator
-				self.getPyuipcData()
-				# Lookup nearest cities to aircraft position using the Geonames database.
-				response = urllib2.urlopen('http://api.geonames.org/findNearbyPlaceNameJSON?lat={}&lng={}&username={}&cities=cities15000'.format(self.lat,self.lon, self.geonames_username))
-				data = json.load(response)
-
-				bearing = calcBearing (self.lat, self.lon, float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
-				bearing = (degrees(bearing) +360) % 360
-				if self.distance_units == 1:
-					distance = float(data["geonames"][0]["distance"]) / 1.609
-				else:
-					distance = float(data["geonames"][0]["distance"])
-				self.atisVoice='closest city: {}. Distance: {:.1f}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],distance,bearing)
-				
-				self.airport="test"
-				# Read the string.
-				self.readVoice()
-				time.sleep(self.interval)
+				self.AnnounceInfo()
 				pass
 				
 		except KeyboardInterrupt:
@@ -169,7 +152,26 @@ class FlightFollowing(object):
 			
 	
 	
-
+	## Announce flight following info
+	def AnnounceInfo(self):
+		# Get lat and lon from simulator
+		self.getPyuipcData()
+		# Lookup nearest cities to aircraft position using the Geonames database.
+		response = requests.get('http://api.geonames.org/findNearbyPlaceNameJSON?lat={}&lng={}&username={}&cities=cities15000&radius=200'.format(self.lat,self.lon, self.geonames_username))
+		data =response.json()
+		if len(data['geonames']) >= 1:
+			bearing = calcBearing (self.lat, self.lon, float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
+			bearing = (degrees(bearing) +360) % 360
+			if self.distance_units == 1:
+				distance = float(data["geonames"][0]["distance"]) / 1.609
+			else:
+				distance = float(data["geonames"][0]["distance"])
+				self.atisVoice='closest city: {}. Distance: {:.1f}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],distance,bearing)
+			self.airport="test"
+			# Read the string.
+			self.readVoice()
+		time.sleep(self.interval)
+				
 	## Reads the atis string using voice generation.
 	def readVoice(self):
 		# Init currently Reading with None.
