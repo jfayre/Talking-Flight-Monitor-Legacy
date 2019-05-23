@@ -35,7 +35,7 @@ import warnings
 import json
 import requests
 from ConfigParser import SafeConfigParser
-
+import keyboard
 # Set encoding
 reload(sys)
 sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
@@ -137,11 +137,13 @@ class FlightFollowing(object):
 		if self.debug:
 			self.logger.info('Debug mode on.')
 			self.logger.setLevel(ConsoleLevel='debug')
-		
+		## add global hotkey definition
+		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
 		# Infinite loop.
 		try:
 			while True:
 				self.AnnounceInfo()
+				time.sleep(self.interval)
 				pass
 				
 		except KeyboardInterrupt:
@@ -157,6 +159,7 @@ class FlightFollowing(object):
 		# Get lat and lon from simulator
 		self.getPyuipcData()
 		# Lookup nearest cities to aircraft position using the Geonames database.
+		self.airport="test"
 		response = requests.get('http://api.geonames.org/findNearbyPlaceNameJSON?lat={}&lng={}&username={}&cities=cities15000&radius=200'.format(self.lat,self.lon, self.geonames_username))
 		data =response.json()
 		if len(data['geonames']) >= 1:
@@ -170,7 +173,16 @@ class FlightFollowing(object):
 			self.airport="test"
 			# Read the string.
 			self.readVoice()
-		time.sleep(self.interval)
+		## Check if we are flying over water.
+		## If so, announce body of water.
+		response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
+		data = response.json()
+		if 'ocean' in data:
+			self.atisVoice = 'currently over {}'.format(data['ocean']['name'])
+			self.oceanic = True
+			self.readVoice()
+			
+
 				
 	## Reads the atis string using voice generation.
 	def readVoice(self):
