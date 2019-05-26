@@ -34,8 +34,6 @@ import json
 import requests
 from ConfigParser import SafeConfigParser
 import keyboard
-from babel import Locale
-from babel.dates import get_timezone_name, get_timezone
 # Set encoding
 reload(sys)
 sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
@@ -184,19 +182,6 @@ class FlightFollowing(object):
 			self.atisVoice = 'currently over {}'.format(data['ocean']['name'])
 			self.oceanic = True
 			self.readVoice()
-		## Read time zone
-		response = requests.get('http://api.geonames.org/timezoneJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
-		data = response.json()
-		
-		if 'timezoneId' in data:
-			tz = get_timezone(data['timezoneId'])
-			tzName = get_timezone_name(tz, locale=Locale.parse('en_US'))
-			if tzName != self.oldTz:
-				self.atisVoice = '{}.'.format(tzName)
-				self.oldTz = tzName
-				self.readVoice()
-				
-
 
 	## Reads the flight following string using voice generation.
 	def readVoice(self):
