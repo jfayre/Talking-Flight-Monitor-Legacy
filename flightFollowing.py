@@ -160,7 +160,7 @@ class FlightFollowing(object):
 		if len(data['geonames']) >= 1:
 			bearing = calcBearing (self.lat, self.lon, float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
 			bearing = (degrees(bearing) +360) % 360
-			if self.distance_units == 1:
+			if self.distance_units == '1':
 				distance = float(data["geonames"][0]["distance"]) / 1.609
 				units = 'miles'
 			else:
