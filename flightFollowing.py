@@ -32,15 +32,15 @@ from math import *
 import warnings
 import json
 import requests
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 import keyboard
 # Set encoding
-reload(sys)
-sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
+#reload(sys)
+#sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
 
 # Import pip packages (except failure with debug mode).
 try:
-	import pyttsx
+	import pyttsx3
 	pyttsxImported = True
 except ImportError:
 	pyttsxImported = False
@@ -195,7 +195,7 @@ class FlightFollowing(object):
 			self.currentlyReading = self.airport
 			
 			# Init voice engine.
-			self.engine = pyttsx.init()
+			self.engine = pyttsx3.init()
 			   
 			# Set properties.
 			voices = self.engine.getProperty('voices')
