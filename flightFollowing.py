@@ -89,7 +89,7 @@ class FlightFollowing(object):
 		# init config parser
 		self.config = SafeConfigParser()
 		# First log message.
-		self.logger.info('voiceAtis started')
+		self.logger.info('Flight Following started')
 		# check for config file. Create it if it doesn't exist.
 		exists = os.path.isfile(self.rootDir + "/flightfollowing.ini")
 		if exists:
@@ -125,7 +125,7 @@ class FlightFollowing(object):
 				self.logger.warning('Using voiceAtis without FSUIPC.')
 				break
 			except:
-				self.logger.warning('FSUIPC: No simulator detected. Start you simulator first! Retrying in 20 seconds.')
+				self.logger.warning('FSUIPC: No simulator detected. Start your simulator first! Retrying in 20 seconds.')
 				time.sleep(20)
 		
 		# Show debug Info
