@@ -202,13 +202,13 @@ class FlightFollowing(object):
 	## Reads the flight following string using voice generation.
 	def readVoice(self):
 		# Init currently Reading with None.
-		self.currentlyReading = None
+		# self.currentlyReading = None
 		
 		self.logger.debug('Voice Text is: {}'.format(self.atisVoice))
 		
 		if pyttsxImported:
 			# Set properties currently reading
-			self.currentlyReading = self.airport
+			# self.currentlyReading = self.airport
 			
 			# Init voice engine.
 			self.engine = pyttsx3.init()
@@ -224,7 +224,7 @@ class FlightFollowing(object):
 			self.engine.setProperty('rate', self.voice_rate)
 			 
 			# Start listener and loop.
-			self.engine.connect('started-word', self.onWord)
+			# self.engine.connect('started-word', self.onWord)
 
 			# Say complete ATIS
 			self.engine.say(self.atisVoice)
@@ -237,45 +237,11 @@ class FlightFollowing(object):
 			self.logger.warning('Speech engine not initalized, no reading. Sleeping for {} seconds...'.format(self.SLEEP_TIME))
 			time.sleep(self.SLEEP_TIME)
 	
-	## Callback for stop of reading.
-	# Stops reading if frequency change/com deactivation/out of range.
-	def onWord(self, name, location, length):  # @UnusedVariable
-		self.getPyuipcData()
-		self.getAirport()
-		
-		if self.airport != self.currentlyReading:
-			self.engine.stop()
-			self.currentlyReading = None
-	
-	
 	## Reads current frequency and COM status.
 	def getPyuipcData(self):
 		
 		if pyuipcImported:
 			results = pyuipc.read(self.pyuipcOffsets)
-		
-			# frequency
-			hexCode = hex(results[0])[2:]
-			self.com1frequency = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
-			hexCode = hex(results[1])[2:]
-			self.com2frequency = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
-			
-			# radio active
-			#TODO: Test accuracy of this data (with various planes and sims)
-			radioActiveBits = list(map(int, '{0:08b}'.format(results[2])))
-			if radioActiveBits[2]:
-				self.com1active = True
-				self.com2active = True
-			elif radioActiveBits[0]:
-				self.com1active = True
-				self.com2active = False
-			elif radioActiveBits[1]:
-				self.com1active = False
-				self.com2active = True
-			else:
-				self.com1active = False
-				self.com2active = False
-			
 			# lat lon
 			self.lat = results[3] * (90.0/(10001750.0 * 65536.0 * 65536.0))
 			self.lon = results[4] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
@@ -287,24 +253,6 @@ class FlightFollowing(object):
 			self.com2active = True
 			self.lat = self.LAT_DEBUG
 			self.lon = self.LON_DEBUG
-		
-		# Logging.
-		if self.com1active:
-			com1activeStr = 'active'
-		else:
-			com1activeStr = 'inactive'
-		if self.com2active:
-			com2activeStr = 'active'
-		else:
-			com2activeStr = 'inactive'
-		
-		self.logger.debug('COM 1: {} ({}), COM 2: {} ({})'.format(self.com1frequency,com1activeStr,self.com2frequency,com2activeStr))
-		self.logger.debug('Latitude: {}, Longitude: {}'.format(self.lat, self.lon))
-
-
-
-#		  self.logger.debug('COM 1 active: {}, COM 2 active: {}'.format(self.com1active,self.com2active))
-	
 
 if __name__ == '__main__':
 	FlightFollowing = FlightFollowing()
