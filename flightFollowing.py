@@ -208,11 +208,8 @@ class FlightFollowing(object):
 		
 		if pyttsxImported:
 			# Set properties currently reading
-			# self.currentlyReading = self.airport
-			
 			# Init voice engine.
 			self.engine = pyttsx3.init()
-			   
 			# Set properties.
 			voices = self.engine.getProperty('voices')
 			for vo in voices:
@@ -222,10 +219,6 @@ class FlightFollowing(object):
 					break
 			
 			self.engine.setProperty('rate', self.voice_rate)
-			 
-			# Start listener and loop.
-			# self.engine.connect('started-word', self.onWord)
-
 			# Say complete ATIS
 			self.engine.say(self.atisVoice)
 			self.logger.info('Start reading.')
@@ -237,7 +230,7 @@ class FlightFollowing(object):
 			self.logger.warning('Speech engine not initalized, no reading. Sleeping for {} seconds...'.format(self.SLEEP_TIME))
 			time.sleep(self.SLEEP_TIME)
 	
-	## Reads current frequency and COM status.
+	## Read data from the simulator
 	def getPyuipcData(self):
 		
 		if pyuipcImported:
