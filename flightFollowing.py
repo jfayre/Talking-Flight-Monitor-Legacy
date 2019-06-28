@@ -36,18 +36,14 @@ from configparser import SafeConfigParser
 import keyboard
 from babel import Locale
 from babel.dates import get_timezone_name, get_timezone
+import pyttsx3
+
 
 # Set encoding
 #reload(sys)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
 
 # Import pip packages (except failure with debug mode).
-try:
-	import pyttsx3
-	pyttsxImported = True
-except ImportError:
-	pyttsxImported = False
-
 try:
 	import pyuipc
 	pyuipcImported = True
@@ -205,7 +201,7 @@ class FlightFollowing(object):
 		# self.currentlyReading = None
 		
 		self.logger.debug('Voice Text is: {}'.format(self.atisVoice))
-		
+		pyttsxImported = True
 		if pyttsxImported:
 			# Set properties currently reading
 			# Init voice engine.
