@@ -27,6 +27,7 @@ import sys
 import re
 import time
 import gzip
+import threading
 from contextlib import closing
 from math import *
 import warnings
@@ -68,6 +69,7 @@ class FlightFollowing(object):
 			   (0x3122,'b'),	# radioActive
 			   (0x0560,'l'),	# ac Latitude
 			   (0x0568,'l'),	# ac Longitude
+			   (0x30f0,'h'),	# flaps angle
 			  ]
 	## Setup the FlightFollowing object.
 	# Also starts the voice generation loop.
@@ -132,6 +134,9 @@ class FlightFollowing(object):
 		## add global hotkey definition
 		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
 		self.oldTz = 'none' ## variable for storing timezone name
+		# start a thread to read various info such as flaps		
+		t = threading.Thread(target=self.readInstruments, args=())
+		t.start()
 		
 		# Infinite loop.
 		try:
@@ -147,7 +152,19 @@ class FlightFollowing(object):
 				self.pyuipc.close()
 			
 	
-	
+	## read various instrumentation automatically such as flaps
+	def readInstruments(self):
+		old_flaps = 0
+		while True:
+			# Get data from simulator
+			self.getPyuipcData()
+			if self.flaps != old_flaps:
+				self.atisVoice = 'Flaps {}'.format(self.flaps)
+				self.readVoice()
+				old_flaps = self.flaps
+			time.sleep (10)
+		
+
 	## Announce flight following info
 	def AnnounceInfo(self):
 		# Get data from simulator
@@ -234,6 +251,7 @@ class FlightFollowing(object):
 			# lat lon
 			self.lat = results[3] * (90.0/(10001750.0 * 65536.0 * 65536.0))
 			self.lon = results[4] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
+			self.flaps = results[5]/ 256
 		
 		else:
 			self.com1frequency = self.COM1_FREQUENCY_DEBUG
