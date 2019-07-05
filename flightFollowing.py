@@ -27,7 +27,7 @@ import sys
 import re
 import time
 import gzip
-import threading
+# import threading
 from contextlib import closing
 from math import *
 import warnings
@@ -38,8 +38,9 @@ import keyboard
 from babel import Locale
 from babel.dates import get_timezone_name, get_timezone
 import pyttsx3
-
-
+import logging
+# initialize the log settings
+logging.basicConfig(filename = 'error.log', level = logging.INFO)
 # Set encoding
 #reload(sys)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
@@ -135,8 +136,8 @@ class FlightFollowing(object):
 		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
 		self.oldTz = 'none' ## variable for storing timezone name
 		# start a thread to read various info such as flaps		
-		t = threading.Thread(target=self.readInstruments, args=())
-		t.start()
+		# t = threading.Thread(target=self.readInstruments, args=())
+		# t.start()
 		
 		# Infinite loop.
 		try:
@@ -171,45 +172,61 @@ class FlightFollowing(object):
 		self.getPyuipcData()
 		# Lookup nearest cities to aircraft position using the Geonames database.
 		self.airport="test"
-		response = requests.get('http://api.geonames.org/findNearbyPlaceNameJSON?style=long&lat={}&lng={}&username={}&cities=cities15000&radius=200'.format(self.lat,self.lon, self.geonames_username))
-		data =response.json()
-		if len(data['geonames']) >= 1:
-			bearing = calcBearing (self.lat, self.lon, float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
-			bearing = (degrees(bearing) +360) % 360
-			if self.distance_units == '1':
-				distance = float(data["geonames"][0]["distance"]) / 1.609
-				units = 'miles'
+		try:
+			response = requests.get('http://api.geonames.org/findNearbyPlaceNameJSON?style=long&lat={}&lng={}&username={}&cities=cities5000&radius=200'.format(self.lat,self.lon, self.geonames_username))
+			data =response.json()
+			if len(data['geonames']) >= 1:
+				bearing = calcBearing (self.lat, self.lon, float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
+				bearing = (degrees(bearing) +360) % 360
+				if self.distance_units == '1':
+					distance = float(data["geonames"][0]["distance"]) / 1.609
+					units = 'miles'
+				else:
+					distance = float(data["geonames"][0]["distance"])
+					units = 'kilometers'
+				self.atisVoice='Closest city: {} {}. {:.1f} {}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],data["geonames"][0]["adminName1"],distance,units,bearing)
+				self.airport="test"
+				# Read the string.
+				self.readVoice()
 			else:
-				distance = float(data["geonames"][0]["distance"])
-				units = 'kilometers'
-			self.atisVoice='Closest city: {} {}. {:.1f} {}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],data["geonames"][0]["adminName1"],distance,units,bearing)
-			self.airport="test"
-			# Read the string.
+				distance = 0
+		except Exception as e:
+			logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
+			logging.exception('error getting nearest city: ' + str(e))
+			self.atisVoice='cannot find nearest city. Check error log.'
 			self.readVoice()
-		else:
-			distance = 0
 			
 		## Check if we are flying over water.
 		## If so, announce body of water.
 		## We will continue to announce over water until the maximum radius of the search is reached.
-		response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
-		data = response.json()
-		if 'ocean' in data and distance >= 1:
-			self.atisVoice = 'currently over {}'.format(data['ocean']['name'])
-			self.oceanic = True
-			self.readVoice()
-		## Read time zone
-		response = requests.get('http://api.geonames.org/timezoneJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
-		data = response.json()
-		
-		if 'timezoneId' in data:
-			tz = get_timezone(data['timezoneId'])
-			tzName = get_timezone_name(tz, locale=Locale.parse('en_US'))
-			if tzName != self.oldTz:
-				self.atisVoice = '{}.'.format(tzName)
-				self.oldTz = tzName
+		try:
+			response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
+			data = response.json()
+			if 'ocean' in data and distance >= 1:
+				self.atisVoice = 'currently over {}'.format(data['ocean']['name'])
+				self.oceanic = True
 				self.readVoice()
-				
+		except Exception as e:
+			logging.error('Error determining oceanic information: ' + str(e))
+			logging.exception(str(e))
+			sys.exit()
+			
+		## Read time zone information
+		try:
+			response = requests.get('http://api.geonames.org/timezoneJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
+			data = response.json()
+			
+			if 'timezoneId' in data:
+				tz = get_timezone(data['timezoneId'])
+				tzName = get_timezone_name(tz, locale=Locale.parse('en_US'))
+				if tzName != self.oldTz:
+					self.atisVoice = '{}.'.format(tzName)
+					self.oldTz = tzName
+					self.readVoice()
+		except Exception as e:
+			logging.error('Error determining timezone: ' + str(e))
+			logging.exception(str(e))
+			sys.exit()
 
 
 	## Reads the flight following string using voice generation.
