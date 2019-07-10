@@ -174,6 +174,7 @@ class FlightFollowing(object):
 		self.airport="test"
 		try:
 			response = requests.get('http://api.geonames.org/findNearbyPlaceNameJSON?style=long&lat={}&lng={}&username={}&cities=cities5000&radius=200'.format(self.lat,self.lon, self.geonames_username))
+			r.raise_for_status() # throw an exception if we get an error from Geonames.
 			data =response.json()
 			if len(data['geonames']) >= 1:
 				bearing = calcBearing (self.lat, self.lon, float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
@@ -190,10 +191,15 @@ class FlightFollowing(object):
 				self.readVoice()
 			else:
 				distance = 0
-		except Exception as e:
+		except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
 			logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
 			logging.exception('error getting nearest city: ' + str(e))
-			self.atisVoice='cannot find nearest city. Check error log.'
+			self.atisVoice='cannot find nearest city. Geonames connection error. Check error log.'
+			self.readVoice()
+		except requests.exceptions.HTTPError as e:
+			logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
+			logging.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
+			self.atisVoice='cannot find nearest city. Geonames may be busy. Check error log.'
 			self.readVoice()
 			
 		## Check if we are flying over water.
