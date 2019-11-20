@@ -27,7 +27,7 @@ import sys
 import re
 import time
 import gzip
-# import threading
+import threading
 from contextlib import closing
 from math import *
 import warnings
@@ -136,8 +136,8 @@ class FlightFollowing(object):
 		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
 		self.oldTz = 'none' ## variable for storing timezone name
 		# start a thread to read various info such as flaps		
-		# t = threading.Thread(target=self.readInstruments, args=())
-		# t.start()
+		t = threading.Thread(target=self.readInstruments, args=(), daemon=True)
+		t.start()
 		
 		# Infinite loop.
 		try:
@@ -160,10 +160,10 @@ class FlightFollowing(object):
 			# Get data from simulator
 			self.getPyuipcData()
 			if self.flaps != old_flaps:
-				self.atisVoice = 'Flaps {}'.format(self.flaps)
-				self.readVoice()
+				self.instrumentVoice = 'Flaps {}'.format(self.flaps)
+				self.speakInstruments()
 				old_flaps = self.flaps
-			time.sleep (10)
+			time.sleep (3)
 		
 
 	## Announce flight following info
@@ -174,7 +174,7 @@ class FlightFollowing(object):
 		self.airport="test"
 		try:
 			response = requests.get('http://api.geonames.org/findNearbyPlaceNameJSON?style=long&lat={}&lng={}&username={}&cities=cities5000&radius=200'.format(self.lat,self.lon, self.geonames_username))
-			r.raise_for_status() # throw an exception if we get an error from Geonames.
+			response.raise_for_status() # throw an exception if we get an error from Geonames.
 			data =response.json()
 			if len(data['geonames']) >= 1:
 				bearing = calcBearing (self.lat, self.lon, float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
@@ -265,6 +265,36 @@ class FlightFollowing(object):
 		else:
 			self.logger.warning('Speech engine not initalized, no reading. Sleeping for {} seconds...'.format(self.SLEEP_TIME))
 			time.sleep(self.SLEEP_TIME)
+	def speakInstruments(self):
+		# Init currently Reading with None.
+		# self.currentlyReading = None
+		
+		self.logger.debug('Voice Text is: {}'.format(self.instrumentVoice))
+		pyttsxImported = True
+		if pyttsxImported:
+			# Set properties currently reading
+			# Init voice engine.
+			self.engInst = pyttsx3.init()
+			# Set properties.
+			voices = self.engInst.getProperty('voices')
+			for vo in voices:
+				if 'zira' in vo.name.lower():
+					self.engInst.setProperty('voice', vo.id)
+					self.logger.debug('Using voice: {}'.format(vo.name))
+					break
+			
+			self.engInst.setProperty('rate', self.voice_rate)
+			# Say complete ATIS
+			self.engInst.say(self.instrumentVoice)
+			self.logger.info('Start reading.')
+			self.engInst.runAndWait()
+			self.logger.info('Reading finished.')
+			self.engInst = None
+			
+		else:
+			self.logger.warning('Speech engine not initalized, no reading. Sleeping for {} seconds...'.format(self.SLEEP_TIME))
+			time.sleep(self.SLEEP_TIME)
+	
 	
 	## Read data from the simulator
 	def getPyuipcData(self):
