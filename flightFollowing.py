@@ -27,7 +27,7 @@ import sys
 import re
 import time
 import gzip
-import threading
+# import threading
 from contextlib import closing
 from math import *
 import warnings
@@ -38,6 +38,9 @@ import keyboard
 from babel import Locale
 from babel.dates import get_timezone_name, get_timezone
 import pyttsx3
+import lucia
+from lucia.utils import timer
+
 import logging
 # initialize the log settings
 logging.basicConfig(filename = 'error.log', level = logging.INFO)
@@ -56,11 +59,11 @@ except ImportError:
 
 
 from aviationFormula.aviationFormula import calcBearing
-# from aviationFormula import gcDistanceNm
+
 
 # Import own packages.
 from VaLogger import VaLogger
-# from voiceAtisUtil import parseVoiceInt, parseVoiceString, CHAR_TABLE
+
 
 ## Main Class of FlightFollowing.
 # Run constructor to run the program.
@@ -71,6 +74,8 @@ class FlightFollowing(object):
 			   (0x0560,'l'),	# ac Latitude
 			   (0x0568,'l'),	# ac Longitude
 			   (0x30f0,'h'),	# flaps angle
+			   (0x0366,'h'),	# on ground flag: 0 = airborne
+			   (0x0bc8,'h'),	# parking Brake: 0 off, 32767 on
 			  ]
 	## Setup the FlightFollowing object.
 	# Also starts the voice generation loop.
@@ -135,15 +140,27 @@ class FlightFollowing(object):
 		## add global hotkey definition
 		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
 		self.oldTz = 'none' ## variable for storing timezone name
-		# start a thread to read various info such as flaps		
-		t = threading.Thread(target=self.readInstruments, args=(), daemon=True)
-		t.start()
+		self.old_flaps = 0
+		self.airborne = False
+		self.oldBrake = True
+		self.oldCom1 = None
+		# start timers
+		self.tmrCity = timer.Timer()
+		self.tmrInstruments = timer.Timer()
+		self.AnnounceInfo()
+		
 		
 		# Infinite loop.
 		try:
 			while True:
-				self.AnnounceInfo()
-				time.sleep(self.interval)
+				if self.tmrCity.elapsed > (self.interval * 60 * 1000):
+					#self.AnnounceInfo()
+					self.tmrCity.restart()
+					
+				if self.tmrInstruments.elapsed > 500:
+					self.readInstruments()
+					self.tmrInstruments.restart()
+				time.sleep(0.05)
 				pass
 				
 		except KeyboardInterrupt:
@@ -155,16 +172,47 @@ class FlightFollowing(object):
 	
 	## read various instrumentation automatically such as flaps
 	def readInstruments(self):
-		old_flaps = 0
-		while True:
-			# Get data from simulator
-			self.getPyuipcData()
-			if self.flaps != old_flaps:
-				self.instrumentVoice = 'Flaps {}'.format(self.flaps)
-				self.speakInstruments()
-				old_flaps = self.flaps
-			time.sleep (3)
+		flapsTransit = False
+		# Get data from simulator
+		self.getPyuipcData()
+		# detect if aircraft is on ground or airborne.
+		if not self.onGround and not self.airborne:
+			self.instrumentVoice = "Positive rate."
+			self.speakInstruments()
+			self.airborne = True
+		# read parking Brakes
 		
+		if self.oldBrake != self.parkingBrake:
+			if self.parkingBrake:
+				self.instrumentVoice = "parking Brake on."
+				self.speakInstruments()
+				self.oldBrake = self.parkingBrake
+			else:
+				self.instrumentVoice = "parking Brake off."
+				self.speakInstruments()
+				self.oldBrake = self.parkingBrake
+
+		
+		
+		# if flaps position has changed, flaps are in motion. We need to wait until they have stopped moving to read the value.
+		if self.flaps != self.old_flaps:
+			flapsTransit = True
+			while flapsTransit:
+				self.getPyuipcData()
+				if self.flaps != self.old_flaps:
+					self.old_flaps = self.flaps
+					time.sleep (0.2)
+				else:
+					flapsTransit = False
+			self.instrumentVoice = 'Flaps {:.0f}'.format(self.flaps)
+			self.speakInstruments()
+			self.old_flaps = self.flaps
+		# announce radio frequency changes
+		if self.com1frequency != self.oldCom1:
+			self.instrumentVoice = "com 1, {}".format(self.com1frequency)
+			self.speakInstruments()
+			
+			self.oldCom1 = self.com1frequency
 
 	## Announce flight following info
 	def AnnounceInfo(self):
@@ -282,6 +330,7 @@ class FlightFollowing(object):
 					self.engInst.setProperty('voice', vo.id)
 					self.logger.debug('Using voice: {}'.format(vo.name))
 					break
+					
 			
 			self.engInst.setProperty('rate', self.voice_rate)
 			# Say complete ATIS
@@ -301,10 +350,21 @@ class FlightFollowing(object):
 		
 		if pyuipcImported:
 			results = pyuipc.read(self.pyuipcOffsets)
+			hexCode = hex(results[0])[2:]
+			self.com1frequency = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
+			hexCode = hex(results[1])[2:]
+			self.com2frequency = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
 			# lat lon
 			self.lat = results[3] * (90.0/(10001750.0 * 65536.0 * 65536.0))
 			self.lon = results[4] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
 			self.flaps = results[5]/ 256
+			self.onGround = bool(results[6])
+			self.parkingBrake = bool(results[7])
+			
+			
+			
+
+			
 		
 		else:
 			self.com1frequency = self.COM1_FREQUENCY_DEBUG
