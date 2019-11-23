@@ -387,8 +387,9 @@ class FlightFollowing(object):
 			self.flaps = results[5]/ 256
 			self.onGround = bool(results[6])
 			self.parkingBrake = bool(results[7])
-			self.ASLAltitude = results[8]
-			self.groundAltitude = results[9] / 256
+			self.ASLAltitude = round(results[8] * 3.28084)
+			
+			self.groundAltitude = results[9] / 256 * 3.28084
 			
 			#breakpoint()
 			
