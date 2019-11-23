@@ -1,17 +1,13 @@
 # voice flight following
-Periodically read the name of the closest city to your aircraft.
+Periodically read the name of the closest city to your aircraft. Also reads key aircraft instrumentation.
 For a compiled version, see the Releases section.
 
 ## Requirements
 * You will need a free account on [Geonames](http://www.geonames.org). Once you create the account, go into your account settings and enable API access.
-* Python 2.7 - 32 bit (due to pyuipc incompatibility with Python 3 and 64 bit)
+* Python  - 3.7 32 bit
 * pywin32
-* XPlane with [XPUIPC](http://fsacars.com/downloads/xpuipc/) or MFS, P3D with [FSUIPC](http://www.schiratti.com/dowson.html) or P3D
-* Windows
-    * XPUIPC currently not working with Linux and Mac
-
 ## Installation
-* Get the latest python 2.7 ([Python releases](https://www.python.org/downloads/))
+* Get the latest python 3.7 ([Python releases](https://www.python.org/downloads/))
 * Install the latest pywin32 release ([pywin32 releases](https://github.com/mhammond/pywin32/releases))
     * filename: `pywin32-xxx.win32-py2.7.exe`
     * Install with the installer, not using pip!
@@ -19,7 +15,8 @@ For a compiled version, see the Releases section.
 
 ## Usage
 * Start your sim and start a flight.
-* Start the script "FlightFollowing.py" 
+* Start the script "FlightFollowing.py". Alternatively, run the FlightFollowing.exe file found in the releases section.
+* the first time the script is run, it will generate a FlightFollowing.ini file in the same directory where it was run. This file should be edited to add your geonames username. The script will not run until this information is added.
 * You should hear the name of the closest city to your aircraft location
 
 ## Bugs and issues
@@ -28,7 +25,7 @@ For a compiled version, see the Releases section.
     
 ### Known limitations
 * The city given does not take into account the heading of your aircraft. So, the nearest city may be behind you.
-* Offline access is not implemented yet. It will be added in the future.
+* Offline access is not implemented yet. It may be added in the future.
 
 ## Used packages and Copyright
 
