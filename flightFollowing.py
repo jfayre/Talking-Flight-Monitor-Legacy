@@ -187,6 +187,7 @@ class FlightFollowing(object):
 		
 	## handle hotkeys for reading instruments on demand
 	def keyHandler(self, instrument):
+		self.getPyuipcData()
 		if instrument == '1':
 			self.instrumentVoice = "{} feet".format(self.ASLAltitude)
 			self.speakInstruments()
