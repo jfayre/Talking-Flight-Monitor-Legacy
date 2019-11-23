@@ -170,7 +170,7 @@ class FlightFollowing(object):
 		try:
 			while True:
 				if self.tmrCity.elapsed > (self.interval * 60 * 1000):
-					#self.AnnounceInfo()
+					self.AnnounceInfo()
 					self.tmrCity.restart()
 					
 				if self.tmrInstruments.elapsed > 500:
