@@ -27,6 +27,7 @@ import sys
 import re
 import time
 import gzip
+import winsound
 # import threading
 from contextlib import closing
 from math import *
@@ -68,6 +69,16 @@ from VaLogger import VaLogger
 ## Main Class of FlightFollowing.
 # Run constructor to run the program.
 class FlightFollowing(object):
+#  - b: a 1-byte unsigned value, to be converted into a Python int
+#  - c: a 1-byte signed value, to be converted into a Python int
+#  - h: a 2-byte signed value, to be converted into a Python int
+#  - H: a 2-byte unsigned value, to be converted into a Python int
+#  - d: a 4-byte signed value, to be converted into a Python int
+#  - u: a 4-byte unsigned value, to be converted into a Python long
+#  - l: an 8-byte signed value, to be converted into a Python long
+#  - L: an 8-byte unsigned value, to be converted into a Python long
+#  - f: an 8-byte floating point value, to be converted into a Python double
+
 	OFFSETS = [(0x034E,'H'),	# com1freq
 			   (0x3118,'H'),	# com2freq
 			   (0x3122,'b'),	# radioActive
@@ -76,6 +87,9 @@ class FlightFollowing(object):
 			   (0x30f0,'h'),	# flaps angle
 			   (0x0366,'h'),	# on ground flag: 0 = airborne
 			   (0x0bc8,'h'),	# parking Brake: 0 off, 32767 on
+			   (0x0574,'u'),	#ASL altitude
+			   (0x0020,'u'),	# ground altitude x 256
+			   
 			  ]
 	## Setup the FlightFollowing object.
 	# Also starts the voice generation loop.
@@ -137,8 +151,11 @@ class FlightFollowing(object):
 		if self.debug:
 			self.logger.info('Debug mode on.')
 			self.logger.setLevel(ConsoleLevel='debug')
-		## add global hotkey definition
+		## add global hotkey definitions
 		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
+		keyboard.add_hotkey('], 1', self.keyHandler, args=('1'), suppress=True, timeout=2)
+		keyboard.add_hotkey('], 2', self.keyHandler, args=('2'), suppress=True, timeout=2)
+		keyboard.add_hotkey('], 3', self.beep, args=(), suppress=True, timeout=2)
 		self.oldTz = 'none' ## variable for storing timezone name
 		self.old_flaps = 0
 		self.airborne = False
@@ -168,6 +185,16 @@ class FlightFollowing(object):
 			self.logger.info('Loop interrupted by user.')
 			if pyuipcImported:
 				self.pyuipc.close()
+		
+	## handle hotkeys for reading instruments on demand
+	def keyHandler(self, instrument):
+		if instrument == '1':
+			self.instrumentVoice = "{} feet".format(self.ASLAltitude)
+			self.speakInstruments()
+		elif instrument == '2':
+			AGLAltitude = self.ASLAltitude - self.groundAltitude
+			self.instrumentVoice = "{} feet".format(round(AGLAltitude))
+			self.speakInstruments()
 			
 	
 	## read various instrumentation automatically such as flaps
@@ -360,7 +387,10 @@ class FlightFollowing(object):
 			self.flaps = results[5]/ 256
 			self.onGround = bool(results[6])
 			self.parkingBrake = bool(results[7])
+			self.ASLAltitude = results[8]
+			self.groundAltitude = results[9] / 256
 			
+			#breakpoint()
 			
 			
 
