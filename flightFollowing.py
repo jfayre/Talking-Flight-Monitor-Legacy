@@ -155,7 +155,6 @@ class FlightFollowing(object):
 		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
 		keyboard.add_hotkey('], 1', self.keyHandler, args=('1'), suppress=True, timeout=2)
 		keyboard.add_hotkey('], 2', self.keyHandler, args=('2'), suppress=True, timeout=2)
-		keyboard.add_hotkey('], 3', self.beep, args=(), suppress=True, timeout=2)
 		self.oldTz = 'none' ## variable for storing timezone name
 		self.old_flaps = 0
 		self.airborne = False
