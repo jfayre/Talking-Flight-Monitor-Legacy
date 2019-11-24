@@ -153,8 +153,7 @@ class FlightFollowing(object):
 			self.logger.setLevel(ConsoleLevel='debug')
 		## add global hotkey definitions
 		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
-		keyboard.add_hotkey('], 1', self.keyHandler, args=('1'), suppress=True, timeout=2)
-		keyboard.add_hotkey('], 2', self.keyHandler, args=('2'), suppress=True, timeout=2)
+		self.commandKey = keyboard.add_hotkey(']', self.commandMode, args=(), suppress=True, timeout=2)
 		self.oldTz = 'none' ## variable for storing timezone name
 		self.old_flaps = 0
 		self.airborne = False
@@ -169,6 +168,7 @@ class FlightFollowing(object):
 		# Infinite loop.
 		try:
 			while True:
+				self.getPyuipcData()
 				if self.tmrCity.elapsed > (self.interval * 60 * 1000):
 					self.AnnounceInfo()
 					self.tmrCity.restart()
@@ -187,21 +187,32 @@ class FlightFollowing(object):
 		
 	## handle hotkeys for reading instruments on demand
 	def keyHandler(self, instrument):
-		self.getPyuipcData()
 		if instrument == '1':
-			self.instrumentVoice = "{} feet".format(self.ASLAltitude)
-			self.speakInstruments()
+			lucia.output.output("{} feet A S L".format(self.ASLAltitude))
+			keyboard.remove_hotkey(self.aslKey)
+			keyboard.remove_hotkey(self.aglKey)
+			
+			
 		elif instrument == '2':
 			AGLAltitude = self.ASLAltitude - self.groundAltitude
-			self.instrumentVoice = "{} feet".format(round(AGLAltitude))
-			self.speakInstruments()
+			lucia.output.output("{} feet A G L".format(round(AGLAltitude)))
+			keyboard.remove_hotkey(self.aglKey)
+			keyboard.remove_hotkey(self.aslKey)
 			
-	
+			
+			
+
+			
+	## Layered key support for reading various instrumentation
+	def commandMode(self):
+		self.aslKey= keyboard.add_hotkey ('a', self.keyHandler, args=('1'), suppress=True, timeout=2)
+		self.aglKey = keyboard.add_hotkey ('g', self.keyHandler, args=('2'), suppress=True, timeout=2)
+		winsound.Beep(500, 100)
+		
 	## read various instrumentation automatically such as flaps
 	def readInstruments(self):
 		flapsTransit = False
 		# Get data from simulator
-		self.getPyuipcData()
 		# detect if aircraft is on ground or airborne.
 		if not self.onGround and not self.airborne:
 			self.instrumentVoice = "Positive rate."
