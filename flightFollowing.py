@@ -34,7 +34,7 @@ from math import *
 import warnings
 import json
 import requests
-from configparser import SafeConfigParser
+from configparser import ConfigParser
 import keyboard
 from babel import Locale
 from babel.dates import get_timezone_name, get_timezone
@@ -89,7 +89,7 @@ class FlightFollowing(object):
 			   (0x0bc8,'h'),	# parking Brake: 0 off, 32767 on
 			   (0x0574,'u'),	#ASL altitude
 			   (0x0020,'u'),	# ground altitude x 256
-			   
+			   (0x0bcc,'u'),	# spoilers armed: 0 - off, 1 - armed
 			  ]
 	## Setup the FlightFollowing object.
 	# Also starts the voice generation loop.
@@ -105,7 +105,7 @@ class FlightFollowing(object):
 		# Init logging.
 		self.logger = VaLogger(os.path.join(self.rootDir,'voiceAtis','logs'))
 		# init config parser
-		self.config = SafeConfigParser()
+		self.config = ConfigParser()
 		# First log message.
 		self.logger.info('Flight Following started')
 		# check for config file. Create it if it doesn't exist.
@@ -159,6 +159,7 @@ class FlightFollowing(object):
 		self.airborne = False
 		self.oldBrake = True
 		self.oldCom1 = None
+		self.oldSpoilers = None
 		# start timers
 		self.tmrCity = timer.Timer()
 		self.tmrInstruments = timer.Timer()
@@ -215,19 +216,17 @@ class FlightFollowing(object):
 		# Get data from simulator
 		# detect if aircraft is on ground or airborne.
 		if not self.onGround and not self.airborne:
-			self.instrumentVoice = "Positive rate."
+			lucia.output.output ("Positive rate.")
 			self.speakInstruments()
 			self.airborne = True
 		# read parking Brakes
 		
 		if self.oldBrake != self.parkingBrake:
 			if self.parkingBrake:
-				self.instrumentVoice = "parking Brake on."
-				self.speakInstruments()
+				lucia.output.output ("parking Brake on.")
 				self.oldBrake = self.parkingBrake
 			else:
-				self.instrumentVoice = "parking Brake off."
-				self.speakInstruments()
+				lucia.output.output ("parking Brake off.")
 				self.oldBrake = self.parkingBrake
 
 		
@@ -242,15 +241,17 @@ class FlightFollowing(object):
 					time.sleep (0.2)
 				else:
 					flapsTransit = False
-			self.instrumentVoice = 'Flaps {:.0f}'.format(self.flaps)
-			self.speakInstruments()
+			lucia.output.output ('Flaps {:.0f}'.format(self.flaps))
 			self.old_flaps = self.flaps
 		# announce radio frequency changes
 		if self.com1frequency != self.oldCom1:
-			self.instrumentVoice = "com 1, {}".format(self.com1frequency)
-			self.speakInstruments()
-			
+			lucia.output.output ("com 1, {}".format(self.com1frequency))
 			self.oldCom1 = self.com1frequency
+		# spoilers
+		if self.spoilers == 1 and self.oldSpoilers != self.spoilers:
+			lucia.output.output ("spoilers armed.")
+			self.oldSpoilers = self.spoilers
+			
 
 	## Announce flight following info
 	def AnnounceInfo(self):
@@ -271,22 +272,18 @@ class FlightFollowing(object):
 				else:
 					distance = float(data["geonames"][0]["distance"])
 					units = 'kilometers'
-				self.atisVoice='Closest city: {} {}. {:.1f} {}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],data["geonames"][0]["adminName1"],distance,units,bearing)
+				lucia.output.output ('Closest city: {} {}. {:.1f} {}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],data["geonames"][0]["adminName1"],distance,units,bearing))
 				self.airport="test"
-				# Read the string.
-				self.readVoice()
 			else:
 				distance = 0
 		except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
 			logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
 			logging.exception('error getting nearest city: ' + str(e))
-			self.atisVoice='cannot find nearest city. Geonames connection error. Check error log.'
-			self.readVoice()
+			lucia.output.output ('cannot find nearest city. Geonames connection error. Check error log.')
 		except requests.exceptions.HTTPError as e:
 			logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
 			logging.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
-			self.atisVoice='cannot find nearest city. Geonames may be busy. Check error log.'
-			self.readVoice()
+			lucia.output.output ('cannot find nearest city. Geonames may be busy. Check error log.')
 			
 		## Check if we are flying over water.
 		## If so, announce body of water.
@@ -295,9 +292,8 @@ class FlightFollowing(object):
 			response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
 			data = response.json()
 			if 'ocean' in data and distance >= 1:
-				self.atisVoice = 'currently over {}'.format(data['ocean']['name'])
+				lucia.output.output ('currently over {}'.format(data['ocean']['name']))
 				self.oceanic = True
-				self.readVoice()
 		except Exception as e:
 			logging.error('Error determining oceanic information: ' + str(e))
 			logging.exception(str(e))
@@ -312,9 +308,8 @@ class FlightFollowing(object):
 				tz = get_timezone(data['timezoneId'])
 				tzName = get_timezone_name(tz, locale=Locale.parse('en_US'))
 				if tzName != self.oldTz:
-					self.atisVoice = '{}.'.format(tzName)
+					lucia.output.output ('{}.'.format(tzName))
 					self.oldTz = tzName
-					self.readVoice()
 		except Exception as e:
 			logging.error('Error determining timezone: ' + str(e))
 			logging.exception(str(e))
@@ -399,9 +394,8 @@ class FlightFollowing(object):
 			self.onGround = bool(results[6])
 			self.parkingBrake = bool(results[7])
 			self.ASLAltitude = round(results[8] * 3.28084)
-			
 			self.groundAltitude = results[9] / 256 * 3.28084
-			
+			self.spoilers = results[10]			
 			#breakpoint()
 			
 			
