@@ -21,28 +21,33 @@
 
 from __future__ import division
 
+
+import json
+import logging
 # Import built-ins
 import os
-import sys
 import re
+import sys
 import time
-import gzip
+import warnings
 import winsound
-# import threading
+from configparser import ConfigParser
+
 from contextlib import closing
 from math import *
-import warnings
-import json
-import requests
-from configparser import ConfigParser
+
 import keyboard
-from babel import Locale
-from babel.dates import get_timezone_name, get_timezone
-import pyttsx3
 import lucia
+import pyttsx3
+import requests
+from aviationFormula.aviationFormula import calcBearing
+from babel import Locale
+from babel.dates import get_timezone, get_timezone_name
 from lucia.utils import timer
 
-import logging
+# Import own packages.
+from VaLogger import VaLogger
+
 # initialize the log settings
 logging.basicConfig(filename = 'error.log', level = logging.INFO)
 # Set encoding
@@ -57,14 +62,6 @@ try:
 except ImportError:
 		pyuipcImported = False
 		debug = True
-
-
-from aviationFormula.aviationFormula import calcBearing
-
-
-# Import own packages.
-from VaLogger import VaLogger
-
 
 ## Main Class of FlightFollowing.
 # Run constructor to run the program.
@@ -154,6 +151,7 @@ class FlightFollowing(object):
 		## add global hotkey definitions
 		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
 		self.commandKey = keyboard.add_hotkey(']', self.commandMode, args=(), suppress=True, timeout=2)
+		# variables to track states of various aircraft instruments
 		self.oldTz = 'none' ## variable for storing timezone name
 		self.old_flaps = 0
 		self.airborne = False
@@ -173,7 +171,6 @@ class FlightFollowing(object):
 				if self.tmrCity.elapsed > (self.interval * 60 * 1000):
 					self.AnnounceInfo()
 					self.tmrCity.restart()
-					
 				if self.tmrInstruments.elapsed > 500:
 					self.readInstruments()
 					self.tmrInstruments.restart()
@@ -189,14 +186,14 @@ class FlightFollowing(object):
 	## handle hotkeys for reading instruments on demand
 	def keyHandler(self, instrument):
 		if instrument == '1':
-			lucia.output.output("{} feet A S L".format(self.ASLAltitude))
+			lucia.output.output(f'{self.ASLAltitude} feet A S L')
 			keyboard.remove_hotkey(self.aslKey)
 			keyboard.remove_hotkey(self.aglKey)
 			
 			
 		elif instrument == '2':
 			AGLAltitude = self.ASLAltitude - self.groundAltitude
-			lucia.output.output("{} feet A G L".format(round(AGLAltitude)))
+			lucia.output.output(F"{round(AGLAltitude)} feet A G L")
 			keyboard.remove_hotkey(self.aglKey)
 			keyboard.remove_hotkey(self.aslKey)
 			
@@ -217,7 +214,7 @@ class FlightFollowing(object):
 		# detect if aircraft is on ground or airborne.
 		if not self.onGround and not self.airborne:
 			lucia.output.output ("Positive rate.")
-			self.speakInstruments()
+			
 			self.airborne = True
 		# read parking Brakes
 		
@@ -241,11 +238,11 @@ class FlightFollowing(object):
 					time.sleep (0.2)
 				else:
 					flapsTransit = False
-			lucia.output.output ('Flaps {:.0f}'.format(self.flaps))
+			lucia.output.output (F'Flaps {self.flaps:.0f}')
 			self.old_flaps = self.flaps
 		# announce radio frequency changes
 		if self.com1frequency != self.oldCom1:
-			lucia.output.output ("com 1, {}".format(self.com1frequency))
+			lucia.output.output (F"com 1, {self.com1frequency}")
 			self.oldCom1 = self.com1frequency
 		# spoilers
 		if self.spoilers == 1 and self.oldSpoilers != self.spoilers:
@@ -273,7 +270,6 @@ class FlightFollowing(object):
 					distance = float(data["geonames"][0]["distance"])
 					units = 'kilometers'
 				lucia.output.output ('Closest city: {} {}. {:.1f} {}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],data["geonames"][0]["adminName1"],distance,units,bearing))
-				self.airport="test"
 			else:
 				distance = 0
 		except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
@@ -316,67 +312,6 @@ class FlightFollowing(object):
 			sys.exit()
 
 
-	## Reads the flight following string using voice generation.
-	def readVoice(self):
-		# Init currently Reading with None.
-		# self.currentlyReading = None
-		
-		self.logger.debug('Voice Text is: {}'.format(self.atisVoice))
-		pyttsxImported = True
-		if pyttsxImported:
-			# Set properties currently reading
-			# Init voice engine.
-			self.engine = pyttsx3.init()
-			# Set properties.
-			voices = self.engine.getProperty('voices')
-			for vo in voices:
-				if 'english' in vo.name.lower():
-					self.engine.setProperty('voice', vo.id)
-					self.logger.debug('Using voice: {}'.format(vo.name))
-					break
-			
-			self.engine.setProperty('rate', self.voice_rate)
-			# Say complete ATIS
-			self.engine.say(self.atisVoice)
-			self.logger.info('Start reading.')
-			self.engine.runAndWait()
-			self.logger.info('Reading finished.')
-			self.engine = None
-			
-		else:
-			self.logger.warning('Speech engine not initalized, no reading. Sleeping for {} seconds...'.format(self.SLEEP_TIME))
-			time.sleep(self.SLEEP_TIME)
-	def speakInstruments(self):
-		# Init currently Reading with None.
-		# self.currentlyReading = None
-		
-		self.logger.debug('Voice Text is: {}'.format(self.instrumentVoice))
-		pyttsxImported = True
-		if pyttsxImported:
-			# Set properties currently reading
-			# Init voice engine.
-			self.engInst = pyttsx3.init()
-			# Set properties.
-			voices = self.engInst.getProperty('voices')
-			for vo in voices:
-				if 'zira' in vo.name.lower():
-					self.engInst.setProperty('voice', vo.id)
-					self.logger.debug('Using voice: {}'.format(vo.name))
-					break
-					
-			
-			self.engInst.setProperty('rate', self.voice_rate)
-			# Say complete ATIS
-			self.engInst.say(self.instrumentVoice)
-			self.logger.info('Start reading.')
-			self.engInst.runAndWait()
-			self.logger.info('Reading finished.')
-			self.engInst = None
-			
-		else:
-			self.logger.warning('Speech engine not initalized, no reading. Sleeping for {} seconds...'.format(self.SLEEP_TIME))
-			time.sleep(self.SLEEP_TIME)
-	
 	
 	## Read data from the simulator
 	def getPyuipcData(self):
