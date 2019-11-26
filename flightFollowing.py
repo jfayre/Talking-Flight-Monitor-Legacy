@@ -138,6 +138,7 @@ class FlightFollowing:
 						'asl_key': 'a',
 						'heading_key': 'h',
 						'status_key': 's',
+						'city_key': 'c',
 						'flaps_key': 'f'}
 
 			with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
@@ -165,7 +166,6 @@ class FlightFollowing:
 			self.logger.info('Debug mode on.')
 			self.logger.setLevel(ConsoleLevel='debug')
 		## add global hotkey definitions
-		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
 		self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
 		# variables to track states of various aircraft instruments
 		self.oldTz = 'none' ## variable for storing timezone name
@@ -177,7 +177,7 @@ class FlightFollowing:
 		# start timers
 		self.tmrCity = timer.Timer()
 		self.tmrInstruments = timer.Timer()
-		self.AnnounceInfo()
+		self.AnnounceInfo(triggered=0)
 		
 		
 		# Infinite loop.
@@ -203,16 +203,13 @@ class FlightFollowing:
 	def keyHandler(self, instrument):
 		if instrument == '1':
 			self.output.speak(f'{self.ASLAltitude} feet A S L')
-			keyboard.remove_hotkey(self.aslKey)
-			keyboard.remove_hotkey(self.aglKey)
+			self.reset_hotkeys()
 			
 			
 		elif instrument == '2':
 			AGLAltitude = self.ASLAltitude - self.groundAltitude
 			self.output.speak(F"{round(AGLAltitude)} feet A G L")
-			keyboard.remove_hotkey(self.aglKey)
-			keyboard.remove_hotkey(self.aslKey)
-			
+			self.reset_hotkeys()
 			
 			
 
@@ -221,8 +218,13 @@ class FlightFollowing:
 	def commandMode(self):
 		self.aslKey= keyboard.add_hotkey (self.config['hotkeys']['asl_key'], self.keyHandler, args=('1'), suppress=True, timeout=2)
 		self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=('2'), suppress=True, timeout=2)
+		self.cityKey = keyboard.add_hotkey(self.config['hotkeys']['city_key'], self.AnnounceInfo, args=('1'))
 		winsound.Beep(500, 100)
-		
+
+	def reset_hotkeys(self):
+		keyboard.remove_all_hotkeys()
+		self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
+
 	## read various instrumentation automatically such as flaps
 	def readInstruments(self):
 		flapsTransit = False
@@ -267,7 +269,11 @@ class FlightFollowing:
 			
 
 	## Announce flight following info
-	def AnnounceInfo(self):
+	def AnnounceInfo(self, triggered):
+		# If invoked by hotkey, reset hotkey deffinitions.
+		if triggered == '1':
+			self.reset_hotkeys()
+			triggered = '0'
 		# Get data from simulator
 		self.getPyuipcData()
 		# Lookup nearest cities to aircraft position using the Geonames database.
