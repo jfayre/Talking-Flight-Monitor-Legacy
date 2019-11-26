@@ -38,12 +38,13 @@ from math import *
 
 import keyboard
 import lucia
-import pyttsx3
 import requests
 from aviationFormula.aviationFormula import calcBearing
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
 from lucia.utils import timer
+from accessible_output2.outputs import sapi5
+from accessible_output2.outputs import auto
 
 # Import own packages.
 from VaLogger import VaLogger
@@ -65,7 +66,7 @@ except ImportError:
 
 ## Main Class of FlightFollowing.
 # Run constructor to run the program.
-class FlightFollowing(object):
+class FlightFollowing:
 #  - b: a 1-byte unsigned value, to be converted into a Python int
 #  - c: a 1-byte signed value, to be converted into a Python int
 #  - h: a 2-byte signed value, to be converted into a Python int
@@ -102,7 +103,7 @@ class FlightFollowing(object):
 		# Init logging.
 		self.logger = VaLogger(os.path.join(self.rootDir,'voiceAtis','logs'))
 		# init config parser
-		self.config = ConfigParser()
+		self.config = ConfigParser(allow_no_value=True)
 		# First log message.
 		self.logger.info('Flight Following started')
 		# check for config file. Create it if it doesn't exist.
@@ -118,15 +119,26 @@ class FlightFollowing(object):
 			
 		else:
 			self.logger.info ("no config file found. It will be created.")
-			cfgfile = open (self.rootDir + "/flightfollowing.ini",'w')
-			self.config.add_section ('config')
-			self.config.set ('config','geonames_username','your_user_name')
-			self.config.set ('config','voice_rate','150')
-			self.config.set ('config','interval','180')
-			self.config.set ('config','distance_units','0')
-			
-			self.config.write(cfgfile)
-			cfgfile.close()
+			self.config['config'] = {'# Flight Following requires a username from the Geonames service':None,
+						'geonames_username': 'your_username',
+						'# voice rate for SAPI output':None,
+						'voice_rate': '150',
+						'# speech output: 0 - screen reader, 1 - SAPI5':None,
+						'speech_output': '0',
+						'# time interval for reading of nearest city, in minutes':None,
+						'interval': '10',
+						'distance_units': '0'}
+			self.config['hotkeys'] = {'# command key: This key must be pressed before the other commands listed below':None,
+						'command_key': ']',
+						'agl_key': 'g',
+						'asl_key': 'a',
+						'heading_key': 'h',
+						'status_key': 's',
+						'flaps_key': 'f'}
+
+			with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
+				self.config.write(configfile)
+
 			
 		# Establish pyuipc connection
 		while True:
@@ -150,7 +162,7 @@ class FlightFollowing(object):
 			self.logger.setLevel(ConsoleLevel='debug')
 		## add global hotkey definitions
 		keyboard.add_hotkey('ctrl+alt+c', self.AnnounceInfo)
-		self.commandKey = keyboard.add_hotkey(']', self.commandMode, args=(), suppress=True, timeout=2)
+		self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
 		# variables to track states of various aircraft instruments
 		self.oldTz = 'none' ## variable for storing timezone name
 		self.old_flaps = 0
@@ -203,8 +215,8 @@ class FlightFollowing(object):
 			
 	## Layered key support for reading various instrumentation
 	def commandMode(self):
-		self.aslKey= keyboard.add_hotkey ('a', self.keyHandler, args=('1'), suppress=True, timeout=2)
-		self.aglKey = keyboard.add_hotkey ('g', self.keyHandler, args=('2'), suppress=True, timeout=2)
+		self.aslKey= keyboard.add_hotkey (self.config['hotkeys']['asl_key'], self.keyHandler, args=('1'), suppress=True, timeout=2)
+		self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=('2'), suppress=True, timeout=2)
 		winsound.Beep(500, 100)
 		
 	## read various instrumentation automatically such as flaps
