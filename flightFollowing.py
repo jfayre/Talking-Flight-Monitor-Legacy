@@ -114,15 +114,19 @@ class FlightFollowing:
 			self.geonames_username = self.config.get('config','geonames_username')
 			self.interval = float(self.config.get('config','interval'))
 			self.distance_units = self.config.get('config','distance_units')
-			self.voice_rate = self.config.get('config','voice_rate')
-			
+			self.voice_rate = int(self.config.get('config','voice_rate'))
+			if self.config['config']['speech_output'] == '1':
+				self.output = sapi5.SAPI5()
+				self.output.set_rate(self.voice_rate)
+			else:
+				self.output = auto.Auto()
 			
 		else:
 			self.logger.info ("no config file found. It will be created.")
 			self.config['config'] = {'# Flight Following requires a username from the Geonames service':None,
 						'geonames_username': 'your_username',
 						'# voice rate for SAPI output':None,
-						'voice_rate': '150',
+						'voice_rate': '5',
 						'# speech output: 0 - screen reader, 1 - SAPI5':None,
 						'speech_output': '0',
 						'# time interval for reading of nearest city, in minutes':None,
@@ -198,14 +202,14 @@ class FlightFollowing:
 	## handle hotkeys for reading instruments on demand
 	def keyHandler(self, instrument):
 		if instrument == '1':
-			lucia.output.output(f'{self.ASLAltitude} feet A S L')
+			self.output.speak(f'{self.ASLAltitude} feet A S L')
 			keyboard.remove_hotkey(self.aslKey)
 			keyboard.remove_hotkey(self.aglKey)
 			
 			
 		elif instrument == '2':
 			AGLAltitude = self.ASLAltitude - self.groundAltitude
-			lucia.output.output(F"{round(AGLAltitude)} feet A G L")
+			self.output.speak(F"{round(AGLAltitude)} feet A G L")
 			keyboard.remove_hotkey(self.aglKey)
 			keyboard.remove_hotkey(self.aslKey)
 			
@@ -225,17 +229,17 @@ class FlightFollowing:
 		# Get data from simulator
 		# detect if aircraft is on ground or airborne.
 		if not self.onGround and not self.airborne:
-			lucia.output.output ("Positive rate.")
+			self.output.speak ("Positive rate.")
 			
 			self.airborne = True
 		# read parking Brakes
 		
 		if self.oldBrake != self.parkingBrake:
 			if self.parkingBrake:
-				lucia.output.output ("parking Brake on.")
+				self.output.speak ("parking Brake on.")
 				self.oldBrake = self.parkingBrake
 			else:
-				lucia.output.output ("parking Brake off.")
+				self.output.speak ("parking Brake off.")
 				self.oldBrake = self.parkingBrake
 
 		
@@ -250,15 +254,15 @@ class FlightFollowing:
 					time.sleep (0.2)
 				else:
 					flapsTransit = False
-			lucia.output.output (F'Flaps {self.flaps:.0f}')
+			self.output.speak (F'Flaps {self.flaps:.0f}')
 			self.old_flaps = self.flaps
 		# announce radio frequency changes
 		if self.com1frequency != self.oldCom1:
-			lucia.output.output (F"com 1, {self.com1frequency}")
+			self.output.speak (F"com 1, {self.com1frequency}")
 			self.oldCom1 = self.com1frequency
 		# spoilers
 		if self.spoilers == 1 and self.oldSpoilers != self.spoilers:
-			lucia.output.output ("spoilers armed.")
+			self.output.speak ("spoilers armed.")
 			self.oldSpoilers = self.spoilers
 			
 
@@ -281,17 +285,17 @@ class FlightFollowing:
 				else:
 					distance = float(data["geonames"][0]["distance"])
 					units = 'kilometers'
-				lucia.output.output ('Closest city: {} {}. {:.1f} {}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],data["geonames"][0]["adminName1"],distance,units,bearing))
+				self.output.speak ('Closest city: {} {}. {:.1f} {}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],data["geonames"][0]["adminName1"],distance,units,bearing))
 			else:
 				distance = 0
 		except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
 			logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
 			logging.exception('error getting nearest city: ' + str(e))
-			lucia.output.output ('cannot find nearest city. Geonames connection error. Check error log.')
+			self.output.speak ('cannot find nearest city. Geonames connection error. Check error log.')
 		except requests.exceptions.HTTPError as e:
 			logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
 			logging.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
-			lucia.output.output ('cannot find nearest city. Geonames may be busy. Check error log.')
+			self.output.speak ('cannot find nearest city. Geonames may be busy. Check error log.')
 			
 		## Check if we are flying over water.
 		## If so, announce body of water.
@@ -300,7 +304,7 @@ class FlightFollowing:
 			response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
 			data = response.json()
 			if 'ocean' in data and distance >= 1:
-				lucia.output.output ('currently over {}'.format(data['ocean']['name']))
+				self.output.speak ('currently over {}'.format(data['ocean']['name']))
 				self.oceanic = True
 		except Exception as e:
 			logging.error('Error determining oceanic information: ' + str(e))
@@ -316,7 +320,7 @@ class FlightFollowing:
 				tz = get_timezone(data['timezoneId'])
 				tzName = get_timezone_name(tz, locale=Locale.parse('en_US'))
 				if tzName != self.oldTz:
-					lucia.output.output ('{}.'.format(tzName))
+					self.output.speak ('{}.'.format(tzName))
 					self.oldTz = tzName
 		except Exception as e:
 			logging.error('Error determining timezone: ' + str(e))
