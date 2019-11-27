@@ -185,7 +185,7 @@ class FlightFollowing:
 			while True:
 				self.getPyuipcData()
 				if self.tmrCity.elapsed > (self.interval * 60 * 1000):
-					self.AnnounceInfo()
+					self.AnnounceInfo(triggered = 0)
 					self.tmrCity.restart()
 				if self.tmrInstruments.elapsed > 500:
 					self.readInstruments()
