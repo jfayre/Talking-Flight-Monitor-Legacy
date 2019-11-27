@@ -34,7 +34,7 @@ import winsound
 from configparser import ConfigParser
 
 from contextlib import closing
-from math import *
+from math import degrees
 
 import keyboard
 import lucia
