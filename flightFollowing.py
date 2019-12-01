@@ -32,7 +32,7 @@ import winsound
 from configparser import ConfigParser
 
 from contextlib import closing
-from math import degrees
+from math import degrees, floor
 
 import keyboard
 import lucia
@@ -87,6 +87,24 @@ class FlightFollowing:
                (0x0574,'u'),	#ASL altitude
                (0x0020,'u'),	# ground altitude x 256
                (0x0bcc,'u'),	# spoilers armed: 0 - off, 1 - armed
+               (0x07bc,'u'), # AP master switch
+               (0x07c4,'u'), # AP Nav1 lock
+               (0x07c8,'u'), # AP heading lock
+               (0x07cc,'H'), # Autopilot heading value, as degrees*65536/360
+               (0x07d0,'u'), # AP Altitude lock
+               (0x07d4,'u'), # Autopilot altitude value, as metres*65536
+               (0x07dc,'u'), # AP airspeed hold
+               (0x07e2,'h'), # AP airspeed in knots
+               (0x0580,'u'), # Heading, *360/(65536*65536) for degrees TRUE.[Can be set in slew or pause states]
+               (0x02a0,'h'), # Magnetic variation (signed, –ve = West). For degrees *360/65536. Convert True headings to Magnetic by subtracting this value, Magnetic headings to True by adding this value.
+               (0x0354,'H'), # transponder in BCD format
+
+
+
+
+
+
+
               ]
     ## Setup the FlightFollowing object.
     # Also starts the voice generation loop.
@@ -173,6 +191,9 @@ class FlightFollowing:
         self.oldBrake = True
         self.oldCom1 = None
         self.oldSpoilers = None
+        self.oldApHeading = None
+        self.oldApAltitude = None
+        self.oldTransponder = None
         # start timers
         self.tmrCity = timer.Timer()
         self.tmrInstruments = timer.Timer()
@@ -209,6 +230,11 @@ class FlightFollowing:
             AGLAltitude = self.ASLAltitude - self.groundAltitude
             self.output.speak(F"{round(AGLAltitude)} feet A G L")
             self.reset_hotkeys()
+        elif instrument == '3':
+            self.output.speak(F'Heading: {self.headingCorrected}')
+            self.reset_hotkeys()
+
+
             
             
 
@@ -218,6 +244,7 @@ class FlightFollowing:
         self.aslKey= keyboard.add_hotkey (self.config['hotkeys']['asl_key'], self.keyHandler, args=('1'), suppress=True, timeout=2)
         self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=('2'), suppress=True, timeout=2)
         self.cityKey = keyboard.add_hotkey(self.config['hotkeys']['city_key'], self.AnnounceInfo, args=('1'))
+        self.headingKey = keyboard.add_hotkey (self.config['hotkeys']['heading_key'], self.keyHandler, args=('3'), suppress=True, timeout=2)
         winsound.Beep(500, 100)
 
     def reset_hotkeys(self):
@@ -265,7 +292,15 @@ class FlightFollowing:
         if self.spoilers == 1 and self.oldSpoilers != self.spoilers:
             self.output.speak ("spoilers armed.")
             self.oldSpoilers = self.spoilers
-            
+        if self.oldApAltitude != self.apAltitude:
+            self.output.speak(F"Altitude set to {round(self.apAltitude)}")
+            self.oldApAltitude = self.apAltitude
+        # transponder
+        if self.transponder != self.oldTransponder:
+            self.output.speak(F'Squawk {self.transponder:x}')
+            self.oldTransponder = self.transponder
+
+
 
     ## Announce flight following info
     def AnnounceInfo(self, triggered):
@@ -351,13 +386,19 @@ class FlightFollowing:
             self.parkingBrake = bool(results[7])
             self.ASLAltitude = round(results[8] * 3.28084)
             self.groundAltitude = results[9] / 256 * 3.28084
-            self.spoilers = results[10]			
-            #breakpoint()
-            
+            self.spoilers = results[10]
+            self.apMaster = results[11]
+            self.apNavLock = results [12]
+            self.apHeadingLock = results[13]
+            self.apHeading = round(results[14]/65536*360)
+            self.apAltLock = results[15]
+            self.apAltitude = results[16] / 65536 * 3.28084
+            self.headingTrue = floor(((results[19] * 360) / (65536 * 65536)) + 0.5)
+            self.headingCorrected = results[19] - (results[20] * 65536)
+            self.headingCorrected = floor(self.headingCorrected * 360 / (65536 * 65536) + 0.5)
+            self.transponder = results[21]
             
 
-            
-        
         else:
             self.logger.error ('FSUIPC not found! Exiting')
             exit()
