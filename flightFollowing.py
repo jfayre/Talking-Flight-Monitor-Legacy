@@ -1,4 +1,4 @@
-#!/usr/bin/python
+
 # -*- coding: iso-8859-15 -*-
 #==============================================================================
 # Voice Flight Following - Periodically announce cities along your flight path
