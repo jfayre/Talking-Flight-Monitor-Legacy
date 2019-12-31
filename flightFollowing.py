@@ -180,6 +180,7 @@ class FlightFollowing:
                         'heading_key': 'h',
                         'status_key': 's',
                         'city_key': 'c',
+                        'waypoint_key': 'w',
                         'flaps_key': 'f'}
 
             with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
@@ -271,7 +272,8 @@ class FlightFollowing:
             else:
                 distance = (self.nextWPDistance / 1000)/ 1.609
                 self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} miles')    
-
+            self.reset_hotkeys()
+            
 
 
             
@@ -284,6 +286,7 @@ class FlightFollowing:
         self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=('2'), suppress=True, timeout=2)
         self.cityKey = keyboard.add_hotkey(self.config['hotkeys']['city_key'], self.AnnounceInfo, args=('1'))
         self.headingKey = keyboard.add_hotkey (self.config['hotkeys']['heading_key'], self.keyHandler, args=('3'), suppress=True, timeout=2)
+        self.WPKey = keyboard.add_hotkey (self.config['hotkeys']['waypoint_key'], self.keyHandler, args=('4'), suppress=True, timeout=2)
         winsound.Beep(500, 100)
 
     def reset_hotkeys(self):
