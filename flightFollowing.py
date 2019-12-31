@@ -98,6 +98,10 @@ class FlightFollowing:
                (0x0580,'u'), # Heading, *360/(65536*65536) for degrees TRUE.[Can be set in slew or pause states]
                (0x02a0,'h'), # Magnetic variation (signed, –ve = West). For degrees *360/65536. Convert True headings to Magnetic by subtracting this value, Magnetic headings to True by adding this value.
                (0x0354,'H'), # transponder in BCD format
+               (0x6048,'f'), # distance to next waypoint
+               (0x60a4,-6), # next waypoint string
+               (0x60e4,'u'), # time enroute to next waypoint
+
 
 
 
@@ -129,6 +133,12 @@ class FlightFollowing:
             self.logger.info("config file exists.")
             cfgfile = self.config.read(self.rootDir + "/flightfollowing.ini")
             self.geonames_username = self.config.get('config','geonames_username')
+            if self.geonames_username == 'your_username':
+                output = sapi5.SAPI5()
+                output.speak('Error: edit the flightfollowing.ini file and add your Geo names username. exiting!')
+                time.sleep(8)
+                exit()
+
             self.interval = float(self.config.get('config','interval'))
             self.distance_units = self.config.get('config','distance_units')
             self.voice_rate = int(self.config.get('config','voice_rate'))
@@ -137,7 +147,16 @@ class FlightFollowing:
                 self.output.set_rate(self.voice_rate)
             else:
                 self.output = auto.Auto()
-            
+            if self.config['config']['flight_following'] == 'True':
+                self.FFEnabled = True
+            else:
+                self.FFEnabled = False
+                self.output.speak('Flight Following functions disabled.')
+            if self.config['config']['read_instrumentation'] == 'True':
+                self.InstrEnabled = True
+            else:
+                self.InstrEnabled = False
+                self.output.speak('instrumentation disabled.')
         else:
             self.logger.info ("no config file found. It will be created.")
             self.config['config'] = {'# Flight Following requires a username from the Geonames service':None,
@@ -146,8 +165,13 @@ class FlightFollowing:
                         'voice_rate': '5',
                         '# speech output: 0 - screen reader, 1 - SAPI5':None,
                         'speech_output': '0',
+                        '# Read closest city info. ':None,
+                        'flight_following': 'True',
+                        '# Automatically read aircraft instrumentation. If using Ideal Flight, you may want to turn this off.':None,
+                        'read_instrumentation':'True',
                         '# time interval for reading of nearest city, in minutes':None,
                         'interval': '10',
+                        '# Distance units: 0 - Kilometers, 1 - Miles':None,
                         'distance_units': '0'}
             self.config['hotkeys'] = {'# command key: This key must be pressed before the other commands listed below':None,
                         'command_key': ']',
@@ -160,6 +184,11 @@ class FlightFollowing:
 
             with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
                 self.config.write(configfile)
+            output = sapi5.SAPI5()
+            output.speak('Configuration file created. Open the FlightFollowing.ini file and add your geonames username. Exiting.')
+            time.sleep(8)
+            exit()
+
 
             
         # Establish pyuipc connection
@@ -194,20 +223,22 @@ class FlightFollowing:
         self.oldApHeading = None
         self.oldApAltitude = None
         self.oldTransponder = None
+        self.oldWP = None
         # start timers
         self.tmrCity = timer.Timer()
         self.tmrInstruments = timer.Timer()
-        self.AnnounceInfo(triggered=0)
+        if self.FFEnabled:
+            self.AnnounceInfo(triggered=0)
         
         
         # Infinite loop.
         try:
             while True:
                 self.getPyuipcData()
-                if self.tmrCity.elapsed > (self.interval * 60 * 1000):
+                if self.FFEnabled and self.tmrCity.elapsed > (self.interval * 60 * 1000):
                     self.AnnounceInfo(triggered = 0)
                     self.tmrCity.restart()
-                if self.tmrInstruments.elapsed > 500:
+                if self.InstrEnabled and self.tmrInstruments.elapsed > 500:
                     self.readInstruments()
                     self.tmrInstruments.restart()
                 time.sleep(0.05)
@@ -233,6 +264,14 @@ class FlightFollowing:
         elif instrument == '3':
             self.output.speak(F'Heading: {self.headingCorrected}')
             self.reset_hotkeys()
+        elif instrument == '4':
+            if self.distance_units == '0':
+                distance = self.nextWPDistance / 1000
+                self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
+            else:
+                distance = (self.nextWPDistance / 1000)/ 1.609
+                self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} miles')    
+
 
 
             
@@ -299,6 +338,17 @@ class FlightFollowing:
         if self.transponder != self.oldTransponder:
             self.output.speak(F'Squawk {self.transponder:x}')
             self.oldTransponder = self.transponder
+        # next waypoint
+        if self.nextWPName != self.oldWP:
+            if self.distance_units == '0':
+                distance = self.nextWPDistance / 1000
+                self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
+            else:
+                distance = (self.nextWPDistance / 1000)/ 1.609
+                self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} miles')    
+            self.oldWP = self.nextWPName
+
+
 
 
 
@@ -397,7 +447,10 @@ class FlightFollowing:
             self.headingCorrected = results[19] - (results[20] * 65536)
             self.headingCorrected = floor(self.headingCorrected * 360 / (65536 * 65536) + 0.5)
             self.transponder = results[21]
-            
+            self.nextWPDistance = results[22]
+            self.nextWPName= results[23]
+            self.nextWPTime = results[24]
+
 
         else:
             self.logger.error ('FSUIPC not found! Exiting')
