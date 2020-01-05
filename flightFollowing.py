@@ -75,7 +75,7 @@ class FlightFollowing:
 #  - l: an 8-byte signed value, to be converted into a Python long
 #  - L: an 8-byte unsigned value, to be converted into a Python long
 #  - f: an 8-byte floating point value, to be converted into a Python double
-
+# main offsets for reading instrumentation.
     OFFSETS = [(0x034E,'H'),	# com1freq
                (0x3118,'H'),	# com2freq
                (0x3122,'b'),	# radioActive
@@ -101,15 +101,16 @@ class FlightFollowing:
                (0x6048,'f'), # distance to next waypoint
                (0x60a4,-6), # next waypoint string
                (0x60e4,'u'), # time enroute to next waypoint
+    ]
 
+    SIMC = [(0xb000,'u'), # changed indicator (4 bytes)
+        (0xb004,'u'), # type value (4 bytes)
+        (0xb008,'u'), # display duration in secs (4 bytes)
+        (0xb00c,'u'), # SimConnect event ID (4 bytes)
+        (0xb010,'u'), # length of data received (4 bytes)
+        (0xb014,2028), # text data (<= 2028 bytes)
+    ]
 
-
-
-
-
-
-
-              ]
     ## Setup the FlightFollowing object.
     # Also starts the voice generation loop.
     def __init__(self,**optional):
@@ -197,6 +198,7 @@ class FlightFollowing:
             try:
                 self.pyuipcConnection = pyuipc.open(0)
                 self.pyuipcOffsets = pyuipc.prepare_data(self.OFFSETS)
+                self.pyuipcSIMC = pyuipc.prepare_data(self.SIMC)
                 self.logger.info('FSUIPC connection established.')
                 break
             except NameError:
@@ -225,9 +227,12 @@ class FlightFollowing:
         self.oldApAltitude = None
         self.oldTransponder = None
         self.oldWP = None
+        self.oldSimCChanged = None
         # start timers
         self.tmrCity = timer.Timer()
         self.tmrInstruments = timer.Timer()
+        self.tmrSimC = timer.Timer()
+
         if self.FFEnabled:
             self.AnnounceInfo(triggered=0)
         
@@ -242,6 +247,9 @@ class FlightFollowing:
                 if self.InstrEnabled and self.tmrInstruments.elapsed > 500:
                     self.readInstruments()
                     self.tmrInstruments.restart()
+                if self.tmrSimC.elapsed > 500:
+                    self.readSimConnectMessages(triggered = '0')
+                    self.tmrSimC.restart()
                 time.sleep(0.05)
                 pass
                 
@@ -287,6 +295,7 @@ class FlightFollowing:
         self.cityKey = keyboard.add_hotkey(self.config['hotkeys']['city_key'], self.AnnounceInfo, args=('1'))
         self.headingKey = keyboard.add_hotkey (self.config['hotkeys']['heading_key'], self.keyHandler, args=('3'), suppress=True, timeout=2)
         self.WPKey = keyboard.add_hotkey (self.config['hotkeys']['waypoint_key'], self.keyHandler, args=('4'), suppress=True, timeout=2)
+        self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=('1'), suppress=True, timeout=2)
         winsound.Beep(500, 100)
 
     def reset_hotkeys(self):
@@ -343,6 +352,7 @@ class FlightFollowing:
             self.oldTransponder = self.transponder
         # next waypoint
         if self.nextWPName != self.oldWP:
+            time.sleep(2)
             if self.distance_units == '0':
                 distance = self.nextWPDistance / 1000
                 self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
@@ -351,6 +361,21 @@ class FlightFollowing:
                 self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} miles')    
             self.oldWP = self.nextWPName
 
+    def readSimConnectMessages(self, triggered):
+        if self.oldSimCChanged != self.SimCChanged or triggered == '1':
+            i = 1
+            SimCMessageRaw = self.SimCData[:self.SimCLen]
+            SimCMessage = SimCMessageRaw.split('\x00')
+            for index, message in enumerate(SimCMessage):
+                if index < 2:
+                    self.output.speak(f'{message}')
+                else:
+                    self.output.speak(f'{i}: {message}')
+                    i += 1
+
+            self.oldSimCChanged = self.SimCChanged
+            self.reset_hotkeys()
+            
 
 
 
@@ -427,6 +452,8 @@ class FlightFollowing:
         
         if pyuipcImported:
             results = pyuipc.read(self.pyuipcOffsets)
+            SimCResults= pyuipc.read(self.pyuipcSIMC)
+            # prepare instrumentation variables
             hexCode = hex(results[0])[2:]
             self.com1frequency = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
             hexCode = hex(results[1])[2:]
@@ -453,6 +480,16 @@ class FlightFollowing:
             self.nextWPDistance = results[22]
             self.nextWPName= results[23]
             self.nextWPTime = results[24]
+            # prepare simConnect message data
+            self.SimCChanged = SimCResults[0]
+            self.SimCType = SimCResults[1]
+            self.SimCDuration = SimCResults[2]
+            self.SimCEvent = SimCResults[3]
+            self.SimCLen = SimCResults[4]
+            self.SimCData = SimCResults[5]
+
+
+
 
 
         else:
