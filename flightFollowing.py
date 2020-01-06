@@ -84,7 +84,7 @@ class FlightFollowing:
                (0x30f0,'h'),	# flaps angle
                (0x0366,'h'),	# on ground flag: 0 = airborne
                (0x0bc8,'h'),	# parking Brake: 0 off, 32767 on
-               (0x0574,'u'),	#ASL altitude
+               (0x3324,'d'),	#altitude in feet or meters
                (0x0020,'u'),	# ground altitude x 256
                (0x0bcc,'u'),	# spoilers armed: 0 - off, 1 - armed
                (0x07bc,'u'), # AP master switch
@@ -204,11 +204,6 @@ class FlightFollowing:
                 self.logger.warning('FSUIPC: No simulator detected. Start your simulator first! Retrying in 20 seconds.')
                 time.sleep(20)
         
-        # Show debug Info
-        #TODO: Remove for release.
-        if self.debug:
-            self.logger.info('Debug mode on.')
-            self.logger.setLevel(ConsoleLevel='debug')
         ## add global hotkey definitions
         self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
         # variables to track states of various aircraft instruments
@@ -463,7 +458,8 @@ class FlightFollowing:
             self.flaps = results[5]/ 256
             self.onGround = bool(results[6])
             self.parkingBrake = bool(results[7])
-            self.ASLAltitude = round(results[8] * 3.28084)
+            # self.ASLAltitude = round(results[8] * 3.28084)
+            self.ASLAltitude = round(results[8])
             self.groundAltitude = results[9] / 256 * 3.28084
             self.spoilers = results[10]
             self.apMaster = results[11]
