@@ -54,7 +54,7 @@ logging.basicConfig(filename = 'error.log', level = logging.INFO)
 #reload(sys)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
 
-# Import pip packages (except failure with debug mode).
+# Import pyuipc package (except failure with debug mode). 
 try:
     import pyuipc
     pyuipcImported = True
@@ -102,7 +102,7 @@ class FlightFollowing:
                (0x60a4,-6), # next waypoint string
                (0x60e4,'u'), # time enroute to next waypoint
     ]
-
+# Offsets for SimConnect messages.
     SIMC = [(0xb000,'u'), # changed indicator (4 bytes)
         (0xb004,'u'), # type value (4 bytes)
         (0xb008,'u'), # display duration in secs (4 bytes)
@@ -114,11 +114,6 @@ class FlightFollowing:
     ## Setup the FlightFollowing object.
     # Also starts the voice generation loop.
     def __init__(self,**optional):
-        #TODO: Remove the debug code when tested properly.
-        
-        # Process optional arguments.
-        self.debug = optional.get('Debug',debug)
-        
         # Get file path.
         self.rootDir = os.path.abspath(os.path.dirname(sys.argv[0]))
         
@@ -258,6 +253,10 @@ class FlightFollowing:
             self.logger.info('Loop interrupted by user.')
             if pyuipcImported:
                 pyuipc.close()
+        except Exception as e:
+            logging.error('Error during main loop:' + str(e))
+            logging.exception(str(e))
+            sys.exit()
         
     ## handle hotkeys for reading instruments on demand
     def keyHandler(self, instrument):
