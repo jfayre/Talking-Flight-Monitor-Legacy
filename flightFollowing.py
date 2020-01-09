@@ -143,16 +143,22 @@ class FlightFollowing:
                 self.output.set_rate(self.voice_rate)
             else:
                 self.output = auto.Auto()
-            if self.config['config']['flight_following'] == 'True':
+            if self.config['config'].getboolean('flight_following'):
                 self.FFEnabled = True
             else:
                 self.FFEnabled = False
                 self.output.speak('Flight Following functions disabled.')
-            if self.config['config']['read_instrumentation'] == 'True':
+            if self.config['config'].getboolean('read_instrumentation'):
                 self.InstrEnabled = True
             else:
                 self.InstrEnabled = False
                 self.output.speak('instrumentation disabled.')
+            if self.config['config'].getboolean('read_simconnect'):
+                self.SimCEnabled = True
+            else:
+                self.SimCEnabled = False
+                self.output.speak("Sim Connect messages disabled.")
+
         else:
             self.logger.info ("no config file found. It will be created.")
             self.config['config'] = {'# Flight Following requires a username from the Geonames service':None,
@@ -162,9 +168,11 @@ class FlightFollowing:
                         '# speech output: 0 - screen reader, 1 - SAPI5':None,
                         'speech_output': '0',
                         '# Read closest city info. ':None,
-                        'flight_following': 'True',
+                        'flight_following': '1',
                         '# Automatically read aircraft instrumentation. If using Ideal Flight, you may want to turn this off.':None,
-                        'read_instrumentation':'True',
+                        'read_instrumentation':'1',
+                        '# Read SimConnect messages. Not compatible with FSX and requires latest FSUIPC.':None,
+                        'read_simconnect':'1',
                         '# time interval for reading of nearest city, in minutes':None,
                         'interval': '10',
                         '# Distance units: 0 - Kilometers, 1 - Miles':None,
@@ -177,6 +185,7 @@ class FlightFollowing:
                         'status_key': 's',
                         'city_key': 'c',
                         'waypoint_key': 'w',
+                        'message_key':'m',
                         'flaps_key': 'f'}
 
             with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
