@@ -365,24 +365,23 @@ class FlightFollowing:
             self.oldWP = self.nextWPName
 
     def readSimConnectMessages(self, triggered):
-        if self.oldSimCChanged != self.SimCChanged or triggered == '1':
-            i = 1
-            SimCMessageRaw = self.SimCData[:self.SimCLen]
-            SimCMessage = SimCMessageRaw.split('\x00')
-            for index, message in enumerate(SimCMessage):
-                if index < 2:
-                    self.output.speak(f'{message}')
-                else:
-                    self.output.speak(f'{i}: {message}')
-                    i += 1
+        if self.SimCEnabled:
+            if self.oldSimCChanged != self.SimCChanged or triggered == '1':
+                i = 1
+                SimCMessageRaw = self.SimCData[:self.SimCLen]
+                SimCMessage = SimCMessageRaw.split('\x00')
+                for index, message in enumerate(SimCMessage):
+                    if index < 2:
+                        self.output.speak(f'{message}')
+                    else:
+                        self.output.speak(f'{i}: {message}')
+                        i += 1
 
-            self.oldSimCChanged = self.SimCChanged
-            self.reset_hotkeys()
-            
-
-
-
-
+                self.oldSimCChanged = self.SimCChanged
+                self.reset_hotkeys()
+        else:
+                self.reset_hotkeys()
+                
     ## Announce flight following info
     def AnnounceInfo(self, triggered):
         # If invoked by hotkey, reset hotkey deffinitions.
@@ -455,7 +454,6 @@ class FlightFollowing:
         
         if pyuipcImported:
             results = pyuipc.read(self.pyuipcOffsets)
-            SimCResults= pyuipc.read(self.pyuipcSIMC)
             # prepare instrumentation variables
             hexCode = hex(results[0])[2:]
             self.com1frequency = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
@@ -485,12 +483,14 @@ class FlightFollowing:
             self.nextWPName= results[23]
             self.nextWPTime = results[24]
             # prepare simConnect message data
-            self.SimCChanged = SimCResults[0]
-            self.SimCType = SimCResults[1]
-            self.SimCDuration = SimCResults[2]
-            self.SimCEvent = SimCResults[3]
-            self.SimCLen = SimCResults[4]
-            self.SimCData = SimCResults[5]
+            if self.SimCEnabled:
+                SimCResults= pyuipc.read(self.pyuipcSIMC)
+                self.SimCChanged = SimCResults[0]
+                self.SimCType = SimCResults[1]
+                self.SimCDuration = SimCResults[2]
+                self.SimCEvent = SimCResults[3]
+                self.SimCLen = SimCResults[4]
+                self.SimCData = SimCResults[5]
 
 
 
