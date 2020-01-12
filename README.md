@@ -30,7 +30,7 @@ The currently available keys are:
 
 ## Bugs and issues
 * Please report bugs via the github issues tab.
-    * It is usefull to attach the logfile from "root/logs".
+    * It is useful to attach the logfile from "root/logs".
     
 ### Known limitations
 * The city given does not take into account the heading of your aircraft. So, the nearest city may be behind you.
