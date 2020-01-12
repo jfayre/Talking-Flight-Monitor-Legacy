@@ -260,7 +260,6 @@ class FlightFollowing:
         except Exception as e:
             logging.error('Error during main loop:' + str(e))
             logging.exception(str(e))
-            sys.exit()
         
     ## handle hotkeys for reading instruments on demand
     def keyHandler(self, instrument):
@@ -355,7 +354,8 @@ class FlightFollowing:
             self.oldTransponder = self.transponder
         # next waypoint
         if self.nextWPName != self.oldWP:
-            time.sleep(2)
+            time.sleep(3)
+            self.getPyuipcData()
             if self.distance_units == '0':
                 distance = self.nextWPDistance / 1000
                 self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
@@ -483,14 +483,17 @@ class FlightFollowing:
             self.nextWPName= results[23]
             self.nextWPTime = results[24]
             # prepare simConnect message data
-            if self.SimCEnabled:
-                SimCResults= pyuipc.read(self.pyuipcSIMC)
-                self.SimCChanged = SimCResults[0]
-                self.SimCType = SimCResults[1]
-                self.SimCDuration = SimCResults[2]
-                self.SimCEvent = SimCResults[3]
-                self.SimCLen = SimCResults[4]
-                self.SimCData = SimCResults[5]
+            try:
+                if self.SimCEnabled:
+                    SimCResults= pyuipc.read(self.pyuipcSIMC)
+                    self.SimCChanged = SimCResults[0]
+                    self.SimCType = SimCResults[1]
+                    self.SimCDuration = SimCResults[2]
+                    self.SimCEvent = SimCResults[3]
+                    self.SimCLen = SimCResults[4]
+                    self.SimCData = SimCResults[5]
+            except Exception as e:
+                    breakpoint()
 
 
 
