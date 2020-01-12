@@ -35,13 +35,12 @@ from contextlib import closing
 from math import degrees, floor
 
 import keyboard
-import lucia
 import requests
 
 from aviationFormula.aviationFormula import calcBearing
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
-from lucia.utils import timer
+import timer
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
 
@@ -493,7 +492,8 @@ class FlightFollowing:
                     self.SimCLen = SimCResults[4]
                     self.SimCData = SimCResults[5]
             except Exception as e:
-                    breakpoint()
+                pass
+            
 
 
 
