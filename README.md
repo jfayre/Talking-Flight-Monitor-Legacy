@@ -1,9 +1,34 @@
 # voice flight following
 Periodically read the name of the closest city to your aircraft. Also reads key aircraft instrumentation.
 For a compiled version, see the Releases section.
+## features
+* reads closest city to the aircraft based on simulator GPS position
+* reads various aircraft instrumentation
+* Reads SimConnect message windows, such as the ones displayed by GSX and Pro ATC/x
 
-## Running from Source
-* Get the latest python 3.7 ([Python releases](https://www.python.org/downloads/))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
++## Running from Source
+* G
+
+
+let the latest python 3.7 ([Python releases](https://www.python.org/downloads/))
 * Install the latest pywin32 release ([pywin32 releases](https://github.com/mhammond/pywin32/releases))
     * filename: `pywin32-xxx.win32-py2.7.exe`
     * Install with the installer, not using pip!
