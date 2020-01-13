@@ -118,82 +118,49 @@ class FlightFollowing:
         
         # Init logging.
         self.logger = VaLogger(os.path.join(self.rootDir,'voiceAtis','logs'))
-        # init config parser
+        # initialize two config parser objects. One for defaults and one for config file.
+        self.default_config = ConfigParser(allow_no_value=True)
         self.config = ConfigParser(allow_no_value=True)
+        self.default_config['config'] = {'# Flight Following requires a username from the Geonames service':None,
+                'geonames_username': 'your_username',
+                '# voice rate for SAPI output':None,
+                'voice_rate': '5',
+                '# speech output: 0 - screen reader, 1 - SAPI5':None,
+                'speech_output': '0',
+                '# Read closest city info. ':None,
+                'flight_following': '1',
+                '# Automatically read aircraft instrumentation. If using Ideal Flight, you may want to turn this off.':None,
+                'read_instrumentation':'1',
+                '# Read SimConnect messages. Not compatible with FSX and requires latest FSUIPC.':None,
+                'read_simconnect':'1',
+                '# time interval for reading of nearest city, in minutes':None,
+                'interval': '10',
+                '# Distance units: 0 - Kilometers, 1 - Miles':None,
+                'distance_units': '0'}
+        self.default_config['hotkeys'] = {'# command key: This key must be pressed before the other commands listed below':None,
+                'command_key': ']',
+                'agl_key': 'g',
+                'asl_key': 'a',
+                'heading_key': 'h',
+                'status_key': 's',
+                'city_key': 'c',
+                'waypoint_key': 'w',
+                'message_key':'m',
+                'flaps_key': 'f'}
+
         # First log message.
         self.logger.info('Flight Following started')
         # check for config file. Create it if it doesn't exist.
         exists = os.path.isfile(self.rootDir + "/flightfollowing.ini")
         if exists:
             self.logger.info("config file exists.")
-            cfgfile = self.config.read(self.rootDir + "/flightfollowing.ini")
-            self.geonames_username = self.config.get('config','geonames_username')
-            if self.geonames_username == 'your_username':
-                output = sapi5.SAPI5()
-                output.speak('Error: edit the flightfollowing.ini file and add your Geo names username. exiting!')
-                time.sleep(8)
-                exit()
-
-            self.interval = float(self.config.get('config','interval'))
-            self.distance_units = self.config.get('config','distance_units')
-            self.voice_rate = int(self.config.get('config','voice_rate'))
-            if self.config['config']['speech_output'] == '1':
-                self.output = sapi5.SAPI5()
-                self.output.set_rate(self.voice_rate)
-            else:
-                self.output = auto.Auto()
-            if self.config['config'].getboolean('flight_following'):
-                self.FFEnabled = True
-            else:
-                self.FFEnabled = False
-                self.output.speak('Flight Following functions disabled.')
-            if self.config['config'].getboolean('read_instrumentation'):
-                self.InstrEnabled = True
-            else:
-                self.InstrEnabled = False
-                self.output.speak('instrumentation disabled.')
-            if self.config['config'].getboolean('read_simconnect'):
-                self.SimCEnabled = True
-            else:
-                self.SimCEnabled = False
-                self.output.speak("Sim Connect messages disabled.")
-
+            self.read_config()
         else:
             self.logger.info ("no config file found. It will be created.")
-            self.config['config'] = {'# Flight Following requires a username from the Geonames service':None,
-                        'geonames_username': 'your_username',
-                        '# voice rate for SAPI output':None,
-                        'voice_rate': '5',
-                        '# speech output: 0 - screen reader, 1 - SAPI5':None,
-                        'speech_output': '0',
-                        '# Read closest city info. ':None,
-                        'flight_following': '1',
-                        '# Automatically read aircraft instrumentation. If using Ideal Flight, you may want to turn this off.':None,
-                        'read_instrumentation':'1',
-                        '# Read SimConnect messages. Not compatible with FSX and requires latest FSUIPC.':None,
-                        'read_simconnect':'1',
-                        '# time interval for reading of nearest city, in minutes':None,
-                        'interval': '10',
-                        '# Distance units: 0 - Kilometers, 1 - Miles':None,
-                        'distance_units': '0'}
-            self.config['hotkeys'] = {'# command key: This key must be pressed before the other commands listed below':None,
-                        'command_key': ']',
-                        'agl_key': 'g',
-                        'asl_key': 'a',
-                        'heading_key': 'h',
-                        'status_key': 's',
-                        'city_key': 'c',
-                        'waypoint_key': 'w',
-                        'message_key':'m',
-                        'flaps_key': 'f'}
+            self.write_config()
 
-            with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
-                self.config.write(configfile)
-            output = sapi5.SAPI5()
-            output.speak('Configuration file created. Open the FlightFollowing.ini file and add your geonames username. Exiting.')
-            time.sleep(8)
-            exit()
 
+            
 
             
         # Establish pyuipc connection
@@ -259,7 +226,47 @@ class FlightFollowing:
         except Exception as e:
             logging.error('Error during main loop:' + str(e))
             logging.exception(str(e))
-        
+
+    def read_config():
+            cfgfile = self.config.read(self.rootDir + "/flightfollowing.ini")
+            self.geonames_username = self.config.get('config','geonames_username')
+            if self.geonames_username == 'your_username':
+                output = sapi5.SAPI5()
+                output.speak('Error: edit the flightfollowing.ini file and add your Geo names username. exiting!')
+                time.sleep(8)
+                exit()
+
+            self.interval = float(self.config.get('config','interval'))
+            self.distance_units = self.config.get('config','distance_units')
+            self.voice_rate = int(self.config.get('config','voice_rate'))
+            if self.config['config']['speech_output'] == '1':
+                self.output = sapi5.SAPI5()
+                self.output.set_rate(self.voice_rate)
+            else:
+                self.output = auto.Auto()
+            if self.config['config'].getboolean('flight_following'):
+                self.FFEnabled = True
+            else:
+                self.FFEnabled = False
+                self.output.speak('Flight Following functions disabled.')
+            if self.config['config'].getboolean('read_instrumentation'):
+                self.InstrEnabled = True
+            else:
+                self.InstrEnabled = False
+                self.output.speak('instrumentation disabled.')
+            if self.config['config'].getboolean('read_simconnect'):
+                self.SimCEnabled = True
+            else:
+                self.SimCEnabled = False
+                self.output.speak("Sim Connect messages disabled.")
+    def write_config():
+        with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
+            self.default_config.write(configfile)
+        output = sapi5.SAPI5()
+        output.speak('Configuration file created. Open the FlightFollowing.ini file and add your geonames username. Exiting.')
+        time.sleep(8)
+        exit()
+
     ## handle hotkeys for reading instruments on demand
     def keyHandler(self, instrument):
         if instrument == '1':
