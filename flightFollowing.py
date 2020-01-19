@@ -99,7 +99,7 @@ class FlightFollowing:
                (0x0354,'H'), # transponder in BCD format
                (0x6048,'f'), # distance to next waypoint
                (0x60a4,-6), # next waypoint string
-               (0x60e4,'u'), # time enroute to next waypoint
+               (0x60e4,'u'), # time enroute to next waypoint in seconds
     ]
 # Offsets for SimConnect messages.
     SIMC = [(0xb000,'u'), # changed indicator (4 bytes)
@@ -428,7 +428,6 @@ class FlightFollowing:
         except Exception as e:
             logging.error('Error determining oceanic information: ' + str(e))
             logging.exception(str(e))
-            sys.exit()
             
         ## Read time zone information
         try:
@@ -444,7 +443,6 @@ class FlightFollowing:
         except Exception as e:
             logging.error('Error determining timezone: ' + str(e))
             logging.exception(str(e))
-            sys.exit()
 
 
     
