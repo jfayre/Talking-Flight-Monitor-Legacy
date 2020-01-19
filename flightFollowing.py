@@ -100,6 +100,18 @@ class FlightFollowing:
                (0x6048,'f'), # distance to next waypoint
                (0x60a4,-6), # next waypoint string
                (0x60e4,'u'), # time enroute to next waypoint in seconds
+               (0x2f80,'b'), # Panel autobrake switch: 0=RTO, 1=Off, 2=brake1, 3=brake2, 4=brake3, 5=max
+               (0x02b8,'u'), # TAS: True Air Speed, as knots * 128
+               (0x02bc,'u'), # IAS: Indicated Air Speed, as knots * 128
+               (0x0808,'u'), # Yaw damper
+               (0x080c,'u'), # autothrottle TOGA
+               (0x0810,'u'), # Auto throttle arm
+               (0x11c6,'h'), # Mach speed *20480
+
+
+
+
+ 
     ]
 # Offsets for SimConnect messages.
     SIMC = [(0xb000,'u'), # changed indicator (4 bytes)
@@ -142,11 +154,12 @@ class FlightFollowing:
                 'agl_key': 'g',
                 'asl_key': 'a',
                 'heading_key': 'h',
-                'status_key': 's',
+                'ias_key': 's',
+                'tas_key': 't',
+                'mach_key': 'm',
                 'city_key': 'c',
                 'waypoint_key': 'w',
-                'message_key':'m',
-                'flaps_key': 'f'}
+                'message_key':'r'}
 
         # First log message.
         self.logger.info('Flight Following started')
@@ -158,10 +171,6 @@ class FlightFollowing:
         else:
             self.logger.info ("no config file found. It will be created.")
             self.write_config()
-
-
-            
-
             
         # Establish pyuipc connection
         while True:
@@ -190,9 +199,13 @@ class FlightFollowing:
         self.oldSpoilers = None
         self.oldApHeading = None
         self.oldApAltitude = None
+        self.oldApYawDamper = None
+        self.oldApToga = None
+        self.oldApAutoThrottle = None
         self.oldTransponder = None
         self.oldWP = None
         self.oldSimCChanged = None
+        self.oldAutoBrake = None
         # start timers
         self.tmrCity = timer.Timer()
         self.tmrInstruments = timer.Timer()
@@ -227,7 +240,7 @@ class FlightFollowing:
             logging.error('Error during main loop:' + str(e))
             logging.exception(str(e))
 
-    def read_config():
+    def read_config(self):
             cfgfile = self.config.read(self.rootDir + "/flightfollowing.ini")
             self.geonames_username = self.config.get('config','geonames_username')
             if self.geonames_username == 'your_username':
@@ -259,7 +272,7 @@ class FlightFollowing:
             else:
                 self.SimCEnabled = False
                 self.output.speak("Sim Connect messages disabled.")
-    def write_config():
+    def write_config(self):
         with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
             self.default_config.write(configfile)
         output = sapi5.SAPI5()
@@ -269,40 +282,43 @@ class FlightFollowing:
 
     ## handle hotkeys for reading instruments on demand
     def keyHandler(self, instrument):
-        if instrument == '1':
+        if instrument == 'asl':
             self.output.speak(f'{self.ASLAltitude} feet A S L')
             self.reset_hotkeys()
             
             
-        elif instrument == '2':
+        elif instrument == 'agl':
             AGLAltitude = self.ASLAltitude - self.groundAltitude
             self.output.speak(F"{round(AGLAltitude)} feet A G L")
             self.reset_hotkeys()
-        elif instrument == '3':
+        elif instrument == 'heading':
             self.output.speak(F'Heading: {self.headingCorrected}')
             self.reset_hotkeys()
-        elif instrument == '4':
-            if self.distance_units == '0':
-                distance = self.nextWPDistance / 1000
-                self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
-            else:
-                distance = (self.nextWPDistance / 1000)/ 1.609
-                self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} miles')    
+        elif instrument == 'wp':
+            self.readWaypoint()
             self.reset_hotkeys()
-            
+        elif instrument == 'tas':
+            self.output.speak (F'{self.airspeedTrue} knots true')
+            self.reset_hotkeys()
+        elif instrument == 'ias':
+            self.output.speak (F'{self.airspeedIndicated} knots indicated')
+            self.reset_hotkeys()
+        if instrument == 'mach':
+            self.output.speak (F'Mach {self.airspeedMach:0.2f}')
+            self.reset_hotkeys()
 
 
-            
-            
 
-            
     ## Layered key support for reading various instrumentation
     def commandMode(self):
-        self.aslKey= keyboard.add_hotkey (self.config['hotkeys']['asl_key'], self.keyHandler, args=('1'), suppress=True, timeout=2)
-        self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=('2'), suppress=True, timeout=2)
+        self.aslKey= keyboard.add_hotkey (self.config['hotkeys']['asl_key'], self.keyHandler, args=(['asl']), suppress=True, timeout=2)
+        self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=(['agl']), suppress=True, timeout=2)
         self.cityKey = keyboard.add_hotkey(self.config['hotkeys']['city_key'], self.AnnounceInfo, args=('1'))
-        self.headingKey = keyboard.add_hotkey (self.config['hotkeys']['heading_key'], self.keyHandler, args=('3'), suppress=True, timeout=2)
-        self.WPKey = keyboard.add_hotkey (self.config['hotkeys']['waypoint_key'], self.keyHandler, args=('4'), suppress=True, timeout=2)
+        self.headingKey = keyboard.add_hotkey (self.config['hotkeys']['heading_key'], self.keyHandler, args=(['heading']), suppress=True, timeout=2)
+        self.WPKey = keyboard.add_hotkey (self.config['hotkeys']['waypoint_key'], self.keyHandler, args=(['wp']), suppress=True, timeout=2)
+        self.tasKey = keyboard.add_hotkey (self.config['hotkeys']['tas_key'], self.keyHandler, args=(['tas']), suppress=True, timeout=2)
+        self.iasKey = keyboard.add_hotkey (self.config['hotkeys']['ias_key'], self.keyHandler, args=(['ias']), suppress=True, timeout=2)
+        self.machKey = keyboard.add_hotkey (self.config['hotkeys']['mach_key'], self.keyHandler, args=(['mach']), suppress=True, timeout=2)
         self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=('1'), suppress=True, timeout=2)
         winsound.Beep(500, 100)
 
@@ -362,13 +378,73 @@ class FlightFollowing:
         if self.nextWPName != self.oldWP:
             time.sleep(3)
             self.getPyuipcData()
-            if self.distance_units == '0':
-                distance = self.nextWPDistance / 1000
-                self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
-            else:
-                distance = (self.nextWPDistance / 1000)/ 1.609
-                self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} miles')    
+            self.readWaypoint()
             self.oldWP = self.nextWPName
+        # read autobrakes
+        if self.autobrake != self.oldAutoBrake:
+            if self.autobrake == 0:
+                brake = 'R T O'
+            elif self.autobrake == 1:
+                brake = 'off'
+            elif self.autobrake == 2:
+                brake = 'position 1'
+            elif self.autobrake == 3:
+                brake = 'position 2'
+            elif self.autobrake == 4:
+                brake = 'position 3'
+            elif self.autobrake == 5:
+                brake = 'maximum'
+            self.output.speak (F'Auto brake {brake}')
+            self.oldAutoBrake = self.autobrake
+        # yaw damper
+        if self.oldApYawDamper != self.apYawDamper:
+            if self.apYawDamper == 1:
+                self.output.speak ('yaw damper on')
+            else:
+                self.output.speak ('yaw damper off')
+            self.oldApYawDamper = self.apYawDamper
+        # TOGA
+        if self.oldApToga != self.apToga:
+            if self.apToga == 1:
+                self.output.speak ('TOGA on')
+            else:
+                self.output.speak ('TOGA off')
+            self.oldApToga = self.apToga
+        # auto throttle
+        if self.oldApAutoThrottle != self.apAutoThrottle:
+            if self.apAutoThrottle == 1:
+                self.output.speak ('Auto Throttle armed')
+            else:
+                self.output.speak ('Auto Throttle off')
+            self.oldApAutoThrottle = self.apAutoThrottle
+
+
+
+
+
+    def secondsToText(self, secs):
+        days = secs//86400
+        hours = (secs - days*86400)//3600
+        minutes = (secs - days*86400 - hours*3600)//60
+        seconds = secs - days*86400 - hours*3600 - minutes*60
+        result = ("{0} day{1}, ".format(days, "s" if days!=1 else "") if days else "") + \
+        ("{0} hour{1}, ".format(hours, "s" if hours!=1 else "") if hours else "") + \
+        ("{0} minute{1}, ".format(minutes, "s" if minutes!=1 else "") if minutes else "") + \
+        ("{0} second{1}, ".format(seconds, "s" if seconds!=1 else "") if seconds else "")
+        return result
+    def readWaypoint(self):
+        if self.distance_units == '0':
+            distance = self.nextWPDistance / 1000
+            self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
+        else:
+            distance = (self.nextWPDistance / 1000)/ 1.609
+            self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} miles')    
+        # read estimated time enroute to next waypoint
+        strTime = self.secondsToText(self.nextWPTime)
+        self.output.speak(strTime)
+        
+
+        
 
     def readSimConnectMessages(self, triggered):
         if self.SimCEnabled:
@@ -486,6 +562,14 @@ class FlightFollowing:
             self.nextWPDistance = results[22]
             self.nextWPName= results[23]
             self.nextWPTime = results[24]
+            self.autobrake = results[25]
+            self.airspeedTrue = round(results[26] / 128)
+            self.airspeedIndicated = round(results[27] / 128)
+            self.apYawDamper = results[28]
+            self.apToga = results[29]
+            self.apAutoThrottle = results[30]
+            self.airspeedMach = results[31] / 20480
+
             # prepare simConnect message data
             try:
                 if self.SimCEnabled:
@@ -498,11 +582,6 @@ class FlightFollowing:
                     self.SimCData = SimCResults[5]
             except Exception as e:
                 pass
-            
-
-
-
-
 
         else:
             self.logger.error ('FSUIPC not found! Exiting')
