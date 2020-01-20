@@ -376,6 +376,7 @@ class FlightFollowing:
             self.oldTransponder = self.transponder
         # next waypoint
         if self.nextWPName != self.oldWP:
+            # wait a bit so that we can get proper distance to next WP. It doesn't updated immediately.
             time.sleep(3)
             self.getPyuipcData()
             self.readWaypoint()
@@ -423,6 +424,7 @@ class FlightFollowing:
 
 
     def secondsToText(self, secs):
+        ## convert number of seconds into human readable format. Thanks to Stack Overflow for this!
         days = secs//86400
         hours = (secs - days*86400)//3600
         minutes = (secs - days*86400 - hours*3600)//60
@@ -433,6 +435,7 @@ class FlightFollowing:
         ("{0} second{1}, ".format(seconds, "s" if seconds!=1 else "") if seconds else "")
         return result
     def readWaypoint(self):
+        ## read next waypoint name, distance and estimated time enroute
         if self.distance_units == '0':
             distance = self.nextWPDistance / 1000
             self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
@@ -447,6 +450,9 @@ class FlightFollowing:
         
 
     def readSimConnectMessages(self, triggered):
+        ## Read any SimConnect Messages such as ActiveSky updates or GSX menus. 
+        ## Multi-line messages are stored as a string with zero bytes between the strings. 
+        ## This function ads numbers to the message lines to represent the menu displayed in the sim. 
         if self.SimCEnabled:
             if self.oldSimCChanged != self.SimCChanged or triggered == '1':
                 i = 1
