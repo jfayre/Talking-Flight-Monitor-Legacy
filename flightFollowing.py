@@ -55,10 +55,6 @@ logging.basicConfig(filename = 'error.log', level = logging.INFO)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
 
 # Import pyuipc package (except failure with debug mode). 
-window = pyglet.window.Window()        
-@window.event
-def on_draw():
-    window.clear()
 
 
 try:
@@ -134,6 +130,10 @@ class FlightFollowing:
     def __init__(self,**optional):
         # Get file path.
         self.rootDir = os.path.abspath(os.path.dirname(sys.argv[0]))
+        window = pyglet.window.Window()        
+        @window.event
+        def on_draw():
+            window.clear()
 
         # Init logging.
         self.logger = VaLogger(os.path.join(self.rootDir,'voiceAtis','logs'))
@@ -222,11 +222,11 @@ class FlightFollowing:
         # Infinite loop.
         try:
             if self.FFEnabled:
-                pass # pyglet.clock.schedule_interval(self.AnnounceInfo, self.interval *60)
+                pyglet.clock.schedule_interval(self.AnnounceInfo, self.interval *60)
             if self.InstrEnabled:
-                pyglet.clock.schedule_interval(self.readInstruments, 2)
+                pyglet.clock.schedule_interval(self.readInstruments, 0.5)
             if self.SimCEnabled:
-                pass # pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
+                pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
 
                 
         except KeyboardInterrupt:
@@ -328,6 +328,7 @@ class FlightFollowing:
     def readInstruments(self, dt):
         flapsTransit = False
         # Get data from simulator
+        self.getPyuipcData()
         # detect if aircraft is on ground or airborne.
         if not self.onGround and not self.airborne:
             self.output.speak ("Positive rate.")
@@ -341,6 +342,8 @@ class FlightFollowing:
                 self.oldBrake = self.parkingBrake
             else:
                 self.output.speak ("parking Brake off.")
+                print ("Parking break off")
+
                 self.oldBrake = self.parkingBrake
 
         
@@ -356,6 +359,7 @@ class FlightFollowing:
                 else:
                     flapsTransit = False
             self.output.speak (F'Flaps {self.flaps:.0f}')
+            print (F'Flaps {self.flaps:.0f}')
             self.old_flaps = self.flaps
         # announce radio frequency changes
         if self.com1frequency != self.oldCom1:
@@ -445,6 +449,8 @@ class FlightFollowing:
         
 
     def readSimConnectMessages(self, triggered):
+        # get data from simulator
+        self.getPyuipcData()
         if self.SimCEnabled:
             if self.oldSimCChanged != self.SimCChanged or triggered == '1':
                 i = 1
