@@ -41,6 +41,7 @@ from aviationFormula.aviationFormula import calcBearing
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
 import timer
+import pyglet
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
 
@@ -54,6 +55,12 @@ logging.basicConfig(filename = 'error.log', level = logging.INFO)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
 
 # Import pyuipc package (except failure with debug mode). 
+window = pyglet.window.Window()        
+@window.event
+def on_draw():
+    window.clear()
+
+
 try:
     import pyuipc
     pyuipcImported = True
@@ -127,7 +134,7 @@ class FlightFollowing:
     def __init__(self,**optional):
         # Get file path.
         self.rootDir = os.path.abspath(os.path.dirname(sys.argv[0]))
-        
+
         # Init logging.
         self.logger = VaLogger(os.path.join(self.rootDir,'voiceAtis','logs'))
         # initialize two config parser objects. One for defaults and one for config file.
@@ -206,10 +213,7 @@ class FlightFollowing:
         self.oldWP = None
         self.oldSimCChanged = None
         self.oldAutoBrake = None
-        # start timers
-        self.tmrCity = timer.Timer()
-        self.tmrInstruments = timer.Timer()
-        self.tmrSimC = timer.Timer()
+        
 
         if self.FFEnabled:
             self.AnnounceInfo(triggered=0)
@@ -217,19 +221,13 @@ class FlightFollowing:
         
         # Infinite loop.
         try:
-            while True:
-                self.getPyuipcData()
-                if self.FFEnabled and self.tmrCity.elapsed > (self.interval * 60 * 1000):
-                    self.AnnounceInfo(triggered = 0)
-                    self.tmrCity.restart()
-                if self.InstrEnabled and self.tmrInstruments.elapsed > 500:
-                    self.readInstruments()
-                    self.tmrInstruments.restart()
-                if self.tmrSimC.elapsed > 500:
-                    self.readSimConnectMessages(triggered = '0')
-                    self.tmrSimC.restart()
-                time.sleep(0.05)
-                pass
+            if self.FFEnabled:
+                pass # pyglet.clock.schedule_interval(self.AnnounceInfo, self.interval *60)
+            if self.InstrEnabled:
+                pyglet.clock.schedule_interval(self.readInstruments, 2)
+            if self.SimCEnabled:
+                pass # pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
+
                 
         except KeyboardInterrupt:
             # Actions at Keyboard Interrupt.
@@ -327,7 +325,7 @@ class FlightFollowing:
         self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
 
     ## read various instrumentation automatically such as flaps
-    def readInstruments(self):
+    def readInstruments(self, dt):
         flapsTransit = False
         # Get data from simulator
         # detect if aircraft is on ground or airborne.
@@ -378,7 +376,7 @@ class FlightFollowing:
         if self.nextWPName != self.oldWP:
             time.sleep(3)
             self.getPyuipcData()
-            self.readWaypoint()
+            self.readWaypoint(0)
             self.oldWP = self.nextWPName
         # read autobrakes
         if self.autobrake != self.oldAutoBrake:
@@ -432,7 +430,7 @@ class FlightFollowing:
         ("{0} minute{1}, ".format(minutes, "s" if minutes!=1 else "") if minutes else "") + \
         ("{0} second{1}, ".format(seconds, "s" if seconds!=1 else "") if seconds else "")
         return result
-    def readWaypoint(self):
+    def readWaypoint(self, dt):
         if self.distance_units == '0':
             distance = self.nextWPDistance / 1000
             self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
@@ -589,4 +587,5 @@ class FlightFollowing:
 
 if __name__ == '__main__':
     FlightFollowing = FlightFollowing()
+    pyglet.app.run()
     pass
