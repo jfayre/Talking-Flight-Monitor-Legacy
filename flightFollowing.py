@@ -40,10 +40,10 @@ import requests
 from aviationFormula.aviationFormula import calcBearing
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
-import timer
 import pyglet
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
+import numpy as np
 
 # Import own packages.
 from VaLogger import VaLogger
@@ -110,6 +110,15 @@ class FlightFollowing:
                (0x080c,'u'), # autothrottle TOGA
                (0x0810,'u'), # Auto throttle arm
                (0x11c6,'h'), # Mach speed *20480
+               (0x60e8,'u'), # next waypoint ETA in seconds (localtime)
+               (0x6050,'L'), # magnetic baring to next waypoint in radions
+               (0x6137,-5), # destination airport ID string
+               (0x6198,'u'), # time enroute to destination in seconds
+               (0x619c,'u'), # Destination ETA in seconds (localtime)
+               (0x61a0,'f'), # route total distance in meters
+               (0x61a8,'f'), # estimated fuel burn in gallons
+
+
 
 
 
@@ -124,7 +133,12 @@ class FlightFollowing:
         (0xb010,'u'), # length of data received (4 bytes)
         (0xb014,2028), # text data (<= 2028 bytes)
     ]
+    # attitude indication offsets, since we need fast access to these
+    attitude = [(0x0578,'d'), # Pitch, *360/(65536*65536) for degrees. 0=level, –ve=pitch up, +ve=pitch down[Can be set in slew or pause states]
+        (0x057c,'d'), # Bank, *360/(65536*65536) for degrees. 0=level, –ve=bank right, +ve=bank left[Can be set in slew or pause states]
 
+
+    ]
     ## Setup the FlightFollowing object.
     # Also starts the voice generation loop.
     def __init__(self,**optional):
@@ -166,6 +180,7 @@ class FlightFollowing:
                 'mach_key': 'm',
                 'city_key': 'c',
                 'waypoint_key': 'w',
+                'dest_key': 'd',
                 'message_key':'r'}
 
         # First log message.
@@ -185,6 +200,7 @@ class FlightFollowing:
                 self.pyuipcConnection = pyuipc.open(0)
                 self.pyuipcOffsets = pyuipc.prepare_data(self.OFFSETS)
                 self.pyuipcSIMC = pyuipc.prepare_data(self.SIMC)
+                self.pyuipcAttitude = pyuipc.prepare_data(self.attitude)
                 self.logger.info('FSUIPC connection established.')
                 break
             except NameError:
@@ -293,7 +309,7 @@ class FlightFollowing:
             self.output.speak(F'Heading: {self.headingCorrected}')
             self.reset_hotkeys()
         elif instrument == 'wp':
-            self.readWaypoint()
+            self.readWaypoint(triggered=True)
             self.reset_hotkeys()
         elif instrument == 'tas':
             self.output.speak (F'{self.airspeedTrue} knots true')
@@ -301,9 +317,13 @@ class FlightFollowing:
         elif instrument == 'ias':
             self.output.speak (F'{self.airspeedIndicated} knots indicated')
             self.reset_hotkeys()
-        if instrument == 'mach':
+        elif instrument == 'mach':
             self.output.speak (F'Mach {self.airspeedMach:0.2f}')
             self.reset_hotkeys()
+        elif instrument =='dest':
+            self.output.speak(F'Time enroute to {self.DestID}. {self.DestTime}. {self.DestETA}')
+            self.reset_hotkeys()
+
 
 
 
@@ -318,6 +338,8 @@ class FlightFollowing:
         self.iasKey = keyboard.add_hotkey (self.config['hotkeys']['ias_key'], self.keyHandler, args=(['ias']), suppress=True, timeout=2)
         self.machKey = keyboard.add_hotkey (self.config['hotkeys']['mach_key'], self.keyHandler, args=(['mach']), suppress=True, timeout=2)
         self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=('1'), suppress=True, timeout=2)
+        self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
+
         winsound.Beep(500, 100)
 
     def reset_hotkeys(self):
@@ -419,7 +441,9 @@ class FlightFollowing:
             else:
                 self.output.speak ('Auto Throttle off')
             self.oldApAutoThrottle = self.apAutoThrottle
-
+        self.output.speak (F'pitch {self.pitch:0.1f}')
+        time.sleep(5)
+        
 
 
 
@@ -434,17 +458,24 @@ class FlightFollowing:
         ("{0} minute{1}, ".format(minutes, "s" if minutes!=1 else "") if minutes else "") + \
         ("{0} second{1}, ".format(seconds, "s" if seconds!=1 else "") if seconds else "")
         return result
-    def readWaypoint(self, dt):
+    def readWaypoint(self, triggered=False):
         if self.distance_units == '0':
             distance = self.nextWPDistance / 1000
             self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} kilometers')    
         else:
             distance = (self.nextWPDistance / 1000)/ 1.609
             self.output.speak(F'Next waypoint: {self.nextWPName}, distance: {distance:.1f} miles')    
+        self.output.speak (F'baring: {self.nextWPBaring:.0f}')
         # read estimated time enroute to next waypoint
         strTime = self.secondsToText(self.nextWPTime)
         self.output.speak(strTime)
-        
+        # if we were triggered with a hotkey, read the ETA to the next waypoint.
+        if triggered:
+            self.output.speak(F'ETA: {self.nextWPETA}')
+            self.reset_hotkeys()
+
+
+
 
         
 
@@ -573,6 +604,15 @@ class FlightFollowing:
             self.apToga = results[29]
             self.apAutoThrottle = results[30]
             self.airspeedMach = results[31] / 20480
+            self.nextWPETA = time.strftime('%H:%M', time.localtime(results[32]))
+            self.nextWPBaring = degrees(results[33])
+            self.DestID = results[34]
+            self.DestTime =self.secondsToText(results[35])
+            self.DestETA = time.strftime('%H:%M', time.localtime(results[36]))
+            self.RouteDistance = results[37]
+            self.FuelBurn = results[38]
+
+
 
             # prepare simConnect message data
             try:
@@ -584,6 +624,10 @@ class FlightFollowing:
                     self.SimCEvent = SimCResults[3]
                     self.SimCLen = SimCResults[4]
                     self.SimCData = SimCResults[5]
+                # read attitude
+                attitudeResults = pyuipc.read(self.pyuipcAttitude)
+                self.pitch = attitudeResults[0] * 360 / (65536 * 65536)
+                self.bank = attitudeResults[1] * 360 / (65536 * 65536)
             except Exception as e:
                 pass
 
