@@ -255,7 +255,7 @@ class FlightFollowing:
             
 
         if self.FFEnabled:
-            self.AnnounceInfo(triggered=0)
+            self.AnnounceInfo(triggered=0, dt=0)
         
         
         # Infinite loop.
@@ -319,13 +319,11 @@ class FlightFollowing:
     def sonifyPitch(self, dt):
         self.getPyuipcData()
         self.pitch= round(self.pitch, 1)
-        if self.pitch > 0:
+        if self.pitch > 0 and self.pitch < 10:
             self.DownTones[self.pitch].play()
-        elif self.pitch < 0:
+        elif self.pitch < 0 and self.pitch > -10:
             self.UpTones[self.pitch].play()
         elif self.pitch == 0:
-            pass
-        elif self.pitch > 10 or self.pitch < -10:
             pass
 
 
