@@ -111,7 +111,7 @@ class FlightFollowing:
                (0x0810,'u'), # Auto throttle arm
                (0x11c6,'h'), # Mach speed *20480
                (0x60e8,'u'), # next waypoint ETA in seconds (localtime)
-               (0x6050,'L'), # magnetic baring to next waypoint in radions
+               (0x6050,'f'), # magnetic baring to next waypoint in radions
                (0x6137,-5), # destination airport ID string
                (0x6198,'u'), # time enroute to destination in seconds
                (0x619c,'u'), # Destination ETA in seconds (localtime)
@@ -181,6 +181,7 @@ class FlightFollowing:
                 'city_key': 'c',
                 'waypoint_key': 'w',
                 'dest_key': 'd',
+                'attitude_key': '[',
                 'message_key':'r'}
 
         # First log message.
@@ -229,7 +230,29 @@ class FlightFollowing:
         self.oldWP = None
         self.oldSimCChanged = None
         self.oldAutoBrake = None
-        
+        # set up tone arrays for pitch sonification.
+        self.DownTones = {}
+        self.UpTones = {}
+        self.adsr = pyglet.media.synthesis.ADSREnvelope(0.05, 0.02, 0.01)
+        self.PitchUpVals = np.around(np.linspace(-0.1, -10, 100), 1)
+        self.PitchDownVals = np.around(np.linspace(0.1, 10, 100), 1)
+        self.sonifyEnabled = False
+
+        self.PitchUpFreqs = np.linspace(800, 1200, 100)
+        self.PitchDownFreqs = np.linspace(600, 200, 100)
+        countDown = 0
+        countUp = 0
+
+        for i in self.PitchDownVals:
+            self.DownTones[i]  = pyglet.media.StaticSource(pyglet.media.synthesis.Sine(duration=0.07, frequency=self.PitchDownFreqs[countDown], envelope=self.adsr))
+            countDown += 1
+
+        for i in self.PitchUpVals:
+            self.UpTones[i] = pyglet.media.StaticSource(pyglet.media.synthesis.Triangle(duration=0.07, frequency=self.PitchUpFreqs[countUp], envelope=self.adsr))
+            countUp += 1
+
+
+            
 
         if self.FFEnabled:
             self.AnnounceInfo(triggered=0)
@@ -293,8 +316,22 @@ class FlightFollowing:
         output.speak('Configuration file created. Open the FlightFollowing.ini file and add your geonames username. Exiting.')
         time.sleep(8)
         exit()
+    def sonifyPitch(self, dt):
+        self.getPyuipcData()
+        self.pitch= round(self.pitch, 1)
+        if self.pitch > 0:
+            self.DownTones[self.pitch].play()
+        elif self.pitch < 0:
+            self.UpTones[self.pitch].play()
+        elif self.pitch == 0:
+            pass
+        elif self.pitch > 10 or self.pitch < -10:
+            pass
 
-    ## handle hotkeys for reading instruments on demand
+
+
+
+                ## handle hotkeys for reading instruments on demand
     def keyHandler(self, instrument):
         if instrument == 'asl':
             self.output.speak(f'{self.ASLAltitude} feet A S L')
@@ -321,8 +358,22 @@ class FlightFollowing:
             self.output.speak (F'Mach {self.airspeedMach:0.2f}')
             self.reset_hotkeys()
         elif instrument =='dest':
-            self.output.speak(F'Time enroute to {self.DestID}. {self.DestTime}. {self.DestETA}')
+            self.output.speak(F'Time enroute {self.DestTime}. {self.DestETA}')
             self.reset_hotkeys()
+        elif instrument == 'attitude':
+            if self.sonifyEnabled:
+                pyglet.clock.unschedule(self.sonifyPitch)
+                self.sonifyEnabled = False
+                self.reset_hotkeys()
+                self.output.speak ('attitude mode disabled.')
+            else:
+                pyglet.clock.schedule_interval(self.sonifyPitch, 0.2)
+                self.sonifyEnabled = True
+                self.output.speak ('attitude mode enabled')
+                self.reset_hotkeys()
+
+                
+
 
 
 
@@ -339,6 +390,8 @@ class FlightFollowing:
         self.machKey = keyboard.add_hotkey (self.config['hotkeys']['mach_key'], self.keyHandler, args=(['mach']), suppress=True, timeout=2)
         self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=('1'), suppress=True, timeout=2)
         self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
+        self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
+
 
         winsound.Beep(500, 100)
 
@@ -441,8 +494,6 @@ class FlightFollowing:
             else:
                 self.output.speak ('Auto Throttle off')
             self.oldApAutoThrottle = self.apAutoThrottle
-        self.output.speak (F'pitch {self.pitch:0.1f}')
-        time.sleep(5)
         
 
 
@@ -500,7 +551,7 @@ class FlightFollowing:
                 self.reset_hotkeys()
                 
     ## Announce flight following info
-    def AnnounceInfo(self, triggered):
+    def AnnounceInfo(self, dt, triggered):
         # If invoked by hotkey, reset hotkey deffinitions.
         if triggered == '1':
             self.reset_hotkeys()
