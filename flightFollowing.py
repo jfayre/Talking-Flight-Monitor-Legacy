@@ -261,7 +261,7 @@ class FlightFollowing:
         # Infinite loop.
         try:
             if self.FFEnabled:
-                pyglet.clock.schedule_interval(self.AnnounceInfo, self.interval *60)
+                pyglet.clock.schedule_interval(self.AnnounceInfo, self.interval * 60)
             if self.InstrEnabled:
                 pyglet.clock.schedule_interval(self.readInstruments, 0.5)
             if self.SimCEnabled:
