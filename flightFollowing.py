@@ -383,7 +383,7 @@ class FlightFollowing:
         self.tasKey = keyboard.add_hotkey (self.config['hotkeys']['tas_key'], self.keyHandler, args=(['tas']), suppress=True, timeout=2)
         self.iasKey = keyboard.add_hotkey (self.config['hotkeys']['ias_key'], self.keyHandler, args=(['ias']), suppress=True, timeout=2)
         self.machKey = keyboard.add_hotkey (self.config['hotkeys']['mach_key'], self.keyHandler, args=(['mach']), suppress=True, timeout=2)
-        self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=('1'), suppress=True, timeout=2)
+        self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=([0, 1]), suppress=True, timeout=2)
         self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
         self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
 
@@ -515,10 +515,10 @@ class FlightFollowing:
 
         
 
-    def readSimConnectMessages(self, triggered):
+    def readSimConnectMessages(self, dt,triggered = 0):
         try:
             if self.SimCEnabled:
-                if self.oldSimCChanged != self.SimCData['SimCChanged'] or triggered == '1':
+                if self.oldSimCChanged != self.SimCData['SimCChanged'] or triggered == 1:
                     i = 1
                     SimCMessageRaw = self.SimCData['SimCData'][:self.SimCData['SimCLength']]
                     SimCMessage = SimCMessageRaw.split('\x00')
@@ -530,12 +530,13 @@ class FlightFollowing:
                             i += 1
 
                     self.oldSimCChanged = self.SimCData['SimCChanged']
-                    self.reset_hotkeys()
-            else:
-                    self.reset_hotkeys()
+                    if triggered == 1:
+                        self.reset_hotkeys()
+            # else:
+                    # self.reset_hotkeys()
         except KeyError:
             pass
-        
+
 
 
     ## Announce flight following info
