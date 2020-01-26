@@ -86,6 +86,7 @@ class FlightFollowing:
                'Flaps': (0x30f0,'h'),	# flaps angle
                'OnGround': (0x0366,'h'),	# on ground flag: 0 = airborne
                'ParkingBrake': (0x0bc8,'h'),	# parking Brake: 0 off, 32767 on
+               'Gear': (0x0be8, 'u'), # Gear control: 0=Up, 16383=Down
                'Altitude': (0x3324,'d'),	#altitude in feet or meters
                'GroundAltitude': (0x0020,'u'),	# ground altitude x 256
                'SpoilersArm': (0x0bcc,'u'),	# spoilers armed: 0 - off, 1 - armed
@@ -97,6 +98,10 @@ class FlightFollowing:
                'ApAltitude': (0x07d4,'u'), # Autopilot altitude value, as metres*65536
                'ApSpeedHold': (0x07dc,'u'), # AP airspeed hold
                'ApAirspeed': (0x07e2,'h'), # AP airspeed in knots
+               'ApNavGPS': (0x132c,'u'), # nav gps switch: 0 - nav, 1 - GPS
+               'ApFlightDirector': (0x2ee0,'u'), # Flight director: 0 - off, 1 - on
+               'ApFlightDirectorPitch': (0x2ee8, 'f'), # flight director pitch
+               'ApFlightDirectorBank': (0x2ef0, 'f'), # flight director bank value in degrees. Right negative, left positive
                'Heading': (0x0580,'u'), # Heading, *360/(65536*65536) for degrees TRUE.[Can be set in slew or pause states]
                'MagneticVariation': (0x02a0,'h'), # Magnetic variation (signed, –ve = West). For degrees *360/65536. Convert True headings to Magnetic by subtracting this value, Magnetic headings to True by adding this value.
                'Transponder': (0x0354,'H'), # transponder in BCD format
@@ -109,6 +114,7 @@ class FlightFollowing:
                'ApYawDamper': (0x0808,'u'), # Yaw damper
                'Toga': (0x080c,'u'), # autothrottle TOGA
                'AutoThrottleArm': (0x0810,'u'), # Auto throttle arm
+               'AutoFeather': (0x2438, 'u'), # Auto Feather switch
                'AirspeedMach': (0x11c6,'h'), # Mach speed *20480
                'NextWPETA': (0x60e8,'u'), # next waypoint ETA in seconds (localtime)
                'NextWPBaring': (0x6050,'f'), # magnetic baring to next waypoint in radions
@@ -176,6 +182,7 @@ class FlightFollowing:
                 'waypoint_key': 'w',
                 'dest_key': 'd',
                 'attitude_key': '[',
+                'manual_key': 'Shift+m',
                 'message_key':'r'}
 
         # First log message.
@@ -215,16 +222,15 @@ class FlightFollowing:
         self.airborne = False
         self.oldBrake = True
         self.oldCom1 = None
-        self.oldSpoilers = None
+        self.oldSpoilers = 0
         self.oldApHeading = None
         self.oldApAltitude = None
-        self.oldApYawDamper = None
-        self.oldApToga = None
-        self.oldApAutoThrottle = None
         self.oldTransponder = None
         self.oldWP = None
         self.oldSimCChanged = None
         self.oldAutoBrake = None
+        self.oldGear = 16383
+
         # set up tone arrays for pitch sonification.
         self.DownTones = {}
         self.UpTones = {}
@@ -232,6 +238,7 @@ class FlightFollowing:
         self.PitchUpVals = np.around(np.linspace(-0.1, -20, 200), 1)
         self.PitchDownVals = np.around(np.linspace(0.1, 20, 200), 1)
         self.sonifyEnabled = False
+        self.manualEnabled = False
 
         self.PitchUpFreqs = np.linspace(800, 1200, 200)
         self.PitchDownFreqs = np.linspace(600, 200, 200)
@@ -252,6 +259,10 @@ class FlightFollowing:
         if self.FFEnabled:
             self.AnnounceInfo(triggered=0, dt=0)
         
+        # initially read simulator data so we can populate instrument dictionaries
+        self.getPyuipcData()
+        self.oldInstr = self.instr
+
         
         # Infinite loop.
         try:
@@ -311,14 +322,28 @@ class FlightFollowing:
         output.speak('Configuration file created. Open the FlightFollowing.ini file and add your geonames username. Exiting.')
         time.sleep(8)
         exit()
+
+    def manualFlight(self, dt, triggered = 0):
+        pitch = round(self.attitude['Pitch'], 1)
+        bank = round(self.attitude['Bank'])
+        if bank > 0:
+            self.output.speak (F'Left {bank}')
+        elif bank < 0:
+            self.output.speak (F'right {abs(bank)}')
+        if pitch > 0:
+            self.output.speak (F'down {pitch}')
+        elif pitch < 0:
+            self.output.speak (F'Up {abs(pitch)}')
+
+
     def sonifyPitch(self, dt):
         self.getPyuipcData()
-        self.pitch = round(self.attitude['Pitch'], 1)
-        if self.pitch > 0 and self.pitch < 20:
-            self.DownTones[self.pitch].play()
-        elif self.pitch < 0 and self.pitch > -20:
-            self.UpTones[self.pitch].play()
-        elif self.pitch == 0:
+        pitch = round(self.attitude['Pitch'], 1)
+        if pitch > 0 and pitch < 20:
+            self.DownTones[pitch].play()
+        elif pitch < 0 and pitch > -20:
+            self.UpTones[pitch].play()
+        elif pitch == 0:
             pass
 
 
@@ -354,6 +379,18 @@ class FlightFollowing:
             elif instrument =='dest':
                 self.output.speak(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
                 self.reset_hotkeys()
+            elif instrument == 'manual':
+                if self.manualEnabled:
+                    pyglet.clock.unschedule(self.manualFlight)
+                    self.manualEnabled = False
+                    self.reset_hotkeys()
+                    self.output.speak ('manual flight  mode disabled.')
+                else:
+                    pyglet.clock.schedule_interval(self.manualFlight, 5)
+                    self.manualEnabled = True
+                    self.output.speak ('manual flight mode enabled')
+                    self.reset_hotkeys()
+
             elif instrument == 'attitude':
                 if self.sonifyEnabled:
                     pyglet.clock.unschedule(self.sonifyPitch)
@@ -386,6 +423,7 @@ class FlightFollowing:
         self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=([0, 1]), suppress=True, timeout=2)
         self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
         self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
+        self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
 
 
         winsound.Beep(500, 100)
@@ -415,7 +453,14 @@ class FlightFollowing:
             self.oldBrake = self.instr['ParkingBrake']
 
         
-        
+        # landing gear
+        if self.instr['Gear'] != self.oldGear:
+            if self.instr['Gear'] == 0:
+                self.output.speak ('Gear up.')
+            elif self.instr['Gear'] == 16383:
+                self.output.speak ('Gear down.')
+            self.oldGear = self.instr['Gear']
+
         # if flaps position has changed, flaps are in motion. We need to wait until they have stopped moving to read the value.
         if self.instr['Flaps'] != self.old_flaps:
             flapsTransit = True
@@ -465,24 +510,33 @@ class FlightFollowing:
                 brake = 'maximum'
             self.output.speak (F'Auto brake {brake}')
             self.oldAutoBrake = self.instr['AutoBrake']
-        # yaw damper
-        if self.oldApYawDamper != self.instr['ApYawDamper']:
-            if self.instr['ApYawDamper'] == 1:
-                self.output.speak ('yaw damper on')
-            else:
-                self.output.speak ('yaw damper off')
-            self.oldApYawDamper = self.instr['ApYawDamper']
+        self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
+        # autopilot mode switches
+        self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
         # auto throttle
-        if self.oldApAutoThrottle != self.instr['AutoThrottleArm']:
-            if self.instr['AutoThrottleArm'] == 1:
-                self.output.speak ('Auto Throttle armed')
+        self.readToggle ('AutoThrottleArm', 'Auto Throttle', 'Armed', 'off')
+        # yaw damper
+        self.readToggle('ApYawDamper', 'Yaw Damper', 'active', 'off')
+        # Toga
+        self.readToggle('Toga', 'take off power', 'active', 'off')
+        self.readToggle('ApAltitudeLock', 'altitude lock', 'active', 'off')
+        self.readToggle('ApHeadingLock', 'Heading lock', 'active', 'off')
+        self.readToggle('ApNavLock', 'nav lock', 'active', 'off')
+        self.readToggle('ApFlightDirector', 'Flight Director', 'Active', 'off')
+        self.readToggle ('ApNavGPS', 'Nav gps switch', 'set to GPS', 'set to nav')
+
+
+
+
+    def readToggle(self, instrument, name, onMessage, offMessage):
+        ## There are several aircraft functions that are simply on/off toggles. 
+        ## This function allows reading those without a bunch of duplicate code.
+        if self.oldInstr[instrument] != self.instr[instrument]:
+            if self.instr[instrument]:
+                self.output.speak (F'{name} {onMessage}.')
             else:
-                self.output.speak ('Auto Throttle off')
-            self.oldApAutoThrottle = self.instr['AutoThrottleArm']
-        
-
-
-
+                self.output.speak (F'{name} {offMessage}')
+            self.oldInstr[instrument] = self.instr[instrument]
 
     def secondsToText(self, secs):
         days = secs//86400
