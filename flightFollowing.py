@@ -140,7 +140,6 @@ class FlightFollowing:
 
     }
     ## Setup the FlightFollowing object.
-    # Also starts the voice generation loop.
     def __init__(self,**optional):
         # Get file path.
         self.rootDir = os.path.abspath(os.path.dirname(sys.argv[0]))
