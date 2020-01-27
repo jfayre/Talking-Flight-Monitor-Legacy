@@ -1,0 +1,16 @@
+accessible-output2==0.16
+Babel==2.8.0
+certifi==2019.11.28
+chardet==3.0.4
+future==0.18.2
+idna==2.8
+keyboard==0.13.4
+libloader==0.21
+numpy==1.18.1
+platform-utils==0.41
+pyglet==1.4.10
+pytz==2019.3
+pywin32==227
+requests==2.22.0
+urllib3==1.25.8
+winpaths==0.2
