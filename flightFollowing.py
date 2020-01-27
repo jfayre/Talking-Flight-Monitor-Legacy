@@ -574,7 +574,7 @@ class FlightFollowing:
             if self.SimCEnabled:
                 if self.oldSimCChanged != self.SimCData['SimCChanged'] or triggered == 1:
                     i = 1
-                    SimCMessageRaw = self.SimCData['SimCData'][:self.SimCData['SimCLength']]
+                    SimCMessageRaw = self.SimCMessage[:self.SimCData['SimCLength']]
                     SimCMessage = SimCMessageRaw.split('\x00')
                     for index, message in enumerate(SimCMessage):
                         if index < 2:
@@ -696,6 +696,8 @@ class FlightFollowing:
             try:
                 if self.SimCEnabled:
                     self.SimCData = dict(zip(self.SimCOffsets.keys(), pyuipc.read(self.pyuipcSIMC)))
+                    self.SimCMessage = self.SimCData['SimCData'].decode ('UTF-8')
+
                 # Read attitude
                 self.attitude = dict(zip(self.AttitudeOffsets.keys(), pyuipc.read(self.pyuipcAttitude)))
                 self.attitude['Pitch'] = self.attitude['Pitch'] * 360 / (65536 * 65536)
