@@ -396,17 +396,31 @@ class FlightFollowing:
 
         
     def sonifyPitch(self, dt):
-        self.getPyuipcData()
+        # self.getPyuipcData()
         pitch = round(self.attitude['Pitch'], 1)
+        bank = round(self.attitude['Bank'])
         if pitch > 0 and pitch < 20:
-            self.PitchDownPlayer.play ()
+            self.PitchUpPlayer.pause ()
+            self.PitchDownPlayer.play()
             self.PitchDownPlayer.pitch = self.DownTones[pitch]
         elif pitch < 0 and pitch > -20:
-            self.PitchUpPlayer.play()
+            self.PitchDownPlayer.pause ()
+            self.PitchUpPlayer.play() 
             self.PitchUpPlayer.pitch = self.UpTones[pitch]
         elif pitch == 0:
-            pass
+            self.PitchUpPlayer.pause()
+            self.PitchDownPlayer.pause()
+        if bank < 0:
+            self.BankPlayer.position = (-5, 0, 0)
+            self.BankPlayer.play()
+            self.BankPlayer.pitch = self.BankTones[abs(bank)]
+        if bank > 0:
+            self.BankPlayer.position = (5, 0, 0)
+            self.BankPlayer.play()
+            self.BankPlayer.pitch = self.BankTones[bank]
 
+        if bank == 0:
+            self.BankPlayer.pause()
 
 
 
