@@ -182,6 +182,7 @@ class FlightFollowing:
                 'dest_key': 'd',
                 'attitude_key': '[',
                 'manual_key': 'Shift+m',
+                'director_key': 'shift+f',
                 'message_key':'r'}
 
         # First log message.
@@ -234,22 +235,50 @@ class FlightFollowing:
         self.DownTones = {}
         self.UpTones = {}
         self.adsr = pyglet.media.synthesis.ADSREnvelope(0.05, 0.02, 0.01)
+        self.decay = pyglet.media.synthesis.LinearDecayEnvelope()
+
         self.PitchUpVals = np.around(np.linspace(-0.1, -20, 200), 1)
         self.PitchDownVals = np.around(np.linspace(0.1, 20, 200), 1)
         self.sonifyEnabled = False
         self.manualEnabled = False
+        self.directorEnabled = False
+        self.PitchUpPlayer = pyglet.media.Player()
+        self.PitchDownPlayer = pyglet.media.Player()
+        self.BankPlayer = pyglet.media.Player()
+        self.PitchUpSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=10, frequency=440))
+        self.PitchDownSource = pyglet.media.StaticSource (pyglet.media.synthesis.Sine(duration=10, frequency=440))
+        self.BankSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=0.3, frequency=200, envelope=self.decay))
+        self.PitchUpPlayer.loop = True
+        self.PitchDownPlayer.loop = True
+        self.BankPlayer.loop = True
+        self.PitchUpPlayer.queue (self.PitchUpSource)
+        self.PitchDownPlayer.queue (self.PitchDownSource)
+        self.BankPlayer.queue (self.BankSource)
+        self.BankPlayer.min_distance = 10
 
-        self.PitchUpFreqs = np.linspace(800, 1200, 200)
-        self.PitchDownFreqs = np.linspace(600, 200, 200)
+
+        # self.PitchUpFreqs = np.linspace(800, 1200, 200)
+        self.PitchUpFreqs = np.linspace(2, 4, 200)
+        # self.PitchDownFreqs = np.linspace(600, 200, 200)
+        self.PitchDownFreqs = np.linspace(1.5, 0.5, 200)
+        self.BankFreqs = np.linspace(1, 3, 45)
+        self.BankTones = {}
+        countDown = 0
+        countUp = 0
+        for i in np.arange (1.0, 45.0, 1):
+            self.BankTones[i] = self.BankFreqs[countUp]
+            countUp += 1
+
+
         countDown = 0
         countUp = 0
 
         for i in self.PitchDownVals:
-            self.DownTones[i]  = pyglet.media.StaticSource(pyglet.media.synthesis.Sine(duration=0.07, frequency=self.PitchDownFreqs[countDown], envelope=self.adsr))
+            self.DownTones[i]  = self.PitchDownFreqs[countDown]
             countDown += 1
 
         for i in self.PitchUpVals:
-            self.UpTones[i] = pyglet.media.StaticSource(pyglet.media.synthesis.Triangle(duration=0.07, frequency=self.PitchUpFreqs[countUp], envelope=self.adsr))
+            self.UpTones[i] = self.PitchUpFreqs[countUp]
             countUp += 1
 
 
@@ -289,7 +318,7 @@ class FlightFollowing:
                 output = sapi5.SAPI5()
                 output.speak('Error: edit the flightfollowing.ini file and add your Geo names username. exiting!')
                 time.sleep(8)
-                exit()
+                sys.exit()
 
             self.interval = float(self.config.get('config','interval'))
             self.distance_units = self.config.get('config','distance_units')
@@ -320,7 +349,7 @@ class FlightFollowing:
         output = sapi5.SAPI5()
         output.speak('Configuration file created. Open the FlightFollowing.ini file and add your geonames username. Exiting.')
         time.sleep(8)
-        exit()
+        sys.exit()
 
     def manualFlight(self, dt, triggered = 0):
         pitch = round(self.attitude['Pitch'], 1)
@@ -334,14 +363,47 @@ class FlightFollowing:
         elif pitch < 0:
             self.output.speak (F'Up {abs(pitch)}')
 
+    def sonifyFlightDirector(self, dt):
+        pitch = round(self.instr['ApFlightDirectorPitch'], 1)
+        bank = round(self.instr['ApFlightDirectorBank'], 0)
+        if pitch > 0 and pitch < 20:
+            self.PitchUpPlayer.pause ()
+            self.PitchDownPlayer.play()
+            self.PitchDownPlayer.pitch = self.DownTones[pitch]
+        elif pitch < 0 and pitch > -20:
+            self.PitchDownPlayer.pause ()
+            self.PitchUpPlayer.play() 
+            self.PitchUpPlayer.pitch = self.UpTones[pitch]
+        elif pitch == 0:
+            self.PitchUpPlayer.pause()
+            self.PitchDownPlayer.pause()
+        if bank < 0:
+            self.BankPlayer.position = (-5, 0, 0)
+            self.BankPlayer.play()
+            self.BankPlayer.pitch = self.BankTones[abs(bank)]
 
+        if bank > 0:
+            self.BankPlayer.position = (5, 0, 0)
+            self.BankPlayer.play()
+            self.BankPlayer.pitch = self.BankTones[bank]
+
+
+        if bank == 0:
+            self.BankPlayer.pause()
+
+
+
+
+        
     def sonifyPitch(self, dt):
         self.getPyuipcData()
         pitch = round(self.attitude['Pitch'], 1)
         if pitch > 0 and pitch < 20:
-            self.DownTones[pitch].play()
+            self.PitchDownPlayer.play ()
+            self.PitchDownPlayer.pitch = self.DownTones[pitch]
         elif pitch < 0 and pitch > -20:
-            self.UpTones[pitch].play()
+            self.PitchUpPlayer.play()
+            self.PitchUpPlayer.pitch = self.UpTones[pitch]
         elif pitch == 0:
             pass
 
@@ -378,6 +440,19 @@ class FlightFollowing:
             elif instrument =='dest':
                 self.output.speak(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
                 self.reset_hotkeys()
+            elif instrument == 'director':
+                if self.directorEnabled:
+                    pyglet.clock.unschedule(self.sonifyFlightDirector)
+                    self.directorEnabled = False
+                    self.reset_hotkeys()
+                    self.output.speak ('flight director mode disabled.')
+                else:
+                    pyglet.clock.schedule_interval(self.sonifyFlightDirector, 0.2)
+                    self.directorEnabled = True
+                    self.output.speak ('flight director mode enabled')
+                    self.reset_hotkeys()
+
+            
             elif instrument == 'manual':
                 if self.manualEnabled:
                     pyglet.clock.unschedule(self.manualFlight)
@@ -423,6 +498,7 @@ class FlightFollowing:
         self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
         self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
         self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
+        self.directorKey = keyboard.add_hotkey (self.config['hotkeys']['director_key'], self.keyHandler, args=(['director']), suppress=True, timeout=2)
 
 
         winsound.Beep(500, 100)
