@@ -231,15 +231,18 @@ class FlightFollowing:
         self.oldAutoBrake = None
         self.oldGear = 16383
 
-        # set up tone arrays for pitch sonification.
+        # set up tone arrays and player objects for sonification.
+        # arrays for holding tone frequency values
         self.DownTones = {}
         self.UpTones = {}
-        self.adsr = pyglet.media.synthesis.ADSREnvelope(0.05, 0.02, 0.01)
+        # envelopes for tone playback
         self.decay = pyglet.media.synthesis.LinearDecayEnvelope()
         self.flat = pyglet.media.synthesis.FlatEnvelope (0.3)
 
+        # grab 200 equal values across a range of numbers for aircraft pitch
         self.PitchUpVals = np.around(np.linspace(-0.1, -20, 200), 1)
         self.PitchDownVals = np.around(np.linspace(0.1, 20, 200), 1)
+        # track state of various modes
         self.sonifyEnabled = False
         self.manualEnabled = False
         self.directorEnabled = False
@@ -293,10 +296,15 @@ class FlightFollowing:
         
         # Infinite loop.
         try:
+            # Start closest city loop if enabled.
             if self.FFEnabled:
                 pyglet.clock.schedule_interval(self.AnnounceInfo, self.interval * 60)
+            # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
             if self.InstrEnabled:
                 pyglet.clock.schedule_interval(self.readInstruments, 0.5)
+            else: 
+                pyglet.clock.schedule_interval (self.getPyuipcData, 0.5)
+            # start simConnect message reading loop
             if self.SimCEnabled:
                 pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
 
@@ -351,75 +359,82 @@ class FlightFollowing:
         sys.exit()
 
     def manualFlight(self, dt, triggered = 0):
-        pitch = round(self.attitude['Pitch'], 1)
-        bank = round(self.attitude['Bank'])
-        if bank > 0:
-            self.output.speak (F'Left {bank}')
-        elif bank < 0:
-            self.output.speak (F'right {abs(bank)}')
-        if pitch > 0:
-            self.output.speak (F'down {pitch}')
-        elif pitch < 0:
-            self.output.speak (F'Up {abs(pitch)}')
+        try:
+            pitch = round(self.attitude['Pitch'], 1)
+            bank = round(self.attitude['Bank'])
+            if bank > 0:
+                self.output.speak (F'Left {bank}')
+            elif bank < 0:
+                self.output.speak (F'right {abs(bank)}')
+            if pitch > 0:
+                self.output.speak (F'down {pitch}')
+            elif pitch < 0:
+                self.output.speak (F'Up {abs(pitch)}')
+        except exception as e:
+            logging.error (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
 
     def sonifyFlightDirector(self, dt):
-        pitch = round(self.instr['ApFlightDirectorPitch'], 1)
-        bank = round(self.instr['ApFlightDirectorBank'], 0)
-        if pitch > 0 and pitch < 20:
-            self.PitchUpPlayer.pause ()
-            self.PitchDownPlayer.play()
-            self.PitchDownPlayer.pitch = self.DownTones[pitch]
-        elif pitch < 0 and pitch > -20:
-            self.PitchDownPlayer.pause ()
-            self.PitchUpPlayer.play() 
-            self.PitchUpPlayer.pitch = self.UpTones[pitch]
-        elif pitch == 0:
-            self.PitchUpPlayer.pause()
-            self.PitchDownPlayer.pause()
-        if bank < 0:
-            self.BankPlayer.position = (5, 0, 0)
-            self.BankPlayer.play()
-            self.BankPlayer.pitch = self.BankTones[abs(bank)]
+        try:
+            pitch = round(self.instr['ApFlightDirectorPitch'], 1)
+            bank = round(self.instr['ApFlightDirectorBank'], 0)
+            if pitch > 0 and pitch < 20:
+                self.PitchUpPlayer.pause ()
+                self.PitchDownPlayer.play()
+                self.PitchDownPlayer.pitch = self.DownTones[pitch]
+            elif pitch < 0 and pitch > -20:
+                self.PitchDownPlayer.pause ()
+                self.PitchUpPlayer.play() 
+                self.PitchUpPlayer.pitch = self.UpTones[pitch]
+            elif pitch == 0:
+                self.PitchUpPlayer.pause()
+                self.PitchDownPlayer.pause()
+            if bank < 0:
+                self.BankPlayer.position = (5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.BankTones[abs(bank)]
 
-        if bank > 0:
-            self.BankPlayer.position = (-5, 0, 0)
-            self.BankPlayer.play()
-            self.BankPlayer.pitch = self.BankTones[bank]
+            if bank > 0:
+                self.BankPlayer.position = (-5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.BankTones[bank]
 
 
-        if bank == 0:
-            self.BankPlayer.pause()
-
+            if bank == 0:
+                self.BankPlayer.pause()
+        except exception as e:
+            logging.error (F'Error in flight director. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
 
         
     def sonifyPitch(self, dt):
-        # self.getPyuipcData()
-        pitch = round(self.attitude['Pitch'], 1)
-        bank = round(self.attitude['Bank'])
-        if pitch > 0 and pitch < 20:
-            self.PitchUpPlayer.pause ()
-            self.PitchDownPlayer.play()
-            self.PitchDownPlayer.pitch = self.DownTones[pitch]
-        elif pitch < 0 and pitch > -20:
-            self.PitchDownPlayer.pause ()
-            self.PitchUpPlayer.play() 
-            self.PitchUpPlayer.pitch = self.UpTones[pitch]
-        elif pitch == 0:
-            self.PitchUpPlayer.pause()
-            self.PitchDownPlayer.pause()
-        if bank < 0:
-            self.BankPlayer.position = (5, 0, 0)
-            self.BankPlayer.play()
-            self.BankPlayer.pitch = self.BankTones[abs(bank)]
-        if bank > 0:
-            self.BankPlayer.position = (-5, 0, 0)
-            self.BankPlayer.play()
-            self.BankPlayer.pitch = self.BankTones[bank]
+        try:
+            pitch = round(self.attitude['Pitch'], 1)
+            bank = round(self.attitude['Bank'])
+            if pitch > 0 and pitch < 20:
+                self.PitchUpPlayer.pause ()
+                self.PitchDownPlayer.play()
+                self.PitchDownPlayer.pitch = self.DownTones[pitch]
+            elif pitch < 0 and pitch > -20:
+                self.PitchDownPlayer.pause ()
+                self.PitchUpPlayer.play() 
+                self.PitchUpPlayer.pitch = self.UpTones[pitch]
+            elif pitch == 0:
+                self.PitchUpPlayer.pause()
+                self.PitchDownPlayer.pause()
+            if bank < 0:
+                self.BankPlayer.position = (5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.BankTones[abs(bank)]
+            if bank > 0:
+                self.BankPlayer.position = (-5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.BankTones[bank]
 
-        if bank == 0:
-            self.BankPlayer.pause()
+            if bank == 0:
+                self.BankPlayer.pause()
+        except exception as e:
+            logging.error (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
 
