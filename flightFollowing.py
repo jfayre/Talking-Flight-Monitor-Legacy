@@ -2,7 +2,7 @@
 # -*- coding: iso-8859-15 -*-
 #==============================================================================
 # Voice Flight Following - Periodically announce cities along your flight path
-# Copyright (C) 2019 by Jason Fayre
+# Copyright (C) 2020 by Jason Fayre
 # based on the VoiceATIS addon by   Oliver Clemens
 # 
 # This program is free software: you can redistribute it and/or modify it under
@@ -325,7 +325,7 @@ class FlightFollowing:
                 output = sapi5.SAPI5()
                 output.speak('Error: edit the flightfollowing.ini file and add your Geo names username. exiting!')
                 time.sleep(8)
-                sys.exit()
+                sys.exit(1)
 
             self.interval = float(self.config.get('config','interval'))
             self.distance_units = self.config.get('config','distance_units')
