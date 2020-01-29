@@ -236,6 +236,7 @@ class FlightFollowing:
         self.UpTones = {}
         self.adsr = pyglet.media.synthesis.ADSREnvelope(0.05, 0.02, 0.01)
         self.decay = pyglet.media.synthesis.LinearDecayEnvelope()
+        self.flat = pyglet.media.synthesis.FlatEnvelope (0.3)
 
         self.PitchUpVals = np.around(np.linspace(-0.1, -20, 200), 1)
         self.PitchDownVals = np.around(np.linspace(0.1, 20, 200), 1)
@@ -245,8 +246,8 @@ class FlightFollowing:
         self.PitchUpPlayer = pyglet.media.Player()
         self.PitchDownPlayer = pyglet.media.Player()
         self.BankPlayer = pyglet.media.Player()
-        self.PitchUpSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=10, frequency=440))
-        self.PitchDownSource = pyglet.media.StaticSource (pyglet.media.synthesis.Sine(duration=10, frequency=440))
+        self.PitchUpSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=10, frequency=440, envelope=self.flat))
+        self.PitchDownSource = pyglet.media.StaticSource (pyglet.media.synthesis.Sine(duration=10, frequency=440, envelope = self.flat))
         self.BankSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=0.3, frequency=200, envelope=self.decay))
         self.PitchUpPlayer.loop = True
         self.PitchDownPlayer.loop = True
@@ -257,9 +258,7 @@ class FlightFollowing:
         self.BankPlayer.min_distance = 10
 
 
-        # self.PitchUpFreqs = np.linspace(800, 1200, 200)
         self.PitchUpFreqs = np.linspace(2, 4, 200)
-        # self.PitchDownFreqs = np.linspace(600, 200, 200)
         self.PitchDownFreqs = np.linspace(1.5, 0.5, 200)
         self.BankFreqs = np.linspace(1, 3, 45)
         self.BankTones = {}
@@ -378,12 +377,12 @@ class FlightFollowing:
             self.PitchUpPlayer.pause()
             self.PitchDownPlayer.pause()
         if bank < 0:
-            self.BankPlayer.position = (-5, 0, 0)
+            self.BankPlayer.position = (5, 0, 0)
             self.BankPlayer.play()
             self.BankPlayer.pitch = self.BankTones[abs(bank)]
 
         if bank > 0:
-            self.BankPlayer.position = (5, 0, 0)
+            self.BankPlayer.position = (-5, 0, 0)
             self.BankPlayer.play()
             self.BankPlayer.pitch = self.BankTones[bank]
 
@@ -411,11 +410,11 @@ class FlightFollowing:
             self.PitchUpPlayer.pause()
             self.PitchDownPlayer.pause()
         if bank < 0:
-            self.BankPlayer.position = (-5, 0, 0)
+            self.BankPlayer.position = (5, 0, 0)
             self.BankPlayer.play()
             self.BankPlayer.pitch = self.BankTones[abs(bank)]
         if bank > 0:
-            self.BankPlayer.position = (5, 0, 0)
+            self.BankPlayer.position = (-5, 0, 0)
             self.BankPlayer.play()
             self.BankPlayer.pitch = self.BankTones[bank]
 
@@ -458,6 +457,9 @@ class FlightFollowing:
                 if self.directorEnabled:
                     pyglet.clock.unschedule(self.sonifyFlightDirector)
                     self.directorEnabled = False
+                    self.PitchUpPlayer.pause()
+                    self.PitchDownPlayer.pause()
+                    self.BankPlayer.pause ()
                     self.reset_hotkeys()
                     self.output.speak ('flight director mode disabled.')
                 else:
@@ -482,6 +484,10 @@ class FlightFollowing:
             elif instrument == 'attitude':
                 if self.sonifyEnabled:
                     pyglet.clock.unschedule(self.sonifyPitch)
+                    
+                    self.PitchUpPlayer.pause()
+                    self.PitchDownPlayer.pause()
+                    self.BankPlayer.pause ()
                     self.sonifyEnabled = False
                     self.reset_hotkeys()
                     self.output.speak ('attitude mode disabled.')
