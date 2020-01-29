@@ -182,6 +182,7 @@ class FlightFollowing:
                 'dest_key': 'd',
                 'attitude_key': '[',
                 'manual_key': 'Shift+m',
+                'director_key': 'shift+f',
                 'message_key':'r'}
 
         # First log message.
@@ -230,26 +231,56 @@ class FlightFollowing:
         self.oldAutoBrake = None
         self.oldGear = 16383
 
-        # set up tone arrays for pitch sonification.
+        # set up tone arrays and player objects for sonification.
+        # arrays for holding tone frequency values
         self.DownTones = {}
         self.UpTones = {}
-        self.adsr = pyglet.media.synthesis.ADSREnvelope(0.05, 0.02, 0.01)
+        # envelopes for tone playback
+        self.decay = pyglet.media.synthesis.LinearDecayEnvelope()
+        self.flat = pyglet.media.synthesis.FlatEnvelope (0.3)
+
+        # grab 200 equal values across a range of numbers for aircraft pitch
         self.PitchUpVals = np.around(np.linspace(-0.1, -20, 200), 1)
         self.PitchDownVals = np.around(np.linspace(0.1, 20, 200), 1)
+        # track state of various modes
         self.sonifyEnabled = False
         self.manualEnabled = False
+        self.directorEnabled = False
+        self.PitchUpPlayer = pyglet.media.Player()
+        self.PitchDownPlayer = pyglet.media.Player()
+        self.BankPlayer = pyglet.media.Player()
+        self.PitchUpSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=10, frequency=440, envelope=self.flat))
+        self.PitchDownSource = pyglet.media.StaticSource (pyglet.media.synthesis.Sine(duration=10, frequency=440, envelope = self.flat))
+        self.BankSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=0.3, frequency=200, envelope=self.decay))
+        self.PitchUpPlayer.loop = True
+        self.PitchDownPlayer.loop = True
+        self.BankPlayer.loop = True
+        self.PitchUpPlayer.queue (self.PitchUpSource)
+        self.PitchDownPlayer.queue (self.PitchDownSource)
+        self.BankPlayer.queue (self.BankSource)
+        self.BankPlayer.min_distance = 10
 
-        self.PitchUpFreqs = np.linspace(800, 1200, 200)
-        self.PitchDownFreqs = np.linspace(600, 200, 200)
+
+        self.PitchUpFreqs = np.linspace(2, 4, 200)
+        self.PitchDownFreqs = np.linspace(1.5, 0.5, 200)
+        self.BankFreqs = np.linspace(1, 3, 45)
+        self.BankTones = {}
+        countDown = 0
+        countUp = 0
+        for i in np.arange (1.0, 45.0, 1):
+            self.BankTones[i] = self.BankFreqs[countUp]
+            countUp += 1
+
+
         countDown = 0
         countUp = 0
 
         for i in self.PitchDownVals:
-            self.DownTones[i]  = pyglet.media.StaticSource(pyglet.media.synthesis.Sine(duration=0.07, frequency=self.PitchDownFreqs[countDown], envelope=self.adsr))
+            self.DownTones[i]  = self.PitchDownFreqs[countDown]
             countDown += 1
 
         for i in self.PitchUpVals:
-            self.UpTones[i] = pyglet.media.StaticSource(pyglet.media.synthesis.Triangle(duration=0.07, frequency=self.PitchUpFreqs[countUp], envelope=self.adsr))
+            self.UpTones[i] = self.PitchUpFreqs[countUp]
             countUp += 1
 
 
@@ -265,10 +296,15 @@ class FlightFollowing:
         
         # Infinite loop.
         try:
+            # Start closest city loop if enabled.
             if self.FFEnabled:
                 pyglet.clock.schedule_interval(self.AnnounceInfo, self.interval * 60)
+            # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
             if self.InstrEnabled:
                 pyglet.clock.schedule_interval(self.readInstruments, 0.5)
+            else: 
+                pyglet.clock.schedule_interval (self.getPyuipcData, 0.5)
+            # start simConnect message reading loop
             if self.SimCEnabled:
                 pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
 
@@ -289,7 +325,7 @@ class FlightFollowing:
                 output = sapi5.SAPI5()
                 output.speak('Error: edit the flightfollowing.ini file and add your Geo names username. exiting!')
                 time.sleep(8)
-                exit()
+                sys.exit()
 
             self.interval = float(self.config.get('config','interval'))
             self.distance_units = self.config.get('config','distance_units')
@@ -320,31 +356,85 @@ class FlightFollowing:
         output = sapi5.SAPI5()
         output.speak('Configuration file created. Open the FlightFollowing.ini file and add your geonames username. Exiting.')
         time.sleep(8)
-        exit()
+        sys.exit()
 
     def manualFlight(self, dt, triggered = 0):
-        pitch = round(self.attitude['Pitch'], 1)
-        bank = round(self.attitude['Bank'])
-        if bank > 0:
-            self.output.speak (F'Left {bank}')
-        elif bank < 0:
-            self.output.speak (F'right {abs(bank)}')
-        if pitch > 0:
-            self.output.speak (F'down {pitch}')
-        elif pitch < 0:
-            self.output.speak (F'Up {abs(pitch)}')
+        try:
+            pitch = round(self.attitude['Pitch'], 1)
+            bank = round(self.attitude['Bank'])
+            if bank > 0:
+                self.output.speak (F'Left {bank}')
+            elif bank < 0:
+                self.output.speak (F'right {abs(bank)}')
+            if pitch > 0:
+                self.output.speak (F'down {pitch}')
+            elif pitch < 0:
+                self.output.speak (F'Up {abs(pitch)}')
+        except exception as e:
+            logging.error (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
+
+    def sonifyFlightDirector(self, dt):
+        try:
+            pitch = round(self.instr['ApFlightDirectorPitch'], 1)
+            bank = round(self.instr['ApFlightDirectorBank'], 0)
+            if pitch > 0 and pitch < 20:
+                self.PitchUpPlayer.pause ()
+                self.PitchDownPlayer.play()
+                self.PitchDownPlayer.pitch = self.DownTones[pitch]
+            elif pitch < 0 and pitch > -20:
+                self.PitchDownPlayer.pause ()
+                self.PitchUpPlayer.play() 
+                self.PitchUpPlayer.pitch = self.UpTones[pitch]
+            elif pitch == 0:
+                self.PitchUpPlayer.pause()
+                self.PitchDownPlayer.pause()
+            if bank < 0:
+                self.BankPlayer.position = (5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.BankTones[abs(bank)]
+
+            if bank > 0:
+                self.BankPlayer.position = (-5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.BankTones[bank]
 
 
+            if bank == 0:
+                self.BankPlayer.pause()
+        except exception as e:
+            logging.error (F'Error in flight director. Pitch: {pitch}, Bank: {bank}' + str(e))
+
+
+
+        
     def sonifyPitch(self, dt):
-        self.getPyuipcData()
-        pitch = round(self.attitude['Pitch'], 1)
-        if pitch > 0 and pitch < 20:
-            self.DownTones[pitch].play()
-        elif pitch < 0 and pitch > -20:
-            self.UpTones[pitch].play()
-        elif pitch == 0:
-            pass
+        try:
+            pitch = round(self.attitude['Pitch'], 1)
+            bank = round(self.attitude['Bank'])
+            if pitch > 0 and pitch < 20:
+                self.PitchUpPlayer.pause ()
+                self.PitchDownPlayer.play()
+                self.PitchDownPlayer.pitch = self.DownTones[pitch]
+            elif pitch < 0 and pitch > -20:
+                self.PitchDownPlayer.pause ()
+                self.PitchUpPlayer.play() 
+                self.PitchUpPlayer.pitch = self.UpTones[pitch]
+            elif pitch == 0:
+                self.PitchUpPlayer.pause()
+                self.PitchDownPlayer.pause()
+            if bank < 0:
+                self.BankPlayer.position = (5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.BankTones[abs(bank)]
+            if bank > 0:
+                self.BankPlayer.position = (-5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.BankTones[bank]
 
+            if bank == 0:
+                self.BankPlayer.pause()
+        except exception as e:
+            logging.error (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
 
@@ -378,6 +468,22 @@ class FlightFollowing:
             elif instrument =='dest':
                 self.output.speak(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
                 self.reset_hotkeys()
+            elif instrument == 'director':
+                if self.directorEnabled:
+                    pyglet.clock.unschedule(self.sonifyFlightDirector)
+                    self.directorEnabled = False
+                    self.PitchUpPlayer.pause()
+                    self.PitchDownPlayer.pause()
+                    self.BankPlayer.pause ()
+                    self.reset_hotkeys()
+                    self.output.speak ('flight director mode disabled.')
+                else:
+                    pyglet.clock.schedule_interval(self.sonifyFlightDirector, 0.2)
+                    self.directorEnabled = True
+                    self.output.speak ('flight director mode enabled')
+                    self.reset_hotkeys()
+
+            
             elif instrument == 'manual':
                 if self.manualEnabled:
                     pyglet.clock.unschedule(self.manualFlight)
@@ -393,6 +499,10 @@ class FlightFollowing:
             elif instrument == 'attitude':
                 if self.sonifyEnabled:
                     pyglet.clock.unschedule(self.sonifyPitch)
+                    
+                    self.PitchUpPlayer.pause()
+                    self.PitchDownPlayer.pause()
+                    self.BankPlayer.pause ()
                     self.sonifyEnabled = False
                     self.reset_hotkeys()
                     self.output.speak ('attitude mode disabled.')
@@ -423,6 +533,7 @@ class FlightFollowing:
         self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
         self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
         self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
+        self.directorKey = keyboard.add_hotkey (self.config['hotkeys']['director_key'], self.keyHandler, args=(['director']), suppress=True, timeout=2)
 
 
         winsound.Beep(500, 100)
