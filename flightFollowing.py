@@ -124,6 +124,7 @@ class FlightFollowing:
                'RouteDistance': (0x61a0,'f'), # route total distance in meters
                'FuelBurn': (0x61a8,'f'), # estimated fuel burn in gallons
                'ElevatorTrim': (0x2ea0, 'f'), # elevator trim deflection in radions
+               'VerticalSpeed': (0x0842, 'h'), # 2 byte Vertical speed in metres per minute, but with –ve for UP, +ve for DOWN. Multiply by 3.28084 and reverse the sign for the normal fpm measure.
 
     }
 
@@ -179,6 +180,7 @@ class FlightFollowing:
                 'ias_key': 's',
                 'tas_key': 't',
                 'mach_key': 'm',
+                'vspeed_key': 'v',
                 'city_key': 'c',
                 'waypoint_key': 'w',
                 'dest_key': 'd',
@@ -468,6 +470,9 @@ class FlightFollowing:
             elif instrument == 'mach':
                 self.output.speak (F'Mach {self.instr["AirspeedMach"]:0.2f}')
                 self.reset_hotkeys()
+            elif instrument == 'vspeed':
+                self.output.speak (F"{self.instr['VerticalSpeed']} feet")
+                self.reset_hotkeys()
             elif instrument =='dest':
                 self.output.speak(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
                 self.reset_hotkeys()
@@ -537,6 +542,7 @@ class FlightFollowing:
         self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
         self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
         self.directorKey = keyboard.add_hotkey (self.config['hotkeys']['director_key'], self.keyHandler, args=(['director']), suppress=True, timeout=2)
+        self.vspeedKey = keyboard.add_hotkey (self.config['hotkeys']['vspeed_key'], self.keyHandler, args=(['vspeed']), suppress=True, timeout=2)
 
 
         winsound.Beep(500, 100)
@@ -812,6 +818,9 @@ class FlightFollowing:
             self.instr['DestETE'] =self.secondsToText(self.instr['DestETE'])
             self.instr['DestETA'] = time.strftime('%H:%M', time.localtime(self.instr['DestETA']))
             self.instr['ElevatorTrim'] = degrees(self.instr['ElevatorTrim'])
+            self.instr['VerticalSpeed'] = round ((self.instr['VerticalSpeed'] * 3.28084) * -1, 0)
+
+
 
 
 
