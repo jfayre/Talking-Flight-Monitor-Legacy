@@ -123,6 +123,8 @@ class FlightFollowing:
                'DestETA': (0x619c,'u'), # Destination ETA in seconds (localtime)
                'RouteDistance': (0x61a0,'f'), # route total distance in meters
                'FuelBurn': (0x61a8,'f'), # estimated fuel burn in gallons
+               'ElevatorTrim': (0x2ea0, 'f'), # elevator trim deflection in radions
+
     }
 
 # Offsets for SimConnect messages.
@@ -230,6 +232,7 @@ class FlightFollowing:
         self.oldSimCChanged = None
         self.oldAutoBrake = None
         self.oldGear = 16383
+        self.oldElevatorTrim = None
 
         # set up tone arrays and player objects for sonification.
         # arrays for holding tone frequency values
@@ -620,6 +623,15 @@ class FlightFollowing:
                 brake = 'maximum'
             self.output.speak (F'Auto brake {brake}')
             self.oldAutoBrake = self.instr['AutoBrake']
+        if self.instr['ElevatorTrim'] != self.oldElevatorTrim:
+            if self.instr['ElevatorTrim'] < 0:
+                self.output.speak (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
+            else:
+                self.output.speak (F"Trim up {round (self.instr['ElevatorTrim'], 2)}")
+
+            self.oldElevatorTrim = self.instr['ElevatorTrim']
+
+
         self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
         # autopilot mode switches
         self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
@@ -687,9 +699,9 @@ class FlightFollowing:
                     SimCMessageRaw = self.SimCMessage[:self.SimCData['SimCLength']]
                     SimCMessage = SimCMessageRaw.split('\x00')
                     for index, message in enumerate(SimCMessage):
-                        if index < 2:
+                        if index < 2 and message != "":
                             self.output.speak(f'{message}')
-                        else:
+                        elif message != "":
                             self.output.speak(f'{i}: {message}')
                             i += 1
 
@@ -799,6 +811,7 @@ class FlightFollowing:
             self.instr['NextWPBaring'] = degrees(self.instr['NextWPBaring'])
             self.instr['DestETE'] =self.secondsToText(self.instr['DestETE'])
             self.instr['DestETA'] = time.strftime('%H:%M', time.localtime(self.instr['DestETA']))
+            self.instr['ElevatorTrim'] = degrees(self.instr['ElevatorTrim'])
 
 
 
