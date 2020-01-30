@@ -551,7 +551,7 @@ class FlightFollowing:
         keyboard.remove_all_hotkeys()
         self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
 
-    ## read various instrumentation automatically such as flaps
+    ## read various instrumentation automatically
     def readInstruments(self, dt):
         flapsTransit = False
         # Get data from simulator
@@ -629,7 +629,7 @@ class FlightFollowing:
                 brake = 'maximum'
             self.output.speak (F'Auto brake {brake}')
             self.oldAutoBrake = self.instr['AutoBrake']
-        if self.instr['ElevatorTrim'] != self.oldElevatorTrim:
+        if self.instr['ElevatorTrim'] != self.oldElevatorTrim and self.instr['ApMaster'] != 1:
             if self.instr['ElevatorTrim'] < 0:
                 self.output.speak (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
             else:
