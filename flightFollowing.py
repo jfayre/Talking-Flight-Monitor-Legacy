@@ -319,6 +319,11 @@ class FlightFollowing:
             # start simConnect message reading loop
             if self.SimCEnabled:
                 pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
+            self.calloutsEnabled = True
+            if self.calloutsEnabled:
+                print ("scheduling callouts")
+                pyglet.clock.schedule_interval (self.readCallouts, 1)
+
 
                 
         except KeyboardInterrupt:
@@ -563,6 +568,22 @@ class FlightFollowing:
     def reset_hotkeys(self):
         keyboard.remove_all_hotkeys()
         self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
+
+    def readCallouts (self, dt=0):
+        vspeed = self.instr['VerticalSpeed']
+        if vspeed < -50:
+            if self.AGLAltitude <= 2500 and self.AGLAltitude >= 2450:
+                source = pyglet.media.load ('sounds\\2500.wav')
+                source.play()
+            elif self.AGLAltitude <= 1000 and self.AGLAltitude >= 950:
+                source = pyglet.media.load('sounds\\1000.wav')
+                source.play()
+            elif self.AGLAltitude >= 450 and self.AGLAltitude <= 500:
+                source = pyglet.media.load ('sounds\\500.wav')
+                source.play()
+
+
+
 
     ## read various instrumentation automatically
     def readInstruments(self, dt):
@@ -841,6 +862,7 @@ class FlightFollowing:
             self.instr['VerticalSpeed'] = round ((self.instr['VerticalSpeed'] * 3.28084) * -1, 0)
             self.tempC = round(self.instr['AirTemp'] / 256, 0)
             self.tempF = round(9.0/5.0 * self.tempC + 32)
+            self.AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
 
 
 
