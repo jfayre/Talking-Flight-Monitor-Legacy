@@ -275,11 +275,11 @@ class FlightFollowing:
 
         self.PitchUpFreqs = np.linspace(2, 4, 200)
         self.PitchDownFreqs = np.linspace(1.5, 0.5, 200)
-        self.BankFreqs = np.linspace(1, 3, 45)
+        self.BankFreqs = np.linspace(1, 4, 90)
         self.BankTones = {}
         countDown = 0
         countUp = 0
-        for i in np.arange (1.0, 45.0, 1):
+        for i in np.arange (1.0, 90.0, 1):
             self.BankTones[i] = self.BankFreqs[countUp]
             countUp += 1
 
@@ -382,7 +382,7 @@ class FlightFollowing:
                 self.output.speak (F'down {pitch}')
             elif pitch < 0:
                 self.output.speak (F'Up {abs(pitch)}')
-        except exception as e:
+        except Exception as e:
             logging.error (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
 
     def sonifyFlightDirector(self, dt):
@@ -400,12 +400,12 @@ class FlightFollowing:
             elif pitch == 0:
                 self.PitchUpPlayer.pause()
                 self.PitchDownPlayer.pause()
-            if bank < 0:
+            if bank < 0 and bank > -90:
                 self.BankPlayer.position = (5, 0, 0)
                 self.BankPlayer.play()
                 self.BankPlayer.pitch = self.BankTones[abs(bank)]
 
-            if bank > 0:
+            if bank > 0 and bank < 90:
                 self.BankPlayer.position = (-5, 0, 0)
                 self.BankPlayer.play()
                 self.BankPlayer.pitch = self.BankTones[bank]
@@ -413,7 +413,7 @@ class FlightFollowing:
 
             if bank == 0:
                 self.BankPlayer.pause()
-        except exception as e:
+        except Exception as e:
             logging.error (F'Error in flight director. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
@@ -434,19 +434,20 @@ class FlightFollowing:
             elif pitch == 0:
                 self.PitchUpPlayer.pause()
                 self.PitchDownPlayer.pause()
-            if bank < 0:
+            if bank < 0 and bank > -90:
                 self.BankPlayer.position = (5, 0, 0)
                 self.BankPlayer.play()
                 self.BankPlayer.pitch = self.BankTones[abs(bank)]
-            if bank > 0:
+            if bank > 0 and bank < 90:
                 self.BankPlayer.position = (-5, 0, 0)
                 self.BankPlayer.play()
                 self.BankPlayer.pitch = self.BankTones[bank]
 
             if bank == 0:
                 self.BankPlayer.pause()
-        except exception as e:
+        except Exception as e:
             logging.error (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
+
 
 
 
