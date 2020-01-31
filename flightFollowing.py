@@ -2,7 +2,7 @@
 # -*- coding: iso-8859-15 -*-
 #==============================================================================
 # Voice Flight Following - Periodically announce cities along your flight path
-# Copyright (C) 2019 by Jason Fayre
+# Copyright (C) 2020 by Jason Fayre
 # based on the VoiceATIS addon by   Oliver Clemens
 # 
 # This program is free software: you can redistribute it and/or modify it under
@@ -102,6 +102,11 @@ class FlightFollowing:
                'ApFlightDirector': (0x2ee0,'u'), # Flight director: 0 - off, 1 - on
                'ApFlightDirectorPitch': (0x2ee8, 'f'), # flight director pitch
                'ApFlightDirectorBank': (0x2ef0, 'f'), # flight director bank value in degrees. Right negative, left positive
+               'ApAttitudeHold': (0x07d8,'u'), # auto-pilot attitude hold switch
+               'ApWingLeveler': (0x07c0, 'u'), # auto-pilot wing leveler switch
+               'PropSync': (0x243c, 'u'), # propeller sync
+               'ApAutoRudder': (0x0278, 'h'), # auto-rudder switch
+               'BatteryMaster': (0x281c, 'u'), # battery master swtich
                'Heading': (0x0580,'u'), # Heading, *360/(65536*65536) for degrees TRUE.[Can be set in slew or pause states]
                'MagneticVariation': (0x02a0,'h'), # Magnetic variation (signed, –ve = West). For degrees *360/65536. Convert True headings to Magnetic by subtracting this value, Magnetic headings to True by adding this value.
                'Transponder': (0x0354,'H'), # transponder in BCD format
@@ -123,6 +128,10 @@ class FlightFollowing:
                'DestETA': (0x619c,'u'), # Destination ETA in seconds (localtime)
                'RouteDistance': (0x61a0,'f'), # route total distance in meters
                'FuelBurn': (0x61a8,'f'), # estimated fuel burn in gallons
+               'ElevatorTrim': (0x2ea0, 'f'), # elevator trim deflection in radions
+               'VerticalSpeed': (0x0842, 'h'), # 2 byte Vertical speed in metres per minute, but with –ve for UP, +ve for DOWN. Multiply by 3.28084 and reverse the sign for the normal fpm measure.
+               'AirTemp': (0x0e8c, 'h'), # Outside air temp Outside Air Temperature (OAT), degrees C * 256 (“Ambient Temperature
+
     }
 
 # Offsets for SimConnect messages.
@@ -177,6 +186,8 @@ class FlightFollowing:
                 'ias_key': 's',
                 'tas_key': 't',
                 'mach_key': 'm',
+                'vspeed_key': 'v',
+                'airtemp_key': 'shift+t',
                 'city_key': 'c',
                 'waypoint_key': 'w',
                 'dest_key': 'd',
@@ -230,6 +241,7 @@ class FlightFollowing:
         self.oldSimCChanged = None
         self.oldAutoBrake = None
         self.oldGear = 16383
+        self.oldElevatorTrim = None
 
         # set up tone arrays and player objects for sonification.
         # arrays for holding tone frequency values
@@ -325,7 +337,7 @@ class FlightFollowing:
                 output = sapi5.SAPI5()
                 output.speak('Error: edit the flightfollowing.ini file and add your Geo names username. exiting!')
                 time.sleep(8)
-                sys.exit()
+                sys.exit(1)
 
             self.interval = float(self.config.get('config','interval'))
             self.distance_units = self.config.get('config','distance_units')
@@ -465,9 +477,16 @@ class FlightFollowing:
             elif instrument == 'mach':
                 self.output.speak (F'Mach {self.instr["AirspeedMach"]:0.2f}')
                 self.reset_hotkeys()
+            elif instrument == 'vspeed':
+                self.output.speak (F"{self.instr['VerticalSpeed']:.0f} feet per minute")
+                self.reset_hotkeys()
             elif instrument =='dest':
                 self.output.speak(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
                 self.reset_hotkeys()
+            elif instrument == 'airtemp':
+                self.output.speak (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
+                self.reset_hotkeys()
+
             elif instrument == 'director':
                 if self.directorEnabled:
                     pyglet.clock.unschedule(self.sonifyFlightDirector)
@@ -534,6 +553,8 @@ class FlightFollowing:
         self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
         self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
         self.directorKey = keyboard.add_hotkey (self.config['hotkeys']['director_key'], self.keyHandler, args=(['director']), suppress=True, timeout=2)
+        self.vspeedKey = keyboard.add_hotkey (self.config['hotkeys']['vspeed_key'], self.keyHandler, args=(['vspeed']), suppress=True, timeout=2)
+        self.airtempKey = keyboard.add_hotkey (self.config['hotkeys']['airtemp_key'], self.keyHandler, args=(['airtemp']), suppress=True, timeout=2)
 
 
         winsound.Beep(500, 100)
@@ -542,7 +563,7 @@ class FlightFollowing:
         keyboard.remove_all_hotkeys()
         self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
 
-    ## read various instrumentation automatically such as flaps
+    ## read various instrumentation automatically
     def readInstruments(self, dt):
         flapsTransit = False
         # Get data from simulator
@@ -620,6 +641,15 @@ class FlightFollowing:
                 brake = 'maximum'
             self.output.speak (F'Auto brake {brake}')
             self.oldAutoBrake = self.instr['AutoBrake']
+        if self.instr['ElevatorTrim'] != self.oldElevatorTrim and self.instr['ApMaster'] != 1:
+            if self.instr['ElevatorTrim'] < 0:
+                self.output.speak (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
+            else:
+                self.output.speak (F"Trim up {round (self.instr['ElevatorTrim'], 2)}")
+
+            self.oldElevatorTrim = self.instr['ElevatorTrim']
+
+
         self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
         # autopilot mode switches
         self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
@@ -634,6 +664,12 @@ class FlightFollowing:
         self.readToggle('ApNavLock', 'nav lock', 'active', 'off')
         self.readToggle('ApFlightDirector', 'Flight Director', 'Active', 'off')
         self.readToggle ('ApNavGPS', 'Nav gps switch', 'set to GPS', 'set to nav')
+        self.readToggle('ApAttitudeHold', 'Attitude hold', 'active', 'off')
+        self.readToggle('ApWingLeveler', 'Wing leveler', 'active', 'off')
+        self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
+        self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
+        self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
+
 
 
 
@@ -660,12 +696,13 @@ class FlightFollowing:
         ("{0} second{1}, ".format(seconds, "s" if seconds!=1 else "") if seconds else "")
         return result
     def readWaypoint(self, triggered=False):
+        WPId = self.instr['NextWPId'].decode ('UTF-8')
         if self.distance_units == '0':
             distance = self.instr['NextWPDistance'] / 1000
-            self.output.speak (F'Next waypoint: {self.instr["NextWPId"]}, distance: {distance:.1f} kilometers')    
+            self.output.speak (F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers')    
         else:
             distance = (self.instr['NextWPDistance'] / 1000)/ 1.609
-            self.output.speak(F'Next waypoint: {self.instr["NextWPId"]}, distance: {distance:.1f} miles')    
+            self.output.speak(F'Next waypoint: {WPId}, distance: {distance:.1f} miles')    
         self.output.speak (F'baring: {self.instr["NextWPBaring"]:.0f}')
         # read estimated time enroute to next waypoint
         strTime = self.secondsToText(self.instr['NextWPETE'])
@@ -688,9 +725,9 @@ class FlightFollowing:
                     SimCMessageRaw = self.SimCMessage[:self.SimCData['SimCLength']]
                     SimCMessage = SimCMessageRaw.split('\x00')
                     for index, message in enumerate(SimCMessage):
-                        if index < 2:
+                        if index < 2 and message != "":
                             self.output.speak(f'{message}')
-                        else:
+                        elif message != "":
                             self.output.speak(f'{i}: {message}')
                             i += 1
 
@@ -771,7 +808,7 @@ class FlightFollowing:
 
     
     ## Read data from the simulator
-    def getPyuipcData(self):
+    def getPyuipcData(self, dt=0):
         
         if pyuipcImported:
             self.instr = dict(zip(self.InstrOffsets.keys(), pyuipc.read(self.pyuipcOffsets)))
@@ -801,6 +838,12 @@ class FlightFollowing:
             self.instr['NextWPBaring'] = degrees(self.instr['NextWPBaring'])
             self.instr['DestETE'] =self.secondsToText(self.instr['DestETE'])
             self.instr['DestETA'] = time.strftime('%H:%M', time.localtime(self.instr['DestETA']))
+            self.instr['ElevatorTrim'] = degrees(self.instr['ElevatorTrim'])
+            self.instr['VerticalSpeed'] = round ((self.instr['VerticalSpeed'] * 3.28084) * -1, 0)
+            self.tempC = round(self.instr['AirTemp'] / 256, 0)
+            self.tempF = round(9.0/5.0 * self.tempC + 32)
+
+
 
 
 
