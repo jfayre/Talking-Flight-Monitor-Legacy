@@ -741,7 +741,6 @@ class FlightFollowing:
 
 
 
->>>>>>> dev
     ## Announce flight following info
     def AnnounceInfo(self, dt, triggered = 0):
         # If invoked by hotkey, reset hotkey deffinitions.
