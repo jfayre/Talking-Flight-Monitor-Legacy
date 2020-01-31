@@ -102,6 +102,11 @@ class FlightFollowing:
                'ApFlightDirector': (0x2ee0,'u'), # Flight director: 0 - off, 1 - on
                'ApFlightDirectorPitch': (0x2ee8, 'f'), # flight director pitch
                'ApFlightDirectorBank': (0x2ef0, 'f'), # flight director bank value in degrees. Right negative, left positive
+               'ApAttitudeHold': (0x07d8,'u'), # auto-pilot attitude hold switch
+               'ApWingLeveler': (0x07c0, 'u'), # auto-pilot wing leveler switch
+               'PropSync': (0x243c, 'u'), # propeller sync
+               'ApAutoRudder': (0x0278, 'h'), # auto-rudder switch
+               'BatteryMaster': (0x281c, 'u'), # battery master swtich
                'Heading': (0x0580,'u'), # Heading, *360/(65536*65536) for degrees TRUE.[Can be set in slew or pause states]
                'MagneticVariation': (0x02a0,'h'), # Magnetic variation (signed, –ve = West). For degrees *360/65536. Convert True headings to Magnetic by subtracting this value, Magnetic headings to True by adding this value.
                'Transponder': (0x0354,'H'), # transponder in BCD format
@@ -125,6 +130,7 @@ class FlightFollowing:
                'FuelBurn': (0x61a8,'f'), # estimated fuel burn in gallons
                'ElevatorTrim': (0x2ea0, 'f'), # elevator trim deflection in radions
                'VerticalSpeed': (0x0842, 'h'), # 2 byte Vertical speed in metres per minute, but with –ve for UP, +ve for DOWN. Multiply by 3.28084 and reverse the sign for the normal fpm measure.
+               'AirTemp': (0x0e8c, 'h'), # Outside air temp Outside Air Temperature (OAT), degrees C * 256 (“Ambient Temperature
 
     }
 
@@ -181,6 +187,7 @@ class FlightFollowing:
                 'tas_key': 't',
                 'mach_key': 'm',
                 'vspeed_key': 'v',
+                'airtemp_key': 'shift+t',
                 'city_key': 'c',
                 'waypoint_key': 'w',
                 'dest_key': 'd',
@@ -471,11 +478,15 @@ class FlightFollowing:
                 self.output.speak (F'Mach {self.instr["AirspeedMach"]:0.2f}')
                 self.reset_hotkeys()
             elif instrument == 'vspeed':
-                self.output.speak (F"{self.instr['VerticalSpeed']} feet")
+                self.output.speak (F"{self.instr['VerticalSpeed']:.0f} feet per minute")
                 self.reset_hotkeys()
             elif instrument =='dest':
                 self.output.speak(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
                 self.reset_hotkeys()
+            elif instrument == 'airtemp':
+                self.output.speak (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
+                self.reset_hotkeys()
+
             elif instrument == 'director':
                 if self.directorEnabled:
                     pyglet.clock.unschedule(self.sonifyFlightDirector)
@@ -543,6 +554,7 @@ class FlightFollowing:
         self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
         self.directorKey = keyboard.add_hotkey (self.config['hotkeys']['director_key'], self.keyHandler, args=(['director']), suppress=True, timeout=2)
         self.vspeedKey = keyboard.add_hotkey (self.config['hotkeys']['vspeed_key'], self.keyHandler, args=(['vspeed']), suppress=True, timeout=2)
+        self.airtempKey = keyboard.add_hotkey (self.config['hotkeys']['airtemp_key'], self.keyHandler, args=(['airtemp']), suppress=True, timeout=2)
 
 
         winsound.Beep(500, 100)
@@ -652,6 +664,12 @@ class FlightFollowing:
         self.readToggle('ApNavLock', 'nav lock', 'active', 'off')
         self.readToggle('ApFlightDirector', 'Flight Director', 'Active', 'off')
         self.readToggle ('ApNavGPS', 'Nav gps switch', 'set to GPS', 'set to nav')
+        self.readToggle('ApAttitudeHold', 'Attitude hold', 'active', 'off')
+        self.readToggle('ApWingLeveler', 'Wing leveler', 'active', 'off')
+        self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
+        self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
+        self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
+
 
 
 
@@ -677,12 +695,13 @@ class FlightFollowing:
         ("{0} second{1}, ".format(seconds, "s" if seconds!=1 else "") if seconds else "")
         return result
     def readWaypoint(self, triggered=False):
+        WPId = self.instr['NextWPId'].decode ('UTF-8')
         if self.distance_units == '0':
             distance = self.instr['NextWPDistance'] / 1000
-            self.output.speak (F'Next waypoint: {self.instr["NextWPId"]}, distance: {distance:.1f} kilometers')    
+            self.output.speak (F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers')    
         else:
             distance = (self.instr['NextWPDistance'] / 1000)/ 1.609
-            self.output.speak(F'Next waypoint: {self.instr["NextWPId"]}, distance: {distance:.1f} miles')    
+            self.output.speak(F'Next waypoint: {WPId}, distance: {distance:.1f} miles')    
         self.output.speak (F'baring: {self.instr["NextWPBaring"]:.0f}')
         # read estimated time enroute to next waypoint
         strTime = self.secondsToText(self.instr['NextWPETE'])
@@ -787,7 +806,7 @@ class FlightFollowing:
 
     
     ## Read data from the simulator
-    def getPyuipcData(self):
+    def getPyuipcData(self, dt=0):
         
         if pyuipcImported:
             self.instr = dict(zip(self.InstrOffsets.keys(), pyuipc.read(self.pyuipcOffsets)))
@@ -819,6 +838,8 @@ class FlightFollowing:
             self.instr['DestETA'] = time.strftime('%H:%M', time.localtime(self.instr['DestETA']))
             self.instr['ElevatorTrim'] = degrees(self.instr['ElevatorTrim'])
             self.instr['VerticalSpeed'] = round ((self.instr['VerticalSpeed'] * 3.28084) * -1, 0)
+            self.tempC = round(self.instr['AirTemp'] / 256, 0)
+            self.tempF = round(9.0/5.0 * self.tempC + 32)
 
 
 
