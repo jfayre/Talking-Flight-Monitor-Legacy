@@ -187,7 +187,8 @@ class FlightFollowing:
                 'tas_key': 't',
                 'mach_key': 'm',
                 'vspeed_key': 'v',
-                'airtemp_key': 'shift+t',
+                'airtemp_key': 't',
+                'trim_key': 'shift+t',
                 'city_key': 'c',
                 'waypoint_key': 'w',
                 'dest_key': 'd',
@@ -242,6 +243,7 @@ class FlightFollowing:
         self.oldAutoBrake = None
         self.oldGear = 16383
         self.oldElevatorTrim = None
+        self.trimEnabled = True
 
         # set up tone arrays and player objects for sonification.
         # arrays for holding tone frequency values
@@ -486,6 +488,15 @@ class FlightFollowing:
             elif instrument == 'airtemp':
                 self.output.speak (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
                 self.reset_hotkeys()
+            elif instrument == 'toggletrim':
+                if self.trimEnabled:
+                    self.output.speak ('trim announcement disabled')
+                    self.trimEnabled = False
+                    self.reset_hotkeys()
+                else:
+                    self.trimEnabled = True
+                    self.output.speak ('trim announcement enabled')
+                    self.reset_hotkeys()
 
             elif instrument == 'director':
                 if self.directorEnabled:
@@ -555,6 +566,7 @@ class FlightFollowing:
         self.directorKey = keyboard.add_hotkey (self.config['hotkeys']['director_key'], self.keyHandler, args=(['director']), suppress=True, timeout=2)
         self.vspeedKey = keyboard.add_hotkey (self.config['hotkeys']['vspeed_key'], self.keyHandler, args=(['vspeed']), suppress=True, timeout=2)
         self.airtempKey = keyboard.add_hotkey (self.config['hotkeys']['airtemp_key'], self.keyHandler, args=(['airtemp']), suppress=True, timeout=2)
+        self.trimKey = keyboard.add_hotkey (self.config['hotkeys']['trim_key'], self.keyHandler, args=(['toggletrim']), suppress=True, timeout=2)
 
 
         winsound.Beep(500, 100)
@@ -641,7 +653,7 @@ class FlightFollowing:
                 brake = 'maximum'
             self.output.speak (F'Auto brake {brake}')
             self.oldAutoBrake = self.instr['AutoBrake']
-        if self.instr['ElevatorTrim'] != self.oldElevatorTrim and self.instr['ApMaster'] != 1:
+        if self.instr['ElevatorTrim'] != self.oldElevatorTrim and self.instr['ApMaster'] != 1 and self.trimEnabled:
             if self.instr['ElevatorTrim'] < 0:
                 self.output.speak (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
             else:
