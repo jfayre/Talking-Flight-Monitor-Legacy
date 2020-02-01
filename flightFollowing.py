@@ -44,7 +44,7 @@ import pyglet
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
 import numpy as np
-
+from timeit import default_timer as timer
 # Import own packages.
 from VaLogger import VaLogger
 
@@ -242,6 +242,21 @@ class FlightFollowing:
         self.oldAutoBrake = None
         self.oldGear = 16383
         self.oldElevatorTrim = None
+        self.callouts = [2500, 1000, 500, 400, 300, 200, 100, 50, 40, 30, 20, 10]
+        self.calloutState = {
+            2500: False,
+            1000: False,
+            500: False,
+            400: False,
+            300: False,
+            200: False,
+            100: False,
+            50: False,
+            40: False,
+            30: False,
+            20: False,
+            10: False}
+
 
         # set up tone arrays and player objects for sonification.
         # arrays for holding tone frequency values
@@ -303,6 +318,7 @@ class FlightFollowing:
         
         # initially read simulator data so we can populate instrument dictionaries
         self.getPyuipcData()
+        
         self.oldInstr = self.instr
 
         
@@ -313,16 +329,16 @@ class FlightFollowing:
                 pyglet.clock.schedule_interval(self.AnnounceInfo, self.interval * 60)
             # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
             if self.InstrEnabled:
-                pyglet.clock.schedule_interval(self.readInstruments, 0.5)
+                pyglet.clock.schedule_interval(self.readInstruments, 0.2)
             else: 
-                pyglet.clock.schedule_interval (self.getPyuipcData, 0.5)
+                pyglet.clock.schedule_interval (self.getPyuipcData, 0.2)
             # start simConnect message reading loop
             if self.SimCEnabled:
                 pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
             self.calloutsEnabled = True
             if self.calloutsEnabled:
                 print ("scheduling callouts")
-                pyglet.clock.schedule_interval (self.readCallouts, 1)
+                pyglet.clock.schedule_interval (self.readCallouts, 0.2)
 
 
                 
@@ -571,20 +587,15 @@ class FlightFollowing:
 
     def readCallouts (self, dt=0):
         vspeed = self.instr['VerticalSpeed']
+        callout = 0
         if vspeed < -50:
-            if self.AGLAltitude <= 2500 and self.AGLAltitude >= 2450:
-                source = pyglet.media.load ('sounds\\2500.wav')
-                source.play()
-            elif self.AGLAltitude <= 1000 and self.AGLAltitude >= 950:
-                source = pyglet.media.load('sounds\\1000.wav')
-                source.play()
-            elif self.AGLAltitude >= 450 and self.AGLAltitude <= 500:
-                source = pyglet.media.load ('sounds\\500.wav')
-                source.play()
-
-
-
-
+            for i in self.callouts:
+                if self.AGLAltitude <= i and self.AGLAltitude >= i - 5 and self.calloutState[i] == False:
+                    source = pyglet.media.load (F'sounds\\{str(i)}.wav')
+                    source.play()
+                    self.calloutState[i] = True
+                    
+            
     ## read various instrumentation automatically
     def readInstruments(self, dt):
         flapsTransit = False
@@ -801,7 +812,7 @@ class FlightFollowing:
         ## If so, announce body of water.
         ## We will continue to announce over water until the maximum radius of the search is reached.
         try:
-            response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
+            response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.instr['Lat'],self.instr['Long'], self.geonames_username))
             data = response.json()
             if 'ocean' in data and distance >= 1:
                 self.output.speak ('currently over {}'.format(data['ocean']['name']))
@@ -812,7 +823,7 @@ class FlightFollowing:
             
         ## Read time zone information
         try:
-            response = requests.get('http://api.geonames.org/timezoneJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
+            response = requests.get('http://api.geonames.org/timezoneJSON?lat={}&lng={}&username={}'.format(self.instr['Lat'],self.instr['Long'], self.geonames_username))
             data = response.json()
             
             if 'timezoneId' in data:
