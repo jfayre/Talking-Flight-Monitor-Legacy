@@ -188,7 +188,7 @@ class FlightFollowing:
                 'mach_key': 'm',
                 'vspeed_key': 'v',
                 'airtemp_key': 't',
-                'trim_key': 'shift+t',
+                'trim_key': 'shift+r',
                 'city_key': 'c',
                 'waypoint_key': 'w',
                 'dest_key': 'd',
