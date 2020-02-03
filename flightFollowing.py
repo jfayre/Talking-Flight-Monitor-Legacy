@@ -49,7 +49,7 @@ from timeit import default_timer as timer
 from VaLogger import VaLogger
 
 # initialize the log settings
-logging.basicConfig(filename = 'error.log', level = logging.INFO)
+logging.basicConfig(filename = 'error.log', level = logging.DEBUG)
 # Set encoding
 #reload(sys)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
@@ -352,8 +352,7 @@ class FlightFollowing:
             if pyuipcImported:
                 pyuipc.close()
         except Exception as e:
-            logging.error('Error during main loop:' + str(e))
-            logging.exception(str(e))
+            logging.exception('Error during main loop:' + str(e))
 
     def read_config(self):
             cfgfile = self.config.read(self.rootDir + "/flightfollowing.ini")
@@ -408,7 +407,7 @@ class FlightFollowing:
             elif pitch < 0:
                 self.output.speak (F'Up {abs(pitch)}')
         except Exception as e:
-            logging.error (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
+            logging.exception (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
 
     def sonifyFlightDirector(self, dt):
         try:
@@ -439,7 +438,7 @@ class FlightFollowing:
             if bank == 0:
                 self.BankPlayer.pause()
         except Exception as e:
-            logging.error (F'Error in flight director. Pitch: {pitch}, Bank: {bank}' + str(e))
+            logging.exception (F'Error in flight director. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
 
@@ -471,7 +470,7 @@ class FlightFollowing:
             if bank == 0:
                 self.BankPlayer.pause()
         except Exception as e:
-            logging.error (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
+            logging.exception (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
 
@@ -566,24 +565,25 @@ class FlightFollowing:
 
     ## Layered key support for reading various instrumentation
     def commandMode(self):
-        self.aslKey= keyboard.add_hotkey (self.config['hotkeys']['asl_key'], self.keyHandler, args=(['asl']), suppress=True, timeout=2)
-        self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=(['agl']), suppress=True, timeout=2)
-        self.cityKey = keyboard.add_hotkey(self.config['hotkeys']['city_key'], self.AnnounceInfo, args=([0, 1]))
-        self.headingKey = keyboard.add_hotkey (self.config['hotkeys']['heading_key'], self.keyHandler, args=(['heading']), suppress=True, timeout=2)
-        self.WPKey = keyboard.add_hotkey (self.config['hotkeys']['waypoint_key'], self.keyHandler, args=(['wp']), suppress=True, timeout=2)
-        self.tasKey = keyboard.add_hotkey (self.config['hotkeys']['tas_key'], self.keyHandler, args=(['tas']), suppress=True, timeout=2)
-        self.iasKey = keyboard.add_hotkey (self.config['hotkeys']['ias_key'], self.keyHandler, args=(['ias']), suppress=True, timeout=2)
-        self.machKey = keyboard.add_hotkey (self.config['hotkeys']['mach_key'], self.keyHandler, args=(['mach']), suppress=True, timeout=2)
-        self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=([0, 1]), suppress=True, timeout=2)
-        self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
-        self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
-        self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
-        self.directorKey = keyboard.add_hotkey (self.config['hotkeys']['director_key'], self.keyHandler, args=(['director']), suppress=True, timeout=2)
-        self.vspeedKey = keyboard.add_hotkey (self.config['hotkeys']['vspeed_key'], self.keyHandler, args=(['vspeed']), suppress=True, timeout=2)
-        self.airtempKey = keyboard.add_hotkey (self.config['hotkeys']['airtemp_key'], self.keyHandler, args=(['airtemp']), suppress=True, timeout=2)
-
-
-        winsound.Beep(500, 100)
+        try:
+            self.aslKey= keyboard.add_hotkey (self.config['hotkeys']['asl_key'], self.keyHandler, args=(['asl']), suppress=True, timeout=2)
+            self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=(['agl']), suppress=True, timeout=2)
+            self.cityKey = keyboard.add_hotkey(self.config['hotkeys']['city_key'], self.AnnounceInfo, args=([0, 1]))
+            self.headingKey = keyboard.add_hotkey (self.config['hotkeys']['heading_key'], self.keyHandler, args=(['heading']), suppress=True, timeout=2)
+            self.WPKey = keyboard.add_hotkey (self.config['hotkeys']['waypoint_key'], self.keyHandler, args=(['wp']), suppress=True, timeout=2)
+            self.tasKey = keyboard.add_hotkey (self.config['hotkeys']['tas_key'], self.keyHandler, args=(['tas']), suppress=True, timeout=2)
+            self.iasKey = keyboard.add_hotkey (self.config['hotkeys']['ias_key'], self.keyHandler, args=(['ias']), suppress=True, timeout=2)
+            self.machKey = keyboard.add_hotkey (self.config['hotkeys']['mach_key'], self.keyHandler, args=(['mach']), suppress=True, timeout=2)
+            self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=([0, 1]), suppress=True, timeout=2)
+            self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
+            self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
+            self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
+            self.directorKey = keyboard.add_hotkey (self.config['hotkeys']['director_key'], self.keyHandler, args=(['director']), suppress=True, timeout=2)
+            self.vspeedKey = keyboard.add_hotkey (self.config['hotkeys']['vspeed_key'], self.keyHandler, args=(['vspeed']), suppress=True, timeout=2)
+            self.airtempKey = keyboard.add_hotkey (self.config['hotkeys']['airtemp_key'], self.keyHandler, args=(['airtemp']), suppress=True, timeout=2)
+            winsound.Beep(500, 100)
+        except Exception as e:
+            logging.exception ("error in command mode.")
 
     def reset_hotkeys(self):
         keyboard.remove_all_hotkeys()
