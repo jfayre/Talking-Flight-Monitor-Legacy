@@ -44,6 +44,7 @@ The currently available keys are:
 * Shift+F: audible flight director (see below)
 * Shift+M: read pitch and bank angle periodically
 * [ (left bracket): audible aircraft attitude indication (see below)
+* O: Outside air temperature in degrees C and degrees F
 ### audible attitude indications
 Flight Following contains two modes that allow you to hear the pitch and bank of your aircraft.
 In "Attitude mode", you will hear a constant tone in the center channel to indicate pitch. Pitch down and pitch up are represented by different sounding tones. Bank is represented by a beeping tone in either the right or left channel to indicate the direction of bank. The higher the tone, the higher your bank angle.
