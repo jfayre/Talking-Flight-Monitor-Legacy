@@ -242,7 +242,8 @@ class FlightFollowing:
         self.oldAutoBrake = None
         self.oldGear = 16383
         self.oldElevatorTrim = None
-        self.callouts = [2500, 1000, 500, 400, 300, 200, 100, 50, 40, 30, 20, 10]
+        self.calloutsHigh = [2500, 1000, 500, 400, 300, 200, 100]
+        self.calloutsLow = [50, 40, 30, 20, 10]
         self.calloutState = {
             2500: False,
             1000: False,
@@ -256,6 +257,9 @@ class FlightFollowing:
             30: False,
             20: False,
             10: False}
+        self.altFlag = {}
+        for i in range(1000, 65000, 1000):
+            self.altFlag[i] = False
 
 
         # set up tone arrays and player objects for sonification.
@@ -589,8 +593,14 @@ class FlightFollowing:
         vspeed = self.instr['VerticalSpeed']
         callout = 0
         if vspeed < -50:
-            for i in self.callouts:
-                if self.AGLAltitude <= i and self.AGLAltitude >= i - 5 and self.calloutState[i] == False:
+            for i in self.calloutsHigh:
+                if self.AGLAltitude <= i + 5 and self.AGLAltitude >= i - 5 and self.calloutState[i] == False:
+                    source = pyglet.media.load (F'sounds\\{str(i)}.wav')
+                    source.play()
+                    self.calloutState[i] = True
+                    
+            for i in self.calloutsLow:
+                if self.AGLAltitude <= i + 3 and self.AGLAltitude >= i - 3 and self.calloutState[i] == False:
                     source = pyglet.media.load (F'sounds\\{str(i)}.wav')
                     source.play()
                     self.calloutState[i] = True
@@ -702,6 +712,14 @@ class FlightFollowing:
         self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
         self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
         self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
+        # read altitude every 1000 feet
+        for i in range (1000, 65000, 1000):
+            if self.instr['Altitude'] >= i - 10 and self.instr['Altitude'] <= i + 10 and self.altFlag[i] == False:
+                self.output.speak (F"{i} feet")
+                self.altFlag[i] = True
+            elif self.instr['Altitude'] >= i + 100:
+                self.altFlag[i] = False
+
 
 
 
