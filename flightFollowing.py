@@ -329,8 +329,7 @@ class FlightFollowing:
             if pyuipcImported:
                 pyuipc.close()
         except Exception as e:
-            logging.error('Error during main loop:' + str(e))
-            logging.exception(str(e))
+            logging.exception('Error during main loop:' + str(e))
 
     def read_config(self):
             cfgfile = self.config.read(self.rootDir + "/flightfollowing.ini")
@@ -385,7 +384,7 @@ class FlightFollowing:
             elif pitch < 0:
                 self.output.speak (F'Up {abs(pitch)}')
         except exception as e:
-            logging.error (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
+            logging.exception (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
 
     def sonifyFlightDirector(self, dt):
         try:
@@ -416,7 +415,7 @@ class FlightFollowing:
             if bank == 0:
                 self.BankPlayer.pause()
         except exception as e:
-            logging.error (F'Error in flight director. Pitch: {pitch}, Bank: {bank}' + str(e))
+            logging.exception (F'Error in flight director. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
 
@@ -448,7 +447,7 @@ class FlightFollowing:
             if bank == 0:
                 self.BankPlayer.pause()
         except exception as e:
-            logging.error (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
+            logging.exception (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
 
@@ -577,110 +576,113 @@ class FlightFollowing:
 
     ## read various instrumentation automatically
     def readInstruments(self, dt):
-        flapsTransit = False
-        # Get data from simulator
-        self.getPyuipcData()
-        # detect if aircraft is on ground or airborne.
-        if not self.instr['OnGround'] and not self.airborne:
-            self.output.speak ("Positive rate.")
-            
-            self.airborne = True
-        # read parking Brakes
-        
-        if self.oldBrake != self.instr['ParkingBrake']:
-            if self.instr['ParkingBrake']:
-                self.output.speak ("parking Brake on.")
-                
-            else:
-                self.output.speak ("parking Brake off.")
-            self.oldBrake = self.instr['ParkingBrake']
-
-        
-        # landing gear
-        if self.instr['Gear'] != self.oldGear:
-            if self.instr['Gear'] == 0:
-                self.output.speak ('Gear up.')
-            elif self.instr['Gear'] == 16383:
-                self.output.speak ('Gear down.')
-            self.oldGear = self.instr['Gear']
-
-        # if flaps position has changed, flaps are in motion. We need to wait until they have stopped moving to read the value.
-        if self.instr['Flaps'] != self.old_flaps:
-            flapsTransit = True
-            while flapsTransit:
-                self.getPyuipcData()
-                if self.instr['Flaps'] != self.old_flaps:
-                    self.old_flaps = self.instr['Flaps']
-                    time.sleep (0.2)
-                else:
-                    flapsTransit = False
-            self.output.speak (F'Flaps {self.instr["Flaps"]:.0f}')
-            self.old_flaps = self.instr['Flaps']
-        # announce radio frequency changes
-        if self.instr['Com1Freq'] != self.oldCom1:
-            self.output.speak (F"com 1, {self.instr['Com1Freq']}")
-            self.oldCom1 = self.instr['Com1Freq']
-        # spoilers
-        if self.instr['SpoilersArm'] == 1 and self.oldSpoilers != self.instr['SpoilersArm']:
-            self.output.speak ("spoilers armed.")
-            self.oldSpoilers = self.instr['SpoilersArm']
-        if self.oldApAltitude != self.instr['ApAltitude']:
-            self.output.speak(F"Altitude set to {round(self.instr['ApAltitude'])}")
-            self.oldApAltitude = self.instr['ApAltitude']
-        # transponder
-        if self.instr['Transponder'] != self.oldTransponder:
-            self.output.speak(F'Squawk {self.instr["Transponder"]:x}')
-            self.oldTransponder = self.instr['Transponder']
-        # next waypoint
-        if self.instr['NextWPId'] != self.oldWP:
-            time.sleep(3)
+        try:
+            flapsTransit = False
+            # Get data from simulator
             self.getPyuipcData()
-            self.readWaypoint(0)
-            self.oldWP = self.instr['NextWPId']
-        # read autobrakes
-        if self.instr['AutoBrake'] != self.oldAutoBrake:
-            if self.instr['AutoBrake'] == 0:
-                brake = 'R T O'
-            elif self.instr['AutoBrake'] == 1:
-                brake = 'off'
-            elif self.instr['AutoBrake'] == 2:
-                brake = 'position 1'
-            elif self.instr['AutoBrake'] == 3:
-                brake = 'position 2'
-            elif self.instr['AutoBrake'] == 4:
-                brake = 'position 3'
-            elif self.instr['AutoBrake'] == 5:
-                brake = 'maximum'
-            self.output.speak (F'Auto brake {brake}')
-            self.oldAutoBrake = self.instr['AutoBrake']
-        if self.instr['ElevatorTrim'] != self.oldElevatorTrim and self.instr['ApMaster'] != 1 and self.trimEnabled:
-            if self.instr['ElevatorTrim'] < 0:
-                self.output.speak (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
-            else:
-                self.output.speak (F"Trim up {round (self.instr['ElevatorTrim'], 2)}")
+            # detect if aircraft is on ground or airborne.
+            if not self.instr['OnGround'] and not self.airborne:
+                self.output.speak ("Positive rate.")
+                
+                self.airborne = True
+            # read parking Brakes
+            
+            if self.oldBrake != self.instr['ParkingBrake']:
+                if self.instr['ParkingBrake']:
+                    self.output.speak ("parking Brake on.")
+                    
+                else:
+                    self.output.speak ("parking Brake off.")
+                self.oldBrake = self.instr['ParkingBrake']
 
-            self.oldElevatorTrim = self.instr['ElevatorTrim']
+            
+            # landing gear
+            if self.instr['Gear'] != self.oldGear:
+                if self.instr['Gear'] == 0:
+                    self.output.speak ('Gear up.')
+                elif self.instr['Gear'] == 16383:
+                    self.output.speak ('Gear down.')
+                self.oldGear = self.instr['Gear']
+
+            # if flaps position has changed, flaps are in motion. We need to wait until they have stopped moving to read the value.
+            if self.instr['Flaps'] != self.old_flaps:
+                flapsTransit = True
+                while flapsTransit:
+                    self.getPyuipcData()
+                    if self.instr['Flaps'] != self.old_flaps:
+                        self.old_flaps = self.instr['Flaps']
+                        time.sleep (0.2)
+                    else:
+                        flapsTransit = False
+                self.output.speak (F'Flaps {self.instr["Flaps"]:.0f}')
+                self.old_flaps = self.instr['Flaps']
+            # announce radio frequency changes
+            if self.instr['Com1Freq'] != self.oldCom1:
+                self.output.speak (F"com 1, {self.instr['Com1Freq']}")
+                self.oldCom1 = self.instr['Com1Freq']
+            # spoilers
+            if self.instr['SpoilersArm'] == 1 and self.oldSpoilers != self.instr['SpoilersArm']:
+                self.output.speak ("spoilers armed.")
+                self.oldSpoilers = self.instr['SpoilersArm']
+            if self.oldApAltitude != self.instr['ApAltitude']:
+                self.output.speak(F"Altitude set to {round(self.instr['ApAltitude'])}")
+                self.oldApAltitude = self.instr['ApAltitude']
+            # transponder
+            if self.instr['Transponder'] != self.oldTransponder:
+                self.output.speak(F'Squawk {self.instr["Transponder"]:x}')
+                self.oldTransponder = self.instr['Transponder']
+            # next waypoint
+            if self.instr['NextWPId'] != self.oldWP:
+                time.sleep(3)
+                self.getPyuipcData()
+                self.readWaypoint(0)
+                self.oldWP = self.instr['NextWPId']
+            # read autobrakes
+            if self.instr['AutoBrake'] != self.oldAutoBrake:
+                if self.instr['AutoBrake'] == 0:
+                    brake = 'R T O'
+                elif self.instr['AutoBrake'] == 1:
+                    brake = 'off'
+                elif self.instr['AutoBrake'] == 2:
+                    brake = 'position 1'
+                elif self.instr['AutoBrake'] == 3:
+                    brake = 'position 2'
+                elif self.instr['AutoBrake'] == 4:
+                    brake = 'position 3'
+                elif self.instr['AutoBrake'] == 5:
+                    brake = 'maximum'
+                self.output.speak (F'Auto brake {brake}')
+                self.oldAutoBrake = self.instr['AutoBrake']
+            if self.instr['ElevatorTrim'] != self.oldElevatorTrim and self.instr['ApMaster'] != 1 and self.trimEnabled:
+                if self.instr['ElevatorTrim'] < 0:
+                    self.output.speak (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
+                else:
+                    self.output.speak (F"Trim up {round (self.instr['ElevatorTrim'], 2)}")
+
+                self.oldElevatorTrim = self.instr['ElevatorTrim']
 
 
-        self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
-        # autopilot mode switches
-        self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
-        # auto throttle
-        self.readToggle ('AutoThrottleArm', 'Auto Throttle', 'Armed', 'off')
-        # yaw damper
-        self.readToggle('ApYawDamper', 'Yaw Damper', 'active', 'off')
-        # Toga
-        self.readToggle('Toga', 'take off power', 'active', 'off')
-        self.readToggle('ApAltitudeLock', 'altitude lock', 'active', 'off')
-        self.readToggle('ApHeadingLock', 'Heading lock', 'active', 'off')
-        self.readToggle('ApNavLock', 'nav lock', 'active', 'off')
-        self.readToggle('ApFlightDirector', 'Flight Director', 'Active', 'off')
-        self.readToggle ('ApNavGPS', 'Nav gps switch', 'set to GPS', 'set to nav')
-        self.readToggle('ApAttitudeHold', 'Attitude hold', 'active', 'off')
-        self.readToggle('ApWingLeveler', 'Wing leveler', 'active', 'off')
-        self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
-        self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
-        self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
+            self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
+            # autopilot mode switches
+            self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
+            # auto throttle
+            self.readToggle ('AutoThrottleArm', 'Auto Throttle', 'Armed', 'off')
+            # yaw damper
+            self.readToggle('ApYawDamper', 'Yaw Damper', 'active', 'off')
+            # Toga
+            self.readToggle('Toga', 'take off power', 'active', 'off')
+            self.readToggle('ApAltitudeLock', 'altitude lock', 'active', 'off')
+            self.readToggle('ApHeadingLock', 'Heading lock', 'active', 'off')
+            self.readToggle('ApNavLock', 'nav lock', 'active', 'off')
+            self.readToggle('ApFlightDirector', 'Flight Director', 'Active', 'off')
+            self.readToggle ('ApNavGPS', 'Nav gps switch', 'set to GPS', 'set to nav')
+            self.readToggle('ApAttitudeHold', 'Attitude hold', 'active', 'off')
+            self.readToggle('ApWingLeveler', 'Wing leveler', 'active', 'off')
+            self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
+            self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
+            self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
+        except Exception as e:
+            logging.exception('error in automatic instrument reading')
 
 
 
@@ -689,12 +691,15 @@ class FlightFollowing:
     def readToggle(self, instrument, name, onMessage, offMessage):
         ## There are several aircraft functions that are simply on/off toggles. 
         ## This function allows reading those without a bunch of duplicate code.
-        if self.oldInstr[instrument] != self.instr[instrument]:
-            if self.instr[instrument]:
-                self.output.speak (F'{name} {onMessage}.')
-            else:
-                self.output.speak (F'{name} {offMessage}')
-            self.oldInstr[instrument] = self.instr[instrument]
+        try:
+            if self.oldInstr[instrument] != self.instr[instrument]:
+                if self.instr[instrument]:
+                    self.output.speak (F'{name} {onMessage}.')
+                else:
+                    self.output.speak (F'{name} {offMessage}')
+                self.oldInstr[instrument] = self.instr[instrument]
+        except Exception as e:
+            logging.exception(F"error in instrument toggle. Instrument was {instrument}")
 
     def secondsToText(self, secs):
         ## convert number of seconds into human readable format. Thanks to Stack Overflow for this!
@@ -708,22 +713,24 @@ class FlightFollowing:
         ("{0} second{1}, ".format(seconds, "s" if seconds!=1 else "") if seconds else "")
         return result
     def readWaypoint(self, triggered=False):
-        WPId = self.instr['NextWPId'].decode ('UTF-8')
-        if self.distance_units == '0':
-            distance = self.instr['NextWPDistance'] / 1000
-            self.output.speak (F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers')    
-        else:
-            distance = (self.instr['NextWPDistance'] / 1000)/ 1.609
-            self.output.speak(F'Next waypoint: {WPId}, distance: {distance:.1f} miles')    
-        self.output.speak (F'baring: {self.instr["NextWPBaring"]:.0f}')
-        # read estimated time enroute to next waypoint
-        strTime = self.secondsToText(self.instr['NextWPETE'])
-        self.output.speak(strTime)
-        # if we were triggered with a hotkey, read the ETA to the next waypoint.
-        if triggered:
-            self.output.speak(F'ETA: {self.instr["NextWPETA"]}')
-            self.reset_hotkeys()
-
+        try:
+            WPId = self.instr['NextWPId'].decode ('UTF-8')
+            if self.distance_units == '0':
+                distance = self.instr['NextWPDistance'] / 1000
+                self.output.speak (F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers')    
+            else:
+                distance = (self.instr['NextWPDistance'] / 1000)/ 1.609
+                self.output.speak(F'Next waypoint: {WPId}, distance: {distance:.1f} miles')    
+            self.output.speak (F'baring: {self.instr["NextWPBaring"]:.0f}')
+            # read estimated time enroute to next waypoint
+            strTime = self.secondsToText(self.instr['NextWPETE'])
+            self.output.speak(strTime)
+            # if we were triggered with a hotkey, read the ETA to the next waypoint.
+            if triggered:
+                self.output.speak(F'ETA: {self.instr["NextWPETA"]}')
+                self.reset_hotkeys()
+        except Exception as e:
+            logging.exception ("error reading waypoint info")
 
 
 
@@ -750,6 +757,9 @@ class FlightFollowing:
                     # self.reset_hotkeys()
         except KeyError:
             pass
+        except Exception as e:
+            logging.exception (F'error reading SimConnect message. {SimCMessageRaw}')
+
 
 
 
@@ -780,11 +790,11 @@ class FlightFollowing:
             else:
                 distance = 0
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
+            logging.error('latitude:{self.instr["Lat"]}, longitude:{self.instr["Long"]}')
             logging.exception('error getting nearest city: ' + str(e))
             self.output.speak ('cannot find nearest city. Geonames connection error. Check error log.')
         except requests.exceptions.HTTPError as e:
-            logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
+            logging.error('latitude:{self.instr["Lat"]}, longitude:{self.instr["Long"]}')
             logging.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
             self.output.speak ('cannot find nearest city. Geonames may be busy. Check error log.')
             
@@ -792,7 +802,7 @@ class FlightFollowing:
         ## If so, announce body of water.
         ## We will continue to announce over water until the maximum radius of the search is reached.
         try:
-            response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
+            response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.instr['Lat'],self.instr['Long'], self.geonames_username))
             data = response.json()
             if 'ocean' in data and distance >= 1:
                 self.output.speak ('currently over {}'.format(data['ocean']['name']))
@@ -803,7 +813,7 @@ class FlightFollowing:
             
         ## Read time zone information
         try:
-            response = requests.get('http://api.geonames.org/timezoneJSON?lat={}&lng={}&username={}'.format(self.lat,self.lon, self.geonames_username))
+            response = requests.get('http://api.geonames.org/timezoneJSON?lat={}&lng={}&username={}'.format(self.instr['Lat'],self.instr['Long'], self.geonames_username))
             data = response.json()
             
             if 'timezoneId' in data:
@@ -822,37 +832,40 @@ class FlightFollowing:
     def getPyuipcData(self, dt=0):
         
         if pyuipcImported:
-            self.instr = dict(zip(self.InstrOffsets.keys(), pyuipc.read(self.pyuipcOffsets)))
-            # prepare instrumentation variables
-            hexCode = hex(self.instr['Com1Freq'])[2:]
-            self.instr['Com1Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
-            hexCode = hex(self.instr['Com2Freq'])[2:]
-            self.instr['Com2Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
-            # lat lon
-            self.instr['Lat'] = self.instr['Lat'] * (90.0/(10001750.0 * 65536.0 * 65536.0))
-            self.instr['Long'] = self.instr['Long'] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
-            self.instr['Flaps'] = self.instr['Flaps'] / 256
-            self.instr['OnGround'] = bool(self.instr['OnGround'])
-            self.instr['ParkingBrake'] = bool(self.instr['ParkingBrake'])
-            # self.ASLAltitude = round(results[8] * 3.28084)
-            self.instr['Altitude'] = round(self.instr['Altitude'])
-            self.instr['GroundAltitude'] = self.instr['GroundAltitude'] / 256 * 3.28084
-            self.instr['ApHeading'] = round(self.instr['ApHeading']/65536*360)
-            self.instr['ApAltitude'] = self.instr['ApAltitude'] / 65536 * 3.28084
-            self.headingTrue = floor(((self.instr['Heading'] * 360) / (65536 * 65536)) + 0.5)
-            self.headingCorrected = self.instr['Heading'] - (self.instr['MagneticVariation'] * 65536)
-            self.headingCorrected = floor(self.headingCorrected * 360 / (65536 * 65536) + 0.5)
-            self.instr['AirspeedTrue'] = round(self.instr['AirspeedTrue'] / 128)
-            self.instr['AirspeedIndicated'] = round(self.instr['AirspeedIndicated'] / 128)
-            self.instr['AirspeedMach'] = self.instr['AirspeedMach'] / 20480
-            self.instr['NextWPETA'] = time.strftime('%H:%M', time.localtime(self.instr['NextWPETA']))
-            self.instr['NextWPBaring'] = degrees(self.instr['NextWPBaring'])
-            self.instr['DestETE'] =self.secondsToText(self.instr['DestETE'])
-            self.instr['DestETA'] = time.strftime('%H:%M', time.localtime(self.instr['DestETA']))
-            self.instr['ElevatorTrim'] = degrees(self.instr['ElevatorTrim'])
-            self.instr['VerticalSpeed'] = round ((self.instr['VerticalSpeed'] * 3.28084) * -1, 0)
-            self.tempC = round(self.instr['AirTemp'] / 256, 0)
-            self.tempF = round(9.0/5.0 * self.tempC + 32)
+            try:
+                self.instr = dict(zip(self.InstrOffsets.keys(), pyuipc.read(self.pyuipcOffsets)))
+                # prepare instrumentation variables
+                hexCode = hex(self.instr['Com1Freq'])[2:]
+                self.instr['Com1Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
+                hexCode = hex(self.instr['Com2Freq'])[2:]
+                self.instr['Com2Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
+                # lat lon
+                self.instr['Lat'] = self.instr['Lat'] * (90.0/(10001750.0 * 65536.0 * 65536.0))
+                self.instr['Long'] = self.instr['Long'] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
+                self.instr['Flaps'] = self.instr['Flaps'] / 256
+                self.instr['OnGround'] = bool(self.instr['OnGround'])
+                self.instr['ParkingBrake'] = bool(self.instr['ParkingBrake'])
+                # self.ASLAltitude = round(results[8] * 3.28084)
+                self.instr['Altitude'] = round(self.instr['Altitude'])
+                self.instr['GroundAltitude'] = self.instr['GroundAltitude'] / 256 * 3.28084
+                self.instr['ApHeading'] = round(self.instr['ApHeading']/65536*360)
+                self.instr['ApAltitude'] = self.instr['ApAltitude'] / 65536 * 3.28084
+                self.headingTrue = floor(((self.instr['Heading'] * 360) / (65536 * 65536)) + 0.5)
+                self.headingCorrected = self.instr['Heading'] - (self.instr['MagneticVariation'] * 65536)
+                self.headingCorrected = floor(self.headingCorrected * 360 / (65536 * 65536) + 0.5)
+                self.instr['AirspeedTrue'] = round(self.instr['AirspeedTrue'] / 128)
+                self.instr['AirspeedIndicated'] = round(self.instr['AirspeedIndicated'] / 128)
+                self.instr['AirspeedMach'] = self.instr['AirspeedMach'] / 20480
+                self.instr['NextWPETA'] = time.strftime('%H:%M', time.localtime(self.instr['NextWPETA']))
+                self.instr['NextWPBaring'] = degrees(self.instr['NextWPBaring'])
+                self.instr['DestETE'] =self.secondsToText(self.instr['DestETE'])
+                self.instr['DestETA'] = time.strftime('%H:%M', time.localtime(self.instr['DestETA']))
+                self.instr['ElevatorTrim'] = degrees(self.instr['ElevatorTrim'])
+                self.instr['VerticalSpeed'] = round ((self.instr['VerticalSpeed'] * 3.28084) * -1, 0)
+                self.tempC = round(self.instr['AirTemp'] / 256, 0)
+                self.tempF = round(9.0/5.0 * self.tempC + 32)
+            except Exception as e:
+                logging.exception ("error reading instrument data")
 
 
 
@@ -869,7 +882,7 @@ class FlightFollowing:
                 self.attitude['Pitch'] = self.attitude['Pitch'] * 360 / (65536 * 65536)
                 self.attitude['Bank'] = self.attitude['Bank'] * 360 / (65536 * 65536)
             except Exception as e:
-                pass
+                logging.exception ('error reading simconnect message data')
 
         else:
             self.logger.error ('FSUIPC not found! Exiting')
