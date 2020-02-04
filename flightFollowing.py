@@ -242,6 +242,8 @@ class FlightFollowing:
         self.oldAutoBrake = None
         self.oldGear = 16383
         self.oldElevatorTrim = None
+        self.oldRCMsg = None
+
         self.calloutsHigh = [2500, 1000, 500, 400, 300, 200, 100]
         self.calloutsLow = [50, 40, 30, 20, 10]
         self.calloutState = {
@@ -771,23 +773,51 @@ class FlightFollowing:
         try:
             if self.SimCEnabled:
                 if self.oldSimCChanged != self.SimCData['SimCChanged'] or triggered == 1:
-                    i = 1
-                    SimCMessageRaw = self.SimCMessage[:self.SimCData['SimCLength']]
-                    SimCMessage = SimCMessageRaw.split('\x00')
-                    for index, message in enumerate(SimCMessage):
-                        if index < 2 and message != "":
-                            self.output.speak(f'{message}')
-                        elif message != "":
-                            self.output.speak(f'{i}: {message}')
-                            i += 1
+                    if self.SimCData['SimCType'] == 768:
+                        self.readRC4()
+                    elif self.SimCData['SimCType'] == 512:
+                        self.readSimCMenu()
+                    elif self.SimCData['SimCType'] == 257:
+                        self.readActivesky()
 
-                    self.oldSimCChanged = self.SimCData['SimCChanged']
-                    if triggered == 1:
-                        self.reset_hotkeys()
+                self.oldSimCChanged = self.SimCData['SimCChanged']
+                if triggered == 1:
+                    self.reset_hotkeys()
             # else:
                     # self.reset_hotkeys()
         except KeyError:
             pass
+
+
+    def readSimCMenu(self):
+            i = 1
+            SimCMessageRaw = self.SimCMessage[:self.SimCData['SimCLength']]
+            SimCMessage = SimCMessageRaw.split('\x00')
+            for index, message in enumerate(SimCMessage):
+                if index < 2 and message != "":
+                    self.output.speak(f'{message}')
+                elif message != "":
+                    self.output.speak(f'{i}: {message}')
+                    i += 1
+    
+    def readRC4(self):
+        msgUpdated = False
+        msgRaw = self.SimCMessage[:self.SimCData['SimCLength']]
+        msg = msgRaw.splitlines()
+        # logging.error(F'{msg}')
+        # breakpoint()
+        if self.oldRCMsg != msg[1]:
+            msgUpdated = True
+        for i, message in enumerate(msg):
+            if i == 0 or message == "" or '<' in message:
+                continue
+            if message != "" and msgUpdated == True:
+                self.output.speak (message.replace('\x00', ''))
+        self.oldRCMsg = msg[1]
+    def readActivesky(self):
+        msgRaw = self.SimCMessage[:self.SimCData['SimCLength']]
+        self.output.speak (msgRaw.replace('\x00', ''))
+
 
 
 
@@ -901,7 +931,7 @@ class FlightFollowing:
             try:
                 if self.SimCEnabled:
                     self.SimCData = dict(zip(self.SimCOffsets.keys(), pyuipc.read(self.pyuipcSIMC)))
-                    self.SimCMessage = self.SimCData['SimCData'].decode ('UTF-8')
+                    self.SimCMessage = self.SimCData['SimCData'].decode ('UTF-8', 'ignore')
 
                 # Read attitude
                 self.attitude = dict(zip(self.AttitudeOffsets.keys(), pyuipc.read(self.pyuipcAttitude)))
