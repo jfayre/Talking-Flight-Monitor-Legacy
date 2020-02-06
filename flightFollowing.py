@@ -187,7 +187,7 @@ class FlightFollowing:
                 'tas_key': 't',
                 'mach_key': 'm',
                 'vspeed_key': 'v',
-                'airtemp_key': 'o,
+                'airtemp_key': 'o',
                 'trim_key': 'shift+t',
                 'city_key': 'c',
                 'waypoint_key': 'w',
@@ -815,12 +815,12 @@ class FlightFollowing:
         msgUpdated = False
         msgRaw = self.SimCMessage[:self.SimCData['SimCLength']]
         msg = msgRaw.splitlines()
-        # logging.error(F'{msg}')
+        logging.error(F'{msg}')
         # breakpoint()
-        if self.oldRCMsg != msg[1]:
+        if self.oldRCMsg != msg[1] and msg[1][:3] != 'Rwy' and msg[1][:1] != '<':
             msgUpdated = True
         for i, message in enumerate(msg):
-            if i == 0 or message == "" or '<' in message:
+            if i == 0 or message == "" or '<' in message or '/' in message:
                 continue
             if message != "" and msgUpdated == True:
                 self.output.speak (message.replace('\x00', ''))
