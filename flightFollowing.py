@@ -484,46 +484,41 @@ class FlightFollowing:
         try:
             if instrument == 'asl':
                 self.output.speak(F'{self.instr["Altitude"]} feet A S L')
-                self.reset_hotkeys()
                 
                 
             elif instrument == 'agl':
                 AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
                 self.output.speak(F"{round(AGLAltitude)} feet A G L")
-                self.reset_hotkeys()
             elif instrument == 'heading':
                 self.output.speak(F'Heading: {self.headingCorrected}')
-                self.reset_hotkeys()
             elif instrument == 'wp':
                 self.readWaypoint(triggered=True)
-                self.reset_hotkeys()
             elif instrument == 'tas':
                 self.output.speak (F'{self.instr["AirspeedTrue"]} knots true')
-                self.reset_hotkeys()
             elif instrument == 'ias':
                 self.output.speak (F'{self.instr["AirspeedIndicated"]} knots indicated')
-                self.reset_hotkeys()
             elif instrument == 'mach':
                 self.output.speak (F'Mach {self.instr["AirspeedMach"]:0.2f}')
-                self.reset_hotkeys()
             elif instrument == 'vspeed':
                 self.output.speak (F"{self.instr['VerticalSpeed']:.0f} feet per minute")
-                self.reset_hotkeys()
             elif instrument =='dest':
                 self.output.speak(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
-                self.reset_hotkeys()
             elif instrument == 'airtemp':
                 self.output.speak (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
-                self.reset_hotkeys()
             elif instrument == 'toggletrim':
                 if self.trimEnabled:
                     self.output.speak ('trim announcement disabled')
                     self.trimEnabled = False
-                    self.reset_hotkeys()
                 else:
                     self.trimEnabled = True
                     self.output.speak ('trim announcement enabled')
-                    self.reset_hotkeys()
+            elif instrument == 'togglesimc':
+                if self.SimCEnabled:
+                    self.output.speak ('Sim Connect messages disabled')
+                    self.SimCEnabled = False
+                else:
+                    self.SimCEnabled = True
+                    self.output.speak ('Sim Connect messages enabled')
 
             elif instrument == 'director':
                 if self.directorEnabled:
@@ -532,26 +527,22 @@ class FlightFollowing:
                     self.PitchUpPlayer.pause()
                     self.PitchDownPlayer.pause()
                     self.BankPlayer.pause ()
-                    self.reset_hotkeys()
                     self.output.speak ('flight director mode disabled.')
                 else:
                     pyglet.clock.schedule_interval(self.sonifyFlightDirector, 0.2)
                     self.directorEnabled = True
                     self.output.speak ('flight director mode enabled')
-                    self.reset_hotkeys()
 
             
             elif instrument == 'manual':
                 if self.manualEnabled:
                     pyglet.clock.unschedule(self.manualFlight)
                     self.manualEnabled = False
-                    self.reset_hotkeys()
                     self.output.speak ('manual flight  mode disabled.')
                 else:
                     pyglet.clock.schedule_interval(self.manualFlight, 5)
                     self.manualEnabled = True
                     self.output.speak ('manual flight mode enabled')
-                    self.reset_hotkeys()
 
             elif instrument == 'attitude':
                 if self.sonifyEnabled:
@@ -561,13 +552,12 @@ class FlightFollowing:
                     self.PitchDownPlayer.pause()
                     self.BankPlayer.pause ()
                     self.sonifyEnabled = False
-                    self.reset_hotkeys()
                     self.output.speak ('attitude mode disabled.')
                 else:
                     pyglet.clock.schedule_interval(self.sonifyPitch, 0.2)
                     self.sonifyEnabled = True
                     self.output.speak ('attitude mode enabled')
-                    self.reset_hotkeys()
+            self.reset_hotkeys()
         except Exception as e:
             logging.exception(F'error in hotkey handler. Instrument was {instrument} ' + str(e))
                 
@@ -587,7 +577,7 @@ class FlightFollowing:
             self.tasKey = keyboard.add_hotkey (self.config['hotkeys']['tas_key'], self.keyHandler, args=(['tas']), suppress=True, timeout=2)
             self.iasKey = keyboard.add_hotkey (self.config['hotkeys']['ias_key'], self.keyHandler, args=(['ias']), suppress=True, timeout=2)
             self.machKey = keyboard.add_hotkey (self.config['hotkeys']['mach_key'], self.keyHandler, args=(['mach']), suppress=True, timeout=2)
-            self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=([0, 1]), suppress=True, timeout=2)
+            self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=([0, True]), suppress=True, timeout=2)
             self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
             self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
             self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
@@ -780,18 +770,25 @@ class FlightFollowing:
 
         
 
-    def readSimConnectMessages(self, dt,triggered = 0):
+    def readSimConnectMessages(self, dt,triggered = False):
         try:
             if self.SimCEnabled:
-                if self.oldSimCChanged != self.SimCData['SimCChanged'] or triggered == 1:
+                if self.oldSimCChanged != self.SimCData['SimCChanged'] or triggered:
                     if self.SimCData['SimCType'] == 768:
-                        self.readRC4()
-                    elif self.SimCData['SimCType'] == 512:
-                        self.readSimCMenu()
-                    elif self.SimCData['SimCType'] == 257:
-                        self.readActivesky()
+                        self.readRC4(triggered=triggered)
+                    else:
+                        i = 1
+                        SimCMessageRaw = self.SimCMessage[:self.SimCData['SimCLength']]
+                        SimCMessage = SimCMessageRaw.split('\x00')
+                        for index, message in enumerate(SimCMessage):
+                            if index < 2 and message != "":
+                                self.output.speak(f'{message}')
+                            elif message != "":
+                                self.output.speak(f'{i}: {message}')
+                                i += 1
 
-                self.oldSimCChanged = self.SimCData['SimCChanged']
+
+                    self.oldSimCChanged = self.SimCData['SimCChanged']
                 if triggered == 1:
                     self.reset_hotkeys()
             # else:
@@ -800,18 +797,8 @@ class FlightFollowing:
             pass
 
 
-    def readSimCMenu(self):
-            i = 1
-            SimCMessageRaw = self.SimCMessage[:self.SimCData['SimCLength']]
-            SimCMessage = SimCMessageRaw.split('\x00')
-            for index, message in enumerate(SimCMessage):
-                if index < 2 and message != "":
-                    self.output.speak(f'{message}')
-                elif message != "":
-                    self.output.speak(f'{i}: {message}')
-                    i += 1
     
-    def readRC4(self):
+    def readRC4(self, triggered = False):
         msgUpdated = False
         msgRaw = self.SimCMessage[:self.SimCData['SimCLength']]
         msg = msgRaw.splitlines()
@@ -819,17 +806,14 @@ class FlightFollowing:
         # breakpoint()
         if self.oldRCMsg != msg[1] and msg[1][:3] != 'Rwy' and msg[1][:1] != '<':
             msgUpdated = True
+        if triggered:
+            msgUpdated = True
         for i, message in enumerate(msg):
             if i == 0 or message == "" or '<' in message or '/' in message:
                 continue
             if message != "" and msgUpdated == True:
                 self.output.speak (message.replace('\x00', ''))
         self.oldRCMsg = msg[1]
-    def readActivesky(self):
-        msgRaw = self.SimCMessage[:self.SimCData['SimCLength']]
-        self.output.speak (msgRaw.replace('\x00', ''))
-
-
 
 
     ## Announce flight following info
