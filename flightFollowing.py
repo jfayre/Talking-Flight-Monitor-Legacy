@@ -189,6 +189,7 @@ class FlightFollowing:
                 'vspeed_key': 'v',
                 'airtemp_key': 'o',
                 'trim_key': 'shift+t',
+                'mute_simc_key': 'Shift+r',
                 'city_key': 'c',
                 'waypoint_key': 'w',
                 'dest_key': 'd',
@@ -265,6 +266,8 @@ class FlightFollowing:
             self.altFlag[i] = False
 
         self.trimEnabled = True
+        self.MuteSimC = False
+        self.CachedMessage = []
 
         # set up tone arrays and player objects for sonification.
         # arrays for holding tone frequency values
@@ -513,12 +516,12 @@ class FlightFollowing:
                     self.trimEnabled = True
                     self.output.speak ('trim announcement enabled')
             elif instrument == 'togglesimc':
-                if self.SimCEnabled:
-                    self.output.speak ('Sim Connect messages disabled')
-                    self.SimCEnabled = False
+                if self.MuteSimC:
+                    self.output.speak ('Sim Connect messages unmuted')
+                    self.MuteSimC = False
                 else:
-                    self.SimCEnabled = True
-                    self.output.speak ('Sim Connect messages enabled')
+                    self.MuteSimC = True
+                    self.output.speak ('Sim Connect messages muted')
 
             elif instrument == 'director':
                 if self.directorEnabled:
@@ -577,7 +580,7 @@ class FlightFollowing:
             self.tasKey = keyboard.add_hotkey (self.config['hotkeys']['tas_key'], self.keyHandler, args=(['tas']), suppress=True, timeout=2)
             self.iasKey = keyboard.add_hotkey (self.config['hotkeys']['ias_key'], self.keyHandler, args=(['ias']), suppress=True, timeout=2)
             self.machKey = keyboard.add_hotkey (self.config['hotkeys']['mach_key'], self.keyHandler, args=(['mach']), suppress=True, timeout=2)
-            self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readSimConnectMessages, args=([0, True]), suppress=True, timeout=2)
+            self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readCachedSimConnectMessages, args=(), suppress=True, timeout=2)
             self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
             self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
             self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
@@ -585,6 +588,7 @@ class FlightFollowing:
             self.vspeedKey = keyboard.add_hotkey (self.config['hotkeys']['vspeed_key'], self.keyHandler, args=(['vspeed']), suppress=True, timeout=2)
             self.airtempKey = keyboard.add_hotkey (self.config['hotkeys']['airtemp_key'], self.keyHandler, args=(['airtemp']), suppress=True, timeout=2)
             self.trimKey = keyboard.add_hotkey (self.config['hotkeys']['trim_key'], self.keyHandler, args=(['toggletrim']), suppress=True, timeout=2)
+            self.MuteSimCKey = keyboard.add_hotkey (self.config['hotkeys']['mute_simconnect_key'], self.keyHandler, args=(['togglesimc']), suppress=True, timeout=2)
             winsound.Beep(500, 100)
         except Exception as e:
             logging.exception ("error in command mode.")
@@ -783,11 +787,14 @@ class FlightFollowing:
                         for index, message in enumerate(SimCMessage):
                             if index < 2 and message != "":
                                 self.output.speak(f'{message}')
+                                self.CachedMessage[index] = message
                             elif message != "":
                                 self.output.speak(f'{i}: {message}')
+                                self.CachedMessage[index] = f'{i}: {message}'
                                 i += 1
 
 
+                    self.CachedMessage[index+1] = 'EOM'
                     self.oldSimCChanged = self.SimCData['SimCChanged']
                 if triggered == 1:
                     self.reset_hotkeys()
@@ -795,6 +802,13 @@ class FlightFollowing:
                     # self.reset_hotkeys()
         except KeyError:
             pass
+
+def readCachedSimConnectMessages(self):
+    for i in self.CachedMessage:
+        if i == 'EOM':
+            continue
+    else:
+        self.output.speak (i)
 
 
     
@@ -813,6 +827,8 @@ class FlightFollowing:
                 continue
             if message != "" and msgUpdated == True:
                 self.output.speak (message.replace('\x00', ''))
+                self.CachedMessage[index] = message
+        self.CachedMessage[index+1] = 'EOM'
         self.oldRCMsg = msg[1]
 
 
