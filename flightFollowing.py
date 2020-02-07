@@ -19,7 +19,7 @@
 # this program.	 If not, see <https://www.gnu.org/licenses/>.
 #==============================================================================
 
-from __future__ import division
+# from __future__ import division
 
 
 import logging
@@ -31,9 +31,11 @@ import warnings
 import winsound
 from configparser import ConfigParser
 
-from contextlib import closing
+# from contextlib import closing
+from win32event import CreateMutex
+from win32api import GetLastError
+from winerror import ERROR_ALREADY_EXISTS
 from math import degrees, floor
-
 import keyboard
 import requests
 
@@ -53,7 +55,14 @@ logging.basicConfig(filename = 'error.log', level = logging.DEBUG)
 # Set encoding
 #reload(sys)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
-
+# detect if another copy is running
+handle = CreateMutex(None, 1, 'FlightFollowing')
+if GetLastError(  ) == ERROR_ALREADY_EXISTS:
+    output = sapi5.SAPI5()
+    output.speak('Error! A version of Flight Following is already running. Exiting!')
+    time.sleep(5)
+    sys.exit(1)
+                
 # Import pyuipc package (except failure with debug mode). 
 
 
@@ -131,6 +140,11 @@ class FlightFollowing:
                'ElevatorTrim': (0x2ea0, 'f'), # elevator trim deflection in radions
                'VerticalSpeed': (0x0842, 'h'), # 2 byte Vertical speed in metres per minute, but with –ve for UP, +ve for DOWN. Multiply by 3.28084 and reverse the sign for the normal fpm measure.
                'AirTemp': (0x0e8c, 'h'), # Outside air temp Outside Air Temperature (OAT), degrees C * 256 (“Ambient Temperature
+               'Nav1GS': (0x0c4c, 'b'), # nav 1 GS alive flag
+               'Nav1Flags': (0x0c4d, 'b'), # nav 1 code flags
+               'Nav1Signal': (0x0c52, 'u'), # Nav 1 signal strength
+               'Altimeter': (0x0330, 'H'), # Altimeter pressure setting (“Kollsman” window). As millibars (hectoPascals) * 16
+               'Doors': (0x3367, 'b'), # byte indicating open exits. One bit per door.
 
     }
 
@@ -196,7 +210,7 @@ class FlightFollowing:
                 'attitude_key': '[',
                 'manual_key': 'Shift+m',
                 'director_key': 'shift+f',
-                'message_key':'r'}
+                'message_key': 'r'}
 
         # First log message.
         self.logger.info('Flight Following started')
@@ -245,6 +259,13 @@ class FlightFollowing:
         self.oldGear = 16383
         self.oldElevatorTrim = None
         self.oldRCMsg = None
+        self.GSDetected = False
+        self.LocDetected = False
+        self.HasGS = False
+        self.HasLoc = False
+
+        self.oldHPA = 0
+
 
         self.calloutsHigh = [2500, 1000, 500, 400, 300, 200, 100]
         self.calloutsLow = [50, 40, 30, 20, 10]
@@ -267,7 +288,7 @@ class FlightFollowing:
 
         self.trimEnabled = True
         self.MuteSimC = False
-        self.CachedMessage = []
+        self.CachedMessage = {}
 
         # set up tone arrays and player objects for sonification.
         # arrays for holding tone frequency values
@@ -324,8 +345,8 @@ class FlightFollowing:
 
             
 
-        if self.FFEnabled:
-            self.AnnounceInfo(triggered=0, dt=0)
+        #if self.FFEnabled:
+            # self.AnnounceInfo(triggered=0, dt=0)
         
         # initially read simulator data so we can populate instrument dictionaries
         self.getPyuipcData()
@@ -699,7 +720,24 @@ class FlightFollowing:
 
             self.oldElevatorTrim = self.instr['ElevatorTrim']
 
-
+        if self.AltHPA != self.oldHPA:
+            self.output.speak (F'Altimeter: {self.AltHPA}, {self.AltInches} inches')
+            self.oldHPA = self.AltHPA
+        # read nav1 info
+        if self.instr['Nav1Signal'] == 255 and self.LocDetected == False:
+            self.output.speak (F'localiser is alive')
+            self.LocDetected = True
+        if self.instr['Nav1GS'] and self.GSDetected == False:
+            self.output.speak (F'Glide slope is alive.')
+            self.GSDetected = True
+        
+        
+        if self.instr['Nav1Type'] and self.HasLoc == False:
+            self.output.speak (F'Nav 1 has localiser')
+            self.HasLoc = True
+        if self.instr['Nav1GSAvailable'] and self.HasGS == False:
+            self.output.speak (F'Nav 1 has glide slope')
+            self.HasGS = True
         self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
         # autopilot mode switches
         self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
@@ -719,6 +757,10 @@ class FlightFollowing:
         self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
         self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
         self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
+        self.readToggle('Door1', 'Door 1', 'open', 'closed')
+        self.readToggle('Door2', 'Door 2', 'open', 'closed')
+        self.readToggle('Door3', 'Door 3', 'open', 'closed')
+        self.readToggle('Door4', 'Door 4', 'open', 'closed')
         # read altitude every 1000 feet
         for i in range (1000, 65000, 1000):
             if self.instr['Altitude'] >= i - 10 and self.instr['Altitude'] <= i + 10 and self.altFlag[i] == False:
@@ -775,9 +817,17 @@ class FlightFollowing:
         
 
     def readSimConnectMessages(self, dt,triggered = False):
+        ## reads any SimConnect messages that don't require special processing.
+        ## right now, rc4 is the only message type that needs special processing.
         try:
+            RCMessage = False
+            index = 0
             if self.SimCEnabled:
+                # If the change is due to an old message clearing, just return without doing anything.
+                if self.SimCData['SimCLength'] == 0:
+                    return
                 if self.oldSimCChanged != self.SimCData['SimCChanged'] or triggered:
+                    # if this is an rc message, handle that.
                     if self.SimCData['SimCType'] == 768:
                         self.readRC4(triggered=triggered)
                     else:
@@ -794,7 +844,8 @@ class FlightFollowing:
                                 i += 1
 
 
-                    self.CachedMessage[index+1] = 'EOM'
+                    if not RCMessage:
+                        self.CachedMessage[index] = 'EOM'
                     self.oldSimCChanged = self.SimCData['SimCChanged']
                 if triggered == 1:
                     self.reset_hotkeys()
@@ -803,14 +854,14 @@ class FlightFollowing:
         except KeyError:
             pass
 
-def readCachedSimConnectMessages(self):
-    for i in self.CachedMessage:
-        if i == 'EOM':
-            continue
-    else:
-        self.output.speak (i)
+    def readCachedSimConnectMessages(self):
 
-
+        for i, message in self.CachedMessage.items():
+            if message == 'EOM':
+                break
+            else:
+                self.output.speak (message)
+        self.reset_hotkeys()
     
     def readRC4(self, triggered = False):
         msgUpdated = False
@@ -822,13 +873,13 @@ def readCachedSimConnectMessages(self):
             msgUpdated = True
         if triggered:
             msgUpdated = True
-        for i, message in enumerate(msg):
-            if i == 0 or message == "" or '<' in message or '/' in message:
+        for index, message in enumerate(msg):
+            if index == 0 or message == "" or '<' in message or '/' in message:
                 continue
             if message != "" and msgUpdated == True:
                 self.output.speak (message.replace('\x00', ''))
                 self.CachedMessage[index] = message
-        self.CachedMessage[index+1] = 'EOM'
+        self.CachedMessage[index] = 'EOM'
         self.oldRCMsg = msg[1]
 
 
@@ -933,6 +984,18 @@ def readCachedSimConnectMessages(self):
             self.tempC = round(self.instr['AirTemp'] / 256, 0)
             self.tempF = round(9.0/5.0 * self.tempC + 32)
             self.AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
+            self.Nav1Bits = list(map(int, '{0:08b}'.format(self.instr['Nav1Flags'])))
+            self.instr['Nav1Type'] = self.Nav1Bits[0]
+            self.instr['Nav1GSAvailable'] = self.Nav1Bits[6]
+            self.DoorBits = list(map(int, '{0:08b}'.format(self.instr['Doors'])))
+            self.instr['Door1'] = self.DoorBits[7]
+            self.instr['Door2'] = self.DoorBits[6]
+            self.instr['Door3'] = self.DoorBits[5]
+            self.instr['Door4'] = self.DoorBits[4]
+        
+            self.AltQNH = self.instr['Altimeter'] / 16
+            self.AltHPA = floor(self.AltQNH + 0.5)
+            self.AltInches = floor(((100 * self.AltQNH * 29.92) / 1013.2) + 0.5)
 
 
 
