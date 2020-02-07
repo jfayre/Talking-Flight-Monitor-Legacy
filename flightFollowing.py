@@ -137,6 +137,7 @@ class FlightFollowing:
                'DestETA': (0x619c,'u'), # Destination ETA in seconds (localtime)
                'RouteDistance': (0x61a0,'f'), # route total distance in meters
                'FuelBurn': (0x61a8,'f'), # estimated fuel burn in gallons
+               'FuelQuantity': (0x126c, 'u'), # Fuel: total quantity weight in pounds (32-bit integer)
                'ElevatorTrim': (0x2ea0, 'f'), # elevator trim deflection in radions
                'VerticalSpeed': (0x0842, 'h'), # 2 byte Vertical speed in metres per minute, but with –ve for UP, +ve for DOWN. Multiply by 3.28084 and reverse the sign for the normal fpm measure.
                'AirTemp': (0x0e8c, 'h'), # Outside air temp Outside Air Temperature (OAT), degrees C * 256 (“Ambient Temperature
@@ -188,8 +189,12 @@ class FlightFollowing:
                 'read_instrumentation':'1',
                 '# Read SimConnect messages. Not compatible with FSX and requires latest FSUIPC.':None,
                 'read_simconnect':'1',
+                '# GPWS callouts.': None,
+                'read_gpws': '1',
                 '# time interval for reading of nearest city, in minutes':None,
-                'interval': '10',
+                'flight_following_interval': '10',
+                '# Time interval between manual flight announcements, in seconds': None,
+                'manual_interval': '5',
                 '# Distance units: 0 - Kilometers, 1 - Miles':None,
                 'distance_units': '0'}
         self.default_config['hotkeys'] = {'# command key: This key must be pressed before the other commands listed below':None,
@@ -203,13 +208,14 @@ class FlightFollowing:
                 'vspeed_key': 'v',
                 'airtemp_key': 'o',
                 'trim_key': 'shift+t',
-                'mute_simc_key': 'Shift+r',
+                'mute_simconnect_key': 'Shift+r',
                 'city_key': 'c',
                 'waypoint_key': 'w',
                 'dest_key': 'd',
                 'attitude_key': '[',
                 'manual_key': 'Shift+m',
                 'director_key': 'shift+f',
+                'toggle_gpws_key': 'shift+a',
                 'message_key': 'r'}
 
         # First log message.
@@ -358,7 +364,7 @@ class FlightFollowing:
         try:
             # Start closest city loop if enabled.
             if self.FFEnabled:
-                pyglet.clock.schedule_interval(self.AnnounceInfo, self.interval * 60)
+                pyglet.clock.schedule_interval(self.AnnounceInfo, self.FFInterval * 60)
             # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
             if self.InstrEnabled:
                 pyglet.clock.schedule_interval(self.readInstruments, 0.2)
@@ -367,9 +373,7 @@ class FlightFollowing:
             # start simConnect message reading loop
             if self.SimCEnabled:
                 pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
-            self.calloutsEnabled = True
             if self.calloutsEnabled:
-                print ("scheduling callouts")
                 pyglet.clock.schedule_interval (self.readCallouts, 0.2)
 
 
@@ -391,7 +395,8 @@ class FlightFollowing:
                 time.sleep(8)
                 sys.exit(1)
 
-            self.interval = float(self.config.get('config','interval'))
+            self.FFInterval = float(self.config.get('config','flight_following_interval'))
+            self.ManualInterval = float(self.config.get('config','manual_interval'))
             self.distance_units = self.config.get('config','distance_units')
             self.voice_rate = int(self.config.get('config','voice_rate'))
             if self.config['config']['speech_output'] == '1':
@@ -414,6 +419,10 @@ class FlightFollowing:
             else:
                 self.SimCEnabled = False
                 self.output.speak("Sim Connect messages disabled.")
+            if self.config['config'].getboolean ('read_gpws'):
+                self.calloutsEnabled = True
+            else:
+                self.calloutsEnabled = False
     def write_config(self):
         with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
             self.default_config.write(configfile)
@@ -536,6 +545,13 @@ class FlightFollowing:
                 else:
                     self.trimEnabled = True
                     self.output.speak ('trim announcement enabled')
+            elif instrument == 'togglegpws':
+                if self.calloutsEnabled:
+                    self.output.speak ('GPWS callouts disabled')
+                    self.calloutsEnabled = False
+                else:
+                    self.calloutsEnabled = True
+                    self.output.speak ("GPWS callouts enabled")
             elif instrument == 'togglesimc':
                 if self.MuteSimC:
                     self.output.speak ('Sim Connect messages unmuted')
@@ -564,7 +580,7 @@ class FlightFollowing:
                     self.manualEnabled = False
                     self.output.speak ('manual flight  mode disabled.')
                 else:
-                    pyglet.clock.schedule_interval(self.manualFlight, 5)
+                    pyglet.clock.schedule_interval(self.manualFlight, self.ManualInterval)
                     self.manualEnabled = True
                     self.output.speak ('manual flight mode enabled')
 
@@ -593,6 +609,7 @@ class FlightFollowing:
     ## Layered key support for reading various instrumentation
     def commandMode(self):
         try:
+            self.output.speak ('command?', interrupt=True)
             self.aslKey= keyboard.add_hotkey (self.config['hotkeys']['asl_key'], self.keyHandler, args=(['asl']), suppress=True, timeout=2)
             self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=(['agl']), suppress=True, timeout=2)
             self.cityKey = keyboard.add_hotkey(self.config['hotkeys']['city_key'], self.AnnounceInfo, args=([0, 1]))
@@ -610,7 +627,8 @@ class FlightFollowing:
             self.airtempKey = keyboard.add_hotkey (self.config['hotkeys']['airtemp_key'], self.keyHandler, args=(['airtemp']), suppress=True, timeout=2)
             self.trimKey = keyboard.add_hotkey (self.config['hotkeys']['trim_key'], self.keyHandler, args=(['toggletrim']), suppress=True, timeout=2)
             self.MuteSimCKey = keyboard.add_hotkey (self.config['hotkeys']['mute_simconnect_key'], self.keyHandler, args=(['togglesimc']), suppress=True, timeout=2)
-            winsound.Beep(500, 100)
+            self.CalloutsKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_gpws_key'], self.keyHandler, args=(['togglegpws']), suppress=True, timeout=2)
+            # winsound.Beep(500, 100)
         except Exception as e:
             logging.exception ("error in command mode.")
     def reset_hotkeys(self):
