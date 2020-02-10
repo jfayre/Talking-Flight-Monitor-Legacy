@@ -4,7 +4,7 @@ For a compiled version, see the Releases section.
 ## features
 * reads closest city to the aircraft based on simulator GPS position
 * reads various aircraft instrumentation
-* sonfication of key aircraft parameters, such as pitch and bank.
+* sonification of key aircraft parameters, such as pitch and bank.
 * Sonification of flight director to aide in manual flight
 * Reads SimConnect message windows, such as the ones displayed by GSX and Pro ATC/x
 
@@ -41,9 +41,28 @@ In "Attitude mode", you will hear a constant tone in the center channel to indic
 ## Running from Source
 * Get the latest python 3.7 ([Python releases](https://www.python.org/downloads/))
 * Install the latest pywin32 release ([pywin32 releases](https://github.com/mhammond/pywin32/releases))
-    * filename: `pywin32-xxx.win32-py2.7.exe`
+    * filename: `pywin32-xxx.win32-py3.7.exe`
     * Install with the installer, not using pip!
-*Install the following pip packages: Pyglet, babel, AccessibleOutput2, keyboard, requests
+* Run the following in the root of the source directory:
+```
+pip install -r requirements.txt
+```
+
+
+## Building a Binary Version
+This requires PyInstaller and [UPX](https://upx.github.io) to be installed. Install PyInstaller like so:
+```
+pip install pyinstaller
+```
+UPX is distributed as a zip file. Uncompress it and add the unzipped folder to your PATH.
+Once PyInstaller and UPX are installed, execute the following from the root of the checkout:
+```
+pyinstaller flightFollowing.spec
+```
+If you want a version that does not automatically run as administrator, run this instead:
+```
+pyinstaller flightFollowing-no_Admin.spec
+```
 
 
 ## Bugs and issues
