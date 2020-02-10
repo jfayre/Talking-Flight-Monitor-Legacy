@@ -955,11 +955,11 @@ class FlightFollowing:
             else:
                 distance = 0
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
+            logging.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
             logging.exception('error getting nearest city: ' + str(e))
             self.output.speak ('cannot find nearest city. Geonames connection error. Check error log.')
         except requests.exceptions.HTTPError as e:
-            logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
+            logging.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
             logging.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
             self.output.speak ('cannot find nearest city. Geonames may be busy. Check error log.')
             
