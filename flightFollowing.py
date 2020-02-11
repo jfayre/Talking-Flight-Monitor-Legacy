@@ -108,6 +108,7 @@ class FlightFollowing:
                'ApSpeedHold': (0x07dc,'u'), # AP airspeed hold
                'ApAirspeed': (0x07e2,'h'), # AP airspeed in knots
                'ApNavGPS': (0x132c,'u'), # nav gps switch: 0 - nav, 1 - GPS
+               'ApApproachHold': (0x0800, 'u'), # autopilot approach hold
                'ApFlightDirector': (0x2ee0,'u'), # Flight director: 0 - off, 1 - on
                'ApFlightDirectorPitch': (0x2ee8, 'f'), # flight director pitch
                'ApFlightDirectorBank': (0x2ef0, 'f'), # flight director bank value in degrees. Right negative, left positive
@@ -144,6 +145,8 @@ class FlightFollowing:
                'Nav1GS': (0x0c4c, 'b'), # nav 1 GS alive flag
                'Nav1Flags': (0x0c4d, 'b'), # nav 1 code flags
                'Nav1Signal': (0x0c52, 'u'), # Nav 1 signal strength
+               'Nav1LocNeedle': (0x0c48, 'c'), # nav 1 localiser needle: -127 left to 127 right
+               'Nav1GSNeedle': (0x0c49, 'c'), # Nav1 glideslope needle: -119 up to 119 down
                'Altimeter': (0x0330, 'H'), # Altimeter pressure setting (“Kollsman” window). As millibars (hectoPascals) * 16
                'Doors': (0x3367, 'b'), # byte indicating open exits. One bit per door.
 
@@ -269,8 +272,10 @@ class FlightFollowing:
         self.LocDetected = False
         self.HasGS = False
         self.HasLoc = False
-
         self.oldHPA = 0
+        # grab a SAPI interface so we can use it periodically
+        self.sapi5 = sapi5.SAPI5()
+
 
 
         self.calloutsHigh = [2500, 1000, 500, 400, 300, 200, 100]
@@ -351,8 +356,8 @@ class FlightFollowing:
 
             
 
-        #if self.FFEnabled:
-            # self.AnnounceInfo(triggered=0, dt=0)
+        if self.FFEnabled:
+            self.AnnounceInfo(triggered=0, dt=0)
         
         # initially read simulator data so we can populate instrument dictionaries
         self.getPyuipcData()
@@ -636,21 +641,22 @@ class FlightFollowing:
         self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
 
     def readCallouts (self, dt=0):
-        vspeed = self.instr['VerticalSpeed']
-        callout = 0
-        if vspeed < -50:
-            for i in self.calloutsHigh:
-                if self.AGLAltitude <= i + 5 and self.AGLAltitude >= i - 5 and self.calloutState[i] == False:
-                    source = pyglet.media.load (F'sounds\\{str(i)}.wav')
-                    source.play()
-                    self.calloutState[i] = True
-                    
-            for i in self.calloutsLow:
-                if self.AGLAltitude <= i + 3 and self.AGLAltitude >= i - 3 and self.calloutState[i] == False:
-                    source = pyglet.media.load (F'sounds\\{str(i)}.wav')
-                    source.play()
-                    self.calloutState[i] = True
-                    
+        if self.calloutsEnabled:
+            vspeed = self.instr['VerticalSpeed']
+            callout = 0
+            if vspeed < -50:
+                for i in self.calloutsHigh:
+                    if self.AGLAltitude <= i + 5 and self.AGLAltitude >= i - 5 and self.calloutState[i] == False:
+                        source = pyglet.media.load (F'sounds\\{str(i)}.wav')
+                        source.play()
+                        self.calloutState[i] = True
+                        
+                for i in self.calloutsLow:
+                    if self.AGLAltitude <= i + 3 and self.AGLAltitude >= i - 3 and self.calloutState[i] == False:
+                        source = pyglet.media.load (F'sounds\\{str(i)}.wav')
+                        source.play()
+                        self.calloutState[i] = True
+                        
             
     ## read various instrumentation automatically
     def readInstruments(self, dt):
@@ -742,19 +748,21 @@ class FlightFollowing:
             self.output.speak (F'Altimeter: {self.AltHPA}, {self.AltInches} inches')
             self.oldHPA = self.AltHPA
         # read nav1 info
-        if self.instr['Nav1Signal'] == 255 and self.LocDetected == False:
-            self.output.speak (F'localiser is alive')
+        if self.instr['Nav1Signal'] == 256 and self.LocDetected == False:
+            self.sapi5.speak (F'localiser is alive')
             self.LocDetected = True
+            pyglet.clock.schedule_interval (self.readILS, 3)
         if self.instr['Nav1GS'] and self.GSDetected == False:
-            self.output.speak (F'Glide slope is alive.')
+            self.sapi5.speak (F'Glide slope is alive.')
             self.GSDetected = True
+            
         
         
         if self.instr['Nav1Type'] and self.HasLoc == False:
-            self.output.speak (F'Nav 1 has localiser')
+            self.sapi5.speak (F'Nav 1 has localiser')
             self.HasLoc = True
         if self.instr['Nav1GSAvailable'] and self.HasGS == False:
-            self.output.speak (F'Nav 1 has glide slope')
+            self.sapi5.speak (F'Nav 1 has glide slope')
             self.HasGS = True
         self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
         # autopilot mode switches
@@ -773,6 +781,7 @@ class FlightFollowing:
         self.readToggle('ApAttitudeHold', 'Attitude hold', 'active', 'off')
         self.readToggle('ApWingLeveler', 'Wing leveler', 'active', 'off')
         self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
+        self.readToggle('ApApproachHold', "approach mode", "active", "off")
         self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
         self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
         self.readToggle('Door1', 'Door 1', 'open', 'closed')
@@ -789,6 +798,24 @@ class FlightFollowing:
 
 
 
+
+    def readILS(self, dt=0):
+        GSNeedle = self.instr['Nav1GSNeedle']
+        LocNeedle = self.instr['Nav1LocNeedle']
+
+        print (GSNeedle)
+        if GSNeedle > 0 and GSNeedle < 119:
+            GSPercent = GSNeedle / 119 * 100.0
+            self.output.speak (f'up {GSPercent:.0f} percent G S I')
+        elif GSNeedle < 0 and GSNeedle > -119:
+            GSPercent = abs(GSNeedle) / 119 * 100.0
+            self.output.speak (f'down {GSPercent:.0f} percent G S I')
+        if LocNeedle > 0 and LocNeedle < 127:
+            LocPercent = GSNeedle / 127 * 100.0
+            self.output.speak (F'{LocPercent} percent right')    
+        elif LocNeedle < 0 and LocNeedle > -127:
+            LocPercent = abs(GSNeedle) / 127 * 100.0
+            self.output.speak (F'{LocPercent} percent left')    
 
 
 
@@ -928,11 +955,11 @@ class FlightFollowing:
             else:
                 distance = 0
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
+            logging.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
             logging.exception('error getting nearest city: ' + str(e))
             self.output.speak ('cannot find nearest city. Geonames connection error. Check error log.')
         except requests.exceptions.HTTPError as e:
-            logging.error('latitude:{}, longitude:{}'.format(self.lat, self.lon))
+            logging.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
             logging.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
             self.output.speak ('cannot find nearest city. Geonames may be busy. Check error log.')
             
