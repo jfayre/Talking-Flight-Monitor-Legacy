@@ -126,6 +126,7 @@ class FlightFollowing:
                'AutoBrake': (0x2f80,'b'), # Panel autobrake switch: 0=RTO, 1=Off, 2=brake1, 3=brake2, 4=brake3, 5=max
                'AirspeedTrue': (0x02b8,'u'), # TAS: True Air Speed, as knots * 128
                'AirspeedIndicated': (0x02bc,'u'), # IAS: Indicated Air Speed, as knots * 128
+               'GroundSpeed': (0x02b4, 'u'), # GS: Ground Speed, as 65536*metres/sec. Not updated in Slew mode!
                'ApYawDamper': (0x0808,'u'), # Yaw damper
                'Toga': (0x080c,'u'), # autothrottle TOGA
                'AutoThrottleArm': (0x0810,'u'), # Auto throttle arm
@@ -151,6 +152,8 @@ class FlightFollowing:
                'Doors': (0x3367, 'b'), # byte indicating open exits. One bit per door.
                'Eng1Starter': (0x3b00, 'u'), # engine 1 starter
                'Eng2Starter': (0x3a40, 'u'), # engine 2 starter
+               'Eng3Starter': (0x3980, 'u'), # engine 3 starter
+               'Eng4Starter': (0x38c0, 'u'), # engine 4 starter
                'Eng1FuelFlow': (0x2060, 'f'), # Engine 1 fuel flow in pounds per hour
                'Eng2FuelFlow': (0x2160, 'f'), # Engine 2 fuel flow in pounds per hour
                'Eng3FuelFlow': (0x2260, 'f'), # Engine 3 fuel flow in pounds per hour
@@ -159,7 +162,19 @@ class FlightFollowing:
                'Eng1N2': (0x2018, 'f'), # Engine 1 N2 value
                'Eng2N1': (0x2110, 'f'), # Engine 2 N1 value
                'Eng2N2': (0x2118, 'f'), # Engine 2 N2 value
-               'Eng1Combustion': (0x0894, 'H'), # Engine 1 ignition switch
+               'Eng3N1': (0x2210, 'f'), # Engine 3 N1 value
+               'Eng3N2': (0x2218, 'f'), # Engine 3 N2 value
+               'Eng4N1': (0x2310, 'f'), # Engine 4 N1 value
+               'Eng4N2': (0x2318, 'f'), # Engine 4 N2 value
+               'Eng1Combustion': (0x0894, 'H'), # Engine 1 ignition flag
+               'Eng2Combustion': (0x092c, 'H'), # Engine 2 ignition flag
+               'Eng3Combustion': (0x09c4, 'H'), # Engine 3 ignition flag
+               'Eng4Combustion': (0x0a5c, 'H'), # Engine 4 ignition flag
+               'Eng1ITT': (0x08f0, 'u'), # Engine 1 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
+               'PitotHeat': (0x029c, 'b'), # pitot heat switch
+
+
+
 
 
 
@@ -211,6 +226,8 @@ class FlightFollowing:
                 'read_simconnect':'1',
                 '# GPWS callouts.': None,
                 'read_gpws': '1',
+                'read_ils': '1',
+                'read_groundspeed': '0',
                 '# time interval for reading of nearest city, in minutes':None,
                 'flight_following_interval': '10',
                 '# Time interval between manual flight announcements, in seconds': None,
@@ -233,9 +250,11 @@ class FlightFollowing:
                 'waypoint_key': 'w',
                 'dest_key': 'd',
                 'attitude_key': '[',
-                'manual_key': 'Shift+m',
-                'director_key': 'shift+f',
+                'manual_key': 'Ctrl+m',
+                'director_key': 'Ctrl+f',
                 'toggle_gpws_key': 'shift+a',
+                'toggle_ils_key': 'shift+i',
+                'toggle_flaps_key': 'Shift+f',
                 'message_key': 'r'}
 
         # First log message.
@@ -317,6 +336,7 @@ class FlightFollowing:
         self.trimEnabled = True
         self.MuteSimC = False
         self.CachedMessage = {}
+        self.flapsEnabled = True
 
         # set up tone arrays and player objects for sonification.
         # arrays for holding tone frequency values
@@ -346,13 +366,14 @@ class FlightFollowing:
         self.PitchDownPlayer.queue (self.PitchDownSource)
         self.BankPlayer.queue (self.BankSource)
         self.BankPlayer.min_distance = 10
+        self.groundSpeed =False
         self.Eng1FuelFlow = False
         self.Eng2FuelFlow = False
         self.Eng3FuelFlow = False
         self.Eng4FuelFlow = False
         self.Eng1N1 = False
         self.Eng1N2 = False
-        self.eng2N1 = False
+        self.Eng2N1 = False
         self.Eng2N2 = False
         self.Eng3N1 = False
         self.Eng3N2 = False
@@ -459,6 +480,16 @@ class FlightFollowing:
                 self.calloutsEnabled = True
             else:
                 self.calloutsEnabled = False
+            if self.config['config'].getboolean ('read_ils'):
+                self.readILSEnabled = True
+            else:
+                self.readILSEnabled = False
+            if self.config['config'].getboolean ('read_groundspeed'):
+                self.groundspeedEnabled = True
+            else:
+                self.groundspeedEnabled = False
+            
+
     def write_config(self):
         with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
             self.default_config.write(configfile)
@@ -596,6 +627,20 @@ class FlightFollowing:
                     self.MuteSimC = True
                     self.output.speak ('Sim Connect messages muted')
 
+            elif instrument =="toggleflaps":
+                if self.flapsEnabled:
+                    self.output.speak ("flaps disabled")
+                    self.flapsEnabled = False
+                else:
+                    self.output.speak ("Flaps enabled")
+                    self.flapsEnabled = True
+            elif instrument =='toggleils':
+                if self.readILSEnabled:
+                    self.output.speak ('I L S info disabled')
+                    self.readILSEnabled = False
+                else:
+                    self.output.speak ('I L S info enabled')
+                    self.readILSEnabled = True
             elif instrument == 'director':
                 if self.directorEnabled:
                     pyglet.clock.unschedule(self.sonifyFlightDirector)
@@ -664,6 +709,8 @@ class FlightFollowing:
             self.trimKey = keyboard.add_hotkey (self.config['hotkeys']['trim_key'], self.keyHandler, args=(['toggletrim']), suppress=True, timeout=2)
             self.MuteSimCKey = keyboard.add_hotkey (self.config['hotkeys']['mute_simconnect_key'], self.keyHandler, args=(['togglesimc']), suppress=True, timeout=2)
             self.CalloutsKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_gpws_key'], self.keyHandler, args=(['togglegpws']), suppress=True, timeout=2)
+            self.ILSKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_ils_key'], self.keyHandler, args=(['toggleils']), suppress=True, timeout=2)
+            self.flapsKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_flaps_key'], self.keyHandler, args=(['toggleflaps']), suppress=True, timeout=2)
             # winsound.Beep(500, 100)
         except Exception as e:
             logging.exception ("error in command mode.")
@@ -720,18 +767,19 @@ class FlightFollowing:
             self.oldGear = self.instr['Gear']
 
         # if flaps position has changed, flaps are in motion. We need to wait until they have stopped moving to read the value.
-        if self.instr['Flaps'] != self.old_flaps:
-            flapsTransit = True
-            while flapsTransit:
-                self.getPyuipcData()
-                if self.instr['Flaps'] != self.old_flaps:
-                    self.old_flaps = self.instr['Flaps']
-                    time.sleep (0.2)
-                else:
-                    flapsTransit = False
-            self.output.speak (F'Flaps {self.instr["Flaps"]:.0f}')
-            self.old_flaps = self.instr['Flaps']
-        # announce radio frequency changes
+        if self.flapsEnabled:
+            if self.instr['Flaps'] != self.old_flaps:
+                flapsTransit = True
+                while flapsTransit:
+                    self.getPyuipcData()
+                    if self.instr['Flaps'] != self.old_flaps:
+                        self.old_flaps = self.instr['Flaps']
+                        time.sleep (0.2)
+                    else:
+                        flapsTransit = False
+                self.output.speak (F'Flaps {self.instr["Flaps"]:.0f}')
+                self.old_flaps = self.instr['Flaps']
+            # announce radio frequency changes
         if self.instr['Com1Freq'] != self.oldCom1:
             self.output.speak (F"com 1, {self.instr['Com1Freq']}")
             self.oldCom1 = self.instr['Com1Freq']
@@ -779,24 +827,26 @@ class FlightFollowing:
         if self.AltHPA != self.oldHPA:
             self.output.speak (F'Altimeter: {self.AltHPA}, {self.AltInches} inches')
             self.oldHPA = self.AltHPA
-        # read nav1 info
-        if self.instr['Nav1Signal'] == 256 and self.LocDetected == False:
-            self.sapi5.speak (F'localiser is alive')
-            self.LocDetected = True
-            pyglet.clock.schedule_interval (self.readILS, 3)
-        if self.instr['Nav1GS'] and self.GSDetected == False:
-            self.sapi5.speak (F'Glide slope is alive.')
-            self.GSDetected = True
+        # read nav1 ILS info if enabled
+        if self.readILSEnabled:
+            if self.instr['Nav1Signal'] == 256 and self.LocDetected == False:
+                self.sapi5.speak (F'localiser is alive')
+                self.LocDetected = True
+                pyglet.clock.schedule_interval (self.readILS, 3)
+            if self.instr['Nav1GS'] and self.GSDetected == False:
+                self.sapi5.speak (F'Glide slope is alive.')
+                self.GSDetected = True
+                
             
-        
-        
-        if self.instr['Nav1Type'] and self.HasLoc == False:
-            self.sapi5.speak (F'Nav 1 has localiser')
-            self.HasLoc = True
-        if self.instr['Nav1GSAvailable'] and self.HasGS == False:
-            self.sapi5.speak (F'Nav 1 has glide slope')
-            self.HasGS = True
-        self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
+            
+            if self.instr['Nav1Type'] and self.HasLoc == False:
+                self.sapi5.speak (F'Nav 1 has localiser')
+                self.HasLoc = True
+            if self.instr['Nav1GSAvailable'] and self.HasGS == False:
+                self.sapi5.speak (F'Nav 1 has glide slope')
+                self.HasGS = True
+            self.readToggle('PitotHeat', 'Pitot Heat', 'on', 'off')
+            self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
         # autopilot mode switches
         self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
         # auto throttle
@@ -822,7 +872,20 @@ class FlightFollowing:
         self.readToggle('Door4', 'Door 4', 'open', 'closed')
         self.readToggle('Eng1Starter', 'Number 1 starter', 'engaged', 'off')
         self.readToggle('Eng2Starter', 'Number 2 starter', 'engaged', 'off')
+        self.readToggle('Eng3Starter', 'Number 3 starter', 'engaged', 'off')
+        self.readToggle('Eng4Starter', 'Number 4 starter', 'engaged', 'off')
         self.readToggle('Eng1Combustion', 'Number 1 ignition', 'on', 'off')
+        self.readToggle('Eng2Combustion', 'Number 2 ignition', 'on', 'off')
+        self.readToggle('Eng3Combustion', 'Number 3 ignition', 'on', 'off')
+        self.readToggle('Eng4Combustion', 'Number 4 ignition', 'on', 'off')
+        if self.groundspeedEnabled:
+            if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
+                pyglet.clock.schedule_interval(self.readGroundSpeed, 3)
+                self.groundSpeed = True
+            elif self.instr['GroundSpeed'] == 0 and self.groundSpeed:
+                pyglet.clock.unschedule(self.readGroundSpeed)
+
+        # read engine status on startup.
         if self.instr['Eng1FuelFlow'] > 10 and self.instr['Eng1Starter'] and self.Eng1FuelFlow == False:
             self.output.speak ('Number 1 fuel flow')
             self.Eng1FuelFlow = True
@@ -841,6 +904,12 @@ class FlightFollowing:
         if self.instr['Eng1N1'] > 5 and self.Eng1N1 == False:
             self.output.speak ('number 1, 5 percent N1')
             self.Eng1N1 = True
+        if self.instr['Eng2N2'] > 5 and self.Eng2N2 == False:
+            self.output.speak ('number 2, 5 percent N2')
+            self.Eng2N2 = True
+        if self.instr['Eng2N1'] > 5 and self.Eng2N1 == False:
+            self.output.speak ('number 2, 5 percent N1')
+            self.Eng2N1 = True
 
 
 
@@ -856,6 +925,8 @@ class FlightFollowing:
 
 
 
+    def readGroundSpeed(self, dt=0):
+        self.output.speak (F"{self.instr['GroundSpeed']} knotts")
 
     def readILS(self, dt=0):
         GSNeedle = self.instr['Nav1GSNeedle']
@@ -1078,6 +1149,7 @@ class FlightFollowing:
             self.instr['AirspeedTrue'] = round(self.instr['AirspeedTrue'] / 128)
             self.instr['AirspeedIndicated'] = round(self.instr['AirspeedIndicated'] / 128)
             self.instr['AirspeedMach'] = self.instr['AirspeedMach'] / 20480
+            self.instr['GroundSpeed'] = round((self.instr['GroundSpeed'] * 3600) / (65536 * 1852))
             self.instr['NextWPETA'] = time.strftime('%H:%M', time.localtime(self.instr['NextWPETA']))
             self.instr['NextWPBaring'] = degrees(self.instr['NextWPBaring'])
             self.instr['DestETE'] =self.secondsToText(self.instr['DestETE'])
@@ -1099,6 +1171,7 @@ class FlightFollowing:
             self.AltQNH = self.instr['Altimeter'] / 16
             self.AltHPA = floor(self.AltQNH + 0.5)
             self.AltInches = floor(((100 * self.AltQNH * 29.92) / 1013.2) + 0.5)
+            self.instr['Eng1ITT'] = round(self.instr['Eng1ITT'] / 16384)
 
 
 
