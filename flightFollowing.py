@@ -149,6 +149,23 @@ class FlightFollowing:
                'Nav1GSNeedle': (0x0c49, 'c'), # Nav1 glideslope needle: -119 up to 119 down
                'Altimeter': (0x0330, 'H'), # Altimeter pressure setting (“Kollsman” window). As millibars (hectoPascals) * 16
                'Doors': (0x3367, 'b'), # byte indicating open exits. One bit per door.
+               'Eng1Starter': (0x3b00, 'u'), # engine 1 starter
+               'Eng2Starter': (0x3a40, 'u'), # engine 2 starter
+               'Eng1FuelFlow': (0x2060, 'f'), # Engine 1 fuel flow in pounds per hour
+               'Eng2FuelFlow': (0x2160, 'f'), # Engine 2 fuel flow in pounds per hour
+               'Eng3FuelFlow': (0x2260, 'f'), # Engine 3 fuel flow in pounds per hour
+               'Eng4FuelFlow': (0x2360, 'f'), # Engine 1 fuel flow in pounds per hour
+               'Eng1N1': (0x2010, 'f'), # Engine 1 n1 value
+               'Eng1N2': (0x2018, 'f'), # Engine 1 N2 value
+               'Eng2N1': (0x2110, 'f'), # Engine 2 N1 value
+               'Eng2N2': (0x2118, 'f'), # Engine 2 N2 value
+               'Eng1Combustion': (0x0894, 'H'), # Engine 1 ignition switch
+
+
+
+
+
+
 
     }
 
@@ -329,6 +346,20 @@ class FlightFollowing:
         self.PitchDownPlayer.queue (self.PitchDownSource)
         self.BankPlayer.queue (self.BankSource)
         self.BankPlayer.min_distance = 10
+        self.Eng1FuelFlow = False
+        self.Eng2FuelFlow = False
+        self.Eng3FuelFlow = False
+        self.Eng4FuelFlow = False
+        self.Eng1N1 = False
+        self.Eng1N2 = False
+        self.eng2N1 = False
+        self.Eng2N2 = False
+        self.Eng3N1 = False
+        self.Eng3N2 = False
+        self.Eng4N1 = False
+        self.Eng4N2 = False
+
+
 
 
         self.PitchUpFreqs = np.linspace(2, 4, 200)
@@ -663,6 +694,7 @@ class FlightFollowing:
         flapsTransit = False
         # Get data from simulator
         self.getPyuipcData()
+
         # detect if aircraft is on ground or airborne.
         if not self.instr['OnGround'] and not self.airborne:
             self.output.speak ("Positive rate.")
@@ -788,6 +820,32 @@ class FlightFollowing:
         self.readToggle('Door2', 'Door 2', 'open', 'closed')
         self.readToggle('Door3', 'Door 3', 'open', 'closed')
         self.readToggle('Door4', 'Door 4', 'open', 'closed')
+        self.readToggle('Eng1Starter', 'Number 1 starter', 'engaged', 'off')
+        self.readToggle('Eng2Starter', 'Number 2 starter', 'engaged', 'off')
+        self.readToggle('Eng1Combustion', 'Number 1 ignition', 'on', 'off')
+        if self.instr['Eng1FuelFlow'] > 10 and self.instr['Eng1Starter'] and self.Eng1FuelFlow == False:
+            self.output.speak ('Number 1 fuel flow')
+            self.Eng1FuelFlow = True
+        if self.instr['Eng2FuelFlow'] > 10 and self.instr['Eng2Starter'] and self.Eng2FuelFlow == False:
+            self.output.speak ('Number 2 fuel flow')
+            self.Eng2FuelFlow = True
+        if self.instr['Eng3FuelFlow'] > 10 and self.instr['Eng3Starter'] and self.Eng3FuelFlow == False:
+            self.output.speak ('Number 3 fuel flow')
+            self.Eng3FuelFlow = True
+        if self.instr['Eng4FuelFlow'] > 10 and self.instr['Eng4Starter'] and self.Eng4FuelFlow == False:
+            self.output.speak ('Number 4 fuel flow')
+            self.Eng4FuelFlow = True
+        if self.instr['Eng1N2'] > 5 and self.Eng1N2 == False:
+            self.output.speak ('number 1, 5 percent N2')
+            self.Eng1N2 = True
+        if self.instr['Eng1N1'] > 5 and self.Eng1N1 == False:
+            self.output.speak ('number 1, 5 percent N1')
+            self.Eng1N1 = True
+
+
+
+
+
         # read altitude every 1000 feet
         for i in range (1000, 65000, 1000):
             if self.instr['Altitude'] >= i - 10 and self.instr['Altitude'] <= i + 10 and self.altFlag[i] == False:
