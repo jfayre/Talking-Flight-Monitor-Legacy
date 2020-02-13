@@ -885,8 +885,7 @@ class FlightFollowing:
         self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
         self.readToggle('ApApproachHold', "approach mode", "active", "off")
         self.readToggle('ApSpeedHold', 'Airspeed hold', 'active', 'off')
-        self.readToggle('ApMachHold', 'Mch hold', 'Active', 'off')
-        
+        self.readToggle('ApMachHold', 'Mach hold', 'Active', 'off')
         self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
         self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
         self.readToggle('Door1', 'Door 1', 'open', 'closed')
