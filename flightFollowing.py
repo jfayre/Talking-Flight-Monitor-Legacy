@@ -106,6 +106,7 @@ class FlightFollowing:
                'ApAltitudeLock': (0x07d0,'u'), # AP Altitude lock
                'ApAltitude': (0x07d4,'u'), # Autopilot altitude value, as metres*65536
                'ApSpeedHold': (0x07dc,'u'), # AP airspeed hold
+               'ApMachHold': (0x07e4, 'u'), # autopilot mach hold
                'ApAirspeed': (0x07e2,'h'), # AP airspeed in knots
                'ApNavGPS': (0x132c,'u'), # nav gps switch: 0 - nav, 1 - GPS
                'ApApproachHold': (0x0800, 'u'), # autopilot approach hold
@@ -174,7 +175,6 @@ class FlightFollowing:
                'Eng2ITT': (0x0988, 'u'), # Engine 2 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
                'Eng3ITT': (0x0a20, 'u'), # Engine 3 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
                'Eng4ITT': (0x0ab8, 'u'), # Engine 4 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
-
                'PitotHeat': (0x029c, 'b'), # pitot heat switch
 
 
@@ -858,8 +858,8 @@ class FlightFollowing:
             if self.instr['Nav1GSAvailable'] and self.HasGS == False:
                 self.sapi5.speak (F'Nav 1 has glide slope')
                 self.HasGS = True
-            self.readToggle('PitotHeat', 'Pitot Heat', 'on', 'off')
-            self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
+        self.readToggle('PitotHeat', 'Pitot Heat', 'on', 'off')
+        self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
         # autopilot mode switches
         self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
         # auto throttle
@@ -877,6 +877,9 @@ class FlightFollowing:
         self.readToggle('ApWingLeveler', 'Wing leveler', 'active', 'off')
         self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
         self.readToggle('ApApproachHold', "approach mode", "active", "off")
+        self.readToggle('ApSpeedHold', 'Airspeed hold', 'active', 'off')
+        self.readToggle('ApMachHold', 'Mch hold', 'Active', 'off')
+        
         self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
         self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
         self.readToggle('Door1', 'Door 1', 'open', 'closed')
