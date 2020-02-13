@@ -849,7 +849,7 @@ class FlightFollowing:
             self.oldHPA = self.AltHPA
         # read nav1 ILS info if enabled
         if self.readILSEnabled:
-            if self.instr['Nav1Signal'] == 256 and self.LocDetected == False:
+            if self.instr['Nav1Signal'] == 256 and self.LocDetected == False and self.instr['Nav1Type']:
                 self.sapi5.speak (F'localiser is alive')
                 self.LocDetected = True
                 pyglet.clock.schedule_interval (self.readILS, 3)
@@ -865,6 +865,8 @@ class FlightFollowing:
             if self.instr['Nav1GSAvailable'] and self.HasGS == False:
                 self.sapi5.speak (F'Nav 1 has glide slope')
                 self.HasGS = True
+        else:
+            pyglet.clock.unschedule(self.readILS)
         self.readToggle('PitotHeat', 'Pitot Heat', 'on', 'off')
         self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
         # autopilot mode switches
