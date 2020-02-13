@@ -3,8 +3,7 @@ Periodically read the name of the closest city to your aircraft. Also reads key 
 For a compiled version, see the Releases section.
 ## features
 * reads closest city to the aircraft based on simulator GPS position
-<<<<<<< HEAD
-* reads various aircraft instrumentation
+* reads many  aircraft instruments and switches automatically
 * sonification of key aircraft parameters, such as pitch and bank.
 * Sonification of flight director to aide in manual flight
 * Reads SimConnect message windows, such as the ones displayed by GSX and Pro ATC/x

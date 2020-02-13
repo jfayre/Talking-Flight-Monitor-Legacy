@@ -171,6 +171,10 @@ class FlightFollowing:
                'Eng3Combustion': (0x09c4, 'H'), # Engine 3 ignition flag
                'Eng4Combustion': (0x0a5c, 'H'), # Engine 4 ignition flag
                'Eng1ITT': (0x08f0, 'u'), # Engine 1 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
+               'Eng2ITT': (0x0988, 'u'), # Engine 2 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
+               'Eng3ITT': (0x0a20, 'u'), # Engine 3 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
+               'Eng4ITT': (0x0ab8, 'u'), # Engine 4 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
+
                'PitotHeat': (0x029c, 'b'), # pitot heat switch
 
 
@@ -309,13 +313,29 @@ class FlightFollowing:
         self.HasGS = False
         self.HasLoc = False
         self.oldHPA = 0
+        self.groundSpeed =False
+        self.Eng1FuelFlow = False
+        self.Eng2FuelFlow = False
+        self.Eng3FuelFlow = False
+        self.Eng4FuelFlow = False
+        self.Eng1N1 = False
+        self.Eng1N2 = False
+        self.Eng2N1 = False
+        self.Eng2N2 = False
+        self.Eng3N1 = False
+        self.Eng3N2 = False
+        self.Eng4N1 = False
+        self.Eng4N2 = False
+        
         # grab a SAPI interface so we can use it periodically
         self.sapi5 = sapi5.SAPI5()
 
 
 
+        # variables for GPWS announcements.
         self.calloutsHigh = [2500, 1000, 500, 400, 300, 200, 100]
         self.calloutsLow = [50, 40, 30, 20, 10]
+        # dictionary to track if callouts have been announced
         self.calloutState = {
             2500: False,
             1000: False,
@@ -329,6 +349,7 @@ class FlightFollowing:
             30: False,
             20: False,
             10: False}
+        # variables to track all altitude callouts
         self.altFlag = {}
         for i in range(1000, 65000, 1000):
             self.altFlag[i] = False
@@ -346,43 +367,9 @@ class FlightFollowing:
         self.decay = pyglet.media.synthesis.LinearDecayEnvelope()
         self.flat = pyglet.media.synthesis.FlatEnvelope (0.3)
 
-        # grab 200 equal values across a range of numbers for aircraft pitch
+        # grab 200 equal values across a range of numbers for aircraft pitch. Negative number is pitch up.
         self.PitchUpVals = np.around(np.linspace(-0.1, -20, 200), 1)
         self.PitchDownVals = np.around(np.linspace(0.1, 20, 200), 1)
-        # track state of various modes
-        self.sonifyEnabled = False
-        self.manualEnabled = False
-        self.directorEnabled = False
-        self.PitchUpPlayer = pyglet.media.Player()
-        self.PitchDownPlayer = pyglet.media.Player()
-        self.BankPlayer = pyglet.media.Player()
-        self.PitchUpSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=10, frequency=440, envelope=self.flat))
-        self.PitchDownSource = pyglet.media.StaticSource (pyglet.media.synthesis.Sine(duration=10, frequency=440, envelope = self.flat))
-        self.BankSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=0.3, frequency=200, envelope=self.decay))
-        self.PitchUpPlayer.loop = True
-        self.PitchDownPlayer.loop = True
-        self.BankPlayer.loop = True
-        self.PitchUpPlayer.queue (self.PitchUpSource)
-        self.PitchDownPlayer.queue (self.PitchDownSource)
-        self.BankPlayer.queue (self.BankSource)
-        self.BankPlayer.min_distance = 10
-        self.groundSpeed =False
-        self.Eng1FuelFlow = False
-        self.Eng2FuelFlow = False
-        self.Eng3FuelFlow = False
-        self.Eng4FuelFlow = False
-        self.Eng1N1 = False
-        self.Eng1N2 = False
-        self.Eng2N1 = False
-        self.Eng2N2 = False
-        self.Eng3N1 = False
-        self.Eng3N2 = False
-        self.Eng4N1 = False
-        self.Eng4N2 = False
-
-
-
-
         self.PitchUpFreqs = np.linspace(2, 4, 200)
         self.PitchDownFreqs = np.linspace(1.5, 0.5, 200)
         self.BankFreqs = np.linspace(1, 4, 90)
@@ -408,6 +395,28 @@ class FlightFollowing:
 
             
 
+        # track state of various modes
+        self.sonifyEnabled = False
+        self.manualEnabled = False
+        self.directorEnabled = False
+        # instantiate sound player objects for attitude and flight director modes
+        self.PitchUpPlayer = pyglet.media.Player()
+        self.PitchDownPlayer = pyglet.media.Player()
+        self.BankPlayer = pyglet.media.Player()
+        # enable looping
+        self.PitchUpPlayer.loop = True
+        self.PitchDownPlayer.loop = True
+        self.BankPlayer.loop = True
+        # synthesis media sources for sonification modes
+        self.PitchUpSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=10, frequency=440, envelope=self.flat))
+        self.PitchDownSource = pyglet.media.StaticSource (pyglet.media.synthesis.Sine(duration=10, frequency=440, envelope = self.flat))
+        self.BankSource = pyglet.media.StaticSource (pyglet.media.synthesis.Triangle(duration=0.3, frequency=200, envelope=self.decay))
+        # queue the sources onto the players
+        self.PitchUpPlayer.queue (self.PitchUpSource)
+        self.PitchDownPlayer.queue (self.PitchDownSource)
+        self.BankPlayer.queue (self.BankSource)
+        self.BankPlayer.min_distance = 10
+        
         if self.FFEnabled:
             self.AnnounceInfo(triggered=0, dt=0)
         
@@ -432,6 +441,8 @@ class FlightFollowing:
                 pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
             if self.calloutsEnabled:
                 pyglet.clock.schedule_interval (self.readCallouts, 0.2)
+            # read engine temperatures while engine is starting. Does nothing before and after startup.
+            pyglet.clock.schedule_interval(self.readEngTemps, 3)
 
 
                 
@@ -440,6 +451,8 @@ class FlightFollowing:
             self.logger.info('Loop interrupted by user.')
             if pyuipcImported:
                 pyuipc.close()
+            sys.exit()
+
         except Exception as e:
             logging.exception('Error during main loop:' + str(e))
 
@@ -825,7 +838,7 @@ class FlightFollowing:
             self.oldElevatorTrim = self.instr['ElevatorTrim']
 
         if self.AltHPA != self.oldHPA:
-            self.output.speak (F'Altimeter: {self.AltHPA}, {self.AltInches} inches')
+            self.output.speak (F'Altimeter: {self.AltHPA}, {self.AltInches / 100} inches')
             self.oldHPA = self.AltHPA
         # read nav1 ILS info if enabled
         if self.readILSEnabled:
@@ -885,7 +898,9 @@ class FlightFollowing:
             elif self.instr['GroundSpeed'] == 0 and self.groundSpeed:
                 pyglet.clock.unschedule(self.readGroundSpeed)
 
+        
         # read engine status on startup.
+        
         if self.instr['Eng1FuelFlow'] > 10 and self.instr['Eng1Starter'] and self.Eng1FuelFlow == False:
             self.output.speak ('Number 1 fuel flow')
             self.Eng1FuelFlow = True
@@ -898,18 +913,30 @@ class FlightFollowing:
         if self.instr['Eng4FuelFlow'] > 10 and self.instr['Eng4Starter'] and self.Eng4FuelFlow == False:
             self.output.speak ('Number 4 fuel flow')
             self.Eng4FuelFlow = True
-        if self.instr['Eng1N2'] > 5 and self.Eng1N2 == False:
+        if self.instr['Eng1N2'] > 5 and self.Eng1N2 == False and self.instr['Eng1Starter']:
             self.output.speak ('number 1, 5 percent N2')
             self.Eng1N2 = True
-        if self.instr['Eng1N1'] > 5 and self.Eng1N1 == False:
+        if self.instr['Eng1N1'] > 5 and self.Eng1N1 == False  and self.instr['Eng1Starter']:
             self.output.speak ('number 1, 5 percent N1')
             self.Eng1N1 = True
-        if self.instr['Eng2N2'] > 5 and self.Eng2N2 == False:
+        if self.instr['Eng2N2'] > 5 and self.Eng2N2 == False  and self.instr['Eng2Starter']:
             self.output.speak ('number 2, 5 percent N2')
             self.Eng2N2 = True
-        if self.instr['Eng2N1'] > 5 and self.Eng2N1 == False:
+        if self.instr['Eng2N1'] > 5 and self.Eng2N1 == False  and self.instr['Eng2Starter']:
             self.output.speak ('number 2, 5 percent N1')
             self.Eng2N1 = True
+        if self.instr['Eng3N2'] > 5 and self.Eng3N2 == False  and self.instr['Eng3Starter']:
+            self.output.speak ('number 3, 5 percent N2')
+            self.Eng3N2 = True
+        if self.instr['Eng3N1'] > 5 and self.Eng3N1 == False  and self.instr['Eng3Starter']:
+            self.output.speak ('number 3, 5 percent N1')
+            self.Eng3N1 = True
+        if self.instr['Eng4N2'] > 5 and self.Eng4N2 == False  and self.instr['Eng4Starter']:
+            self.output.speak ('number 4, 5 percent N2')
+            self.Eng4N2 = True
+        if self.instr['Eng4N1'] > 5 and self.Eng4N1 == False  and self.instr['Eng4Starter']:
+            self.output.speak ('number 4, 5 percent N1')
+            self.Eng4N1 = True
 
 
 
@@ -923,16 +950,32 @@ class FlightFollowing:
             elif self.instr['Altitude'] >= i + 100:
                 self.altFlag[i] = False
 
-
-
+    def readEngTemps(self, dt = 0):
+        if self.distance_units == '1':
+            Eng1Temp = round(9.0/5.0 * self.instr['Eng1ITT'] + 32)
+            Eng2Temp = round(9.0/5.0 * self.instr['Eng2ITT'] + 32)
+            Eng3Temp = round(9.0/5.0 * self.instr['Eng3ITT'] + 32)
+            Eng4Temp = round(9.0/5.0 * self.instr['Eng4ITT'] + 32)
+        else:
+            Eng1Temp = self.instr['Eng1ITT']
+            Eng2Temp = self.instr['Eng2ITT']
+            Eng3Temp = self.instr['Eng3ITT']
+            Eng4Temp = self.instr['Eng4ITT']
+        if self.instr['Eng1Starter'] and self.instr['Eng1Combustion']:
+            self.output.speak (F"number 1 temp, {Eng1Temp}")
+        elif self.instr['Eng2Starter'] and self.instr['Eng2Combustion']:
+            self.output.speak (F"number 2 temp, {Eng2Temp}")
+        elif self.instr['Eng3Starter'] and self.instr['Eng3Combustion']:
+            self.output.speak (F"number 3 temp, {Eng3Temp}")
+        elif self.instr['Eng4Starter'] and self.instr['Eng4Combustion']:
+            self.output.speak (F"number 4 temp, {Eng4Temp}")
+        
     def readGroundSpeed(self, dt=0):
-        self.output.speak (F"{self.instr['GroundSpeed']} knotts")
+        self.sapi5.speak (F"{self.instr['GroundSpeed']} knotts")
 
     def readILS(self, dt=0):
         GSNeedle = self.instr['Nav1GSNeedle']
         LocNeedle = self.instr['Nav1LocNeedle']
-
-        print (GSNeedle)
         if GSNeedle > 0 and GSNeedle < 119:
             GSPercent = GSNeedle / 119 * 100.0
             self.output.speak (f'up {GSPercent:.0f} percent G S I')
@@ -1172,6 +1215,9 @@ class FlightFollowing:
             self.AltHPA = floor(self.AltQNH + 0.5)
             self.AltInches = floor(((100 * self.AltQNH * 29.92) / 1013.2) + 0.5)
             self.instr['Eng1ITT'] = round(self.instr['Eng1ITT'] / 16384)
+            self.instr['Eng2ITT'] = round(self.instr['Eng2ITT'] / 16384)
+            self.instr['Eng3ITT'] = round(self.instr['Eng3ITT'] / 16384)
+            self.instr['Eng4ITT'] = round(self.instr['Eng4ITT'] / 16384)
 
 
 
