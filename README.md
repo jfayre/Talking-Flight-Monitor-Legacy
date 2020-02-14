@@ -11,8 +11,9 @@ For a compiled version, see the Releases section.
 
 
 ## Usage
-You will need the latest version of FSUIPC for recent functionality to work. 
-* Start your sim and start a flight.
+In order to read the nearest city to your aircraft, you will need a free [GeoNames](http://www.geonames.org) account. Once you create the account, enable web access under your profile. 
+You will need the latest version of FSUIPC 5 for SimConnect messages to work. This also requires Prepar 3d version 4.5.
+* Start your simulator  and start a flight.
 * Start the script "FlightFollowing.py". Alternatively, run the FlightFollowing.exe file found in the releases section.
 * the first time the script is run, it will generate a FlightFollowing.ini file in the same directory where it was run. This file should be edited to add your geonames username. The script will not run until this information is added.
 * You should hear the name of the closest city to your aircraft location, as well as various instrument status messages.
@@ -43,6 +44,7 @@ The currently available keys are:
 * v: vertical speed
 * w: read next waypoint
 * [ (left bracket): audible aircraft attitude indication (see below)
+* O: Outside air temperature in degrees C and degrees F
 ### audible attitude indications
 Flight Following contains three modes that allow you to hear the pitch and bank of your aircraft.
 In "Attitude mode", you will hear a constant tone in the center channel to indicate pitch. Pitch down and pitch up are represented by different sounding tones. Bank is represented by a beeping tone in either the right or left channel to indicate the direction of bank. The higher the tone, the higher your bank angle.
@@ -85,31 +87,3 @@ pyinstaller flightFollowing-no_Admin.spec
 ### Known limitations
 * The city given does not take into account the heading of your aircraft. So, the nearest city may be behind you.
 * Offline access is not implemented yet. It may be added in the future.
-
-## Used packages and Copyright
-
-### pyttsx
-Text-to-speech package for python. Used to read the parsed ATIS string.
-
-pyttsx Copyright (c) 2009, 2013 Peter Parente
-
-Permission to use, copy, modify, and distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-
-### pyuipc - FSUIPC SDK for Python
-Used to get the com frequencies, com status, aircraft coordinates from the simulator.
-
-All Copyright - Peter Dowson and István Váradi.
-
-
-## Changelog

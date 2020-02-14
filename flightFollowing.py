@@ -106,6 +106,7 @@ class FlightFollowing:
                'ApAltitudeLock': (0x07d0,'u'), # AP Altitude lock
                'ApAltitude': (0x07d4,'u'), # Autopilot altitude value, as metres*65536
                'ApSpeedHold': (0x07dc,'u'), # AP airspeed hold
+               'ApMachHold': (0x07e4, 'u'), # autopilot mach hold
                'ApAirspeed': (0x07e2,'h'), # AP airspeed in knots
                'ApNavGPS': (0x132c,'u'), # nav gps switch: 0 - nav, 1 - GPS
                'ApApproachHold': (0x0800, 'u'), # autopilot approach hold
@@ -174,7 +175,6 @@ class FlightFollowing:
                'Eng2ITT': (0x0988, 'u'), # Engine 2 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
                'Eng3ITT': (0x0a20, 'u'), # Engine 3 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
                'Eng4ITT': (0x0ab8, 'u'), # Engine 4 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
-
                'PitotHeat': (0x029c, 'b'), # pitot heat switch
 
 
@@ -766,9 +766,16 @@ class FlightFollowing:
             if self.instr['ParkingBrake']:
                 self.output.speak ("parking Brake on.")
                 
-            else:
-                self.output.speak ("parking Brake off.")
-            self.oldBrake = self.instr['ParkingBrake']
+                self.airborne = True
+            # read parking Brakes
+            
+            if self.oldBrake != self.instr['ParkingBrake']:
+                if self.instr['ParkingBrake']:
+                    self.output.speak ("parking Brake on.")
+                    
+                else:
+                    self.output.speak ("parking Brake off.")
+                self.oldBrake = self.instr['ParkingBrake']
 
         
         # landing gear
@@ -842,7 +849,7 @@ class FlightFollowing:
             self.oldHPA = self.AltHPA
         # read nav1 ILS info if enabled
         if self.readILSEnabled:
-            if self.instr['Nav1Signal'] == 256 and self.LocDetected == False:
+            if self.instr['Nav1Signal'] == 256 and self.LocDetected == False and self.instr['Nav1Type']:
                 self.sapi5.speak (F'localiser is alive')
                 self.LocDetected = True
                 pyglet.clock.schedule_interval (self.readILS, 3)
@@ -858,8 +865,10 @@ class FlightFollowing:
             if self.instr['Nav1GSAvailable'] and self.HasGS == False:
                 self.sapi5.speak (F'Nav 1 has glide slope')
                 self.HasGS = True
-            self.readToggle('PitotHeat', 'Pitot Heat', 'on', 'off')
-            self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
+        else:
+            pyglet.clock.unschedule(self.readILS)
+        self.readToggle('PitotHeat', 'Pitot Heat', 'on', 'off')
+        self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
         # autopilot mode switches
         self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
         # auto throttle
@@ -877,6 +886,8 @@ class FlightFollowing:
         self.readToggle('ApWingLeveler', 'Wing leveler', 'active', 'off')
         self.readToggle ('ApAutoRudder', 'Auto rudder', 'active', 'off')
         self.readToggle('ApApproachHold', "approach mode", "active", "off")
+        self.readToggle('ApSpeedHold', 'Airspeed hold', 'active', 'off')
+        self.readToggle('ApMachHold', 'Mach hold', 'Active', 'off')
         self.readToggle('PropSync', 'Propeller Sync', 'active', 'off')
         self.readToggle ('BatteryMaster', 'Battery Master', 'active', 'off')
         self.readToggle('Door1', 'Door 1', 'open', 'closed')
@@ -994,14 +1005,18 @@ class FlightFollowing:
     def readToggle(self, instrument, name, onMessage, offMessage):
         ## There are several aircraft functions that are simply on/off toggles. 
         ## This function allows reading those without a bunch of duplicate code.
-        if self.oldInstr[instrument] != self.instr[instrument]:
-            if self.instr[instrument]:
-                self.output.speak (F'{name} {onMessage}.')
-            else:
-                self.output.speak (F'{name} {offMessage}')
-            self.oldInstr[instrument] = self.instr[instrument]
+        try:
+            if self.oldInstr[instrument] != self.instr[instrument]:
+                if self.instr[instrument]:
+                    self.output.speak (F'{name} {onMessage}.')
+                else:
+                    self.output.speak (F'{name} {offMessage}')
+                self.oldInstr[instrument] = self.instr[instrument]
+        except Exception as e:
+            logging.exception(F"error in instrument toggle. Instrument was {instrument}")
 
     def secondsToText(self, secs):
+        ## convert number of seconds into human readable format. Thanks to Stack Overflow for this!
         days = secs//86400
         hours = (secs - days*86400)//3600
         minutes = (secs - days*86400 - hours*3600)//60
@@ -1012,22 +1027,24 @@ class FlightFollowing:
         ("{0} second{1}, ".format(seconds, "s" if seconds!=1 else "") if seconds else "")
         return result
     def readWaypoint(self, triggered=False):
-        WPId = self.instr['NextWPId'].decode ('UTF-8')
-        if self.distance_units == '0':
-            distance = self.instr['NextWPDistance'] / 1000
-            self.output.speak (F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers')    
-        else:
-            distance = (self.instr['NextWPDistance'] / 1000)/ 1.609
-            self.output.speak(F'Next waypoint: {WPId}, distance: {distance:.1f} miles')    
-        self.output.speak (F'baring: {self.instr["NextWPBaring"]:.0f}')
-        # read estimated time enroute to next waypoint
-        strTime = self.secondsToText(self.instr['NextWPETE'])
-        self.output.speak(strTime)
-        # if we were triggered with a hotkey, read the ETA to the next waypoint.
-        if triggered:
-            self.output.speak(F'ETA: {self.instr["NextWPETA"]}')
-            self.reset_hotkeys()
-
+        try:
+            WPId = self.instr['NextWPId'].decode ('UTF-8')
+            if self.distance_units == '0':
+                distance = self.instr['NextWPDistance'] / 1000
+                self.output.speak (F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers')    
+            else:
+                distance = (self.instr['NextWPDistance'] / 1000)/ 1.609
+                self.output.speak(F'Next waypoint: {WPId}, distance: {distance:.1f} miles')    
+            self.output.speak (F'baring: {self.instr["NextWPBaring"]:.0f}')
+            # read estimated time enroute to next waypoint
+            strTime = self.secondsToText(self.instr['NextWPETE'])
+            self.output.speak(strTime)
+            # if we were triggered with a hotkey, read the ETA to the next waypoint.
+            if triggered:
+                self.output.speak(F'ETA: {self.instr["NextWPETA"]}')
+                self.reset_hotkeys()
+        except Exception as e:
+            logging.exception ("error reading waypoint info")
 
 
 
@@ -1070,6 +1087,9 @@ class FlightFollowing:
                     # self.reset_hotkeys()
         except KeyError:
             pass
+        except Exception as e:
+            logging.exception (F'error reading SimConnect message. {SimCMessageRaw}')
+
 
     def readCachedSimConnectMessages(self):
 
@@ -1234,7 +1254,7 @@ class FlightFollowing:
                 self.attitude['Pitch'] = self.attitude['Pitch'] * 360 / (65536 * 65536)
                 self.attitude['Bank'] = self.attitude['Bank'] * 360 / (65536 * 65536)
             except Exception as e:
-                pass
+                logging.exception ('error reading simconnect message data')
 
         else:
             self.logger.error ('FSUIPC not found! Exiting')
