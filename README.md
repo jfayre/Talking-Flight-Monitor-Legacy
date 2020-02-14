@@ -44,7 +44,7 @@ The currently available keys are:
 * v: vertical speed
 * w: read next waypoint
 * [ (left bracket): audible aircraft attitude indication (see below)
-* O: Outside air temperature in degrees C and degrees F
+
 ### audible attitude indications
 Flight Following contains three modes that allow you to hear the pitch and bank of your aircraft.
 In "Attitude mode", you will hear a constant tone in the center channel to indicate pitch. Pitch down and pitch up are represented by different sounding tones. Bank is represented by a beeping tone in either the right or left channel to indicate the direction of bank. The higher the tone, the higher your bank angle.
@@ -65,12 +65,11 @@ pip install -r requirements.txt
 
 
 ## Building a Binary Version
-This requires PyInstaller and [UPX](https://upx.github.io) to be installed. Install PyInstaller like so:
+This requires PyInstaller to be installed. Install it like so:
 ```
 pip install pyinstaller
 ```
-UPX is distributed as a zip file. Uncompress it and add the unzipped folder to your PATH.
-Once PyInstaller and UPX are installed, execute the following from the root of the checkout:
+Once PyInstaller is installed, execute the following from the root of the checkout:
 ```
 pyinstaller flightFollowing.spec
 ```
@@ -78,6 +77,7 @@ If you want a version that does not automatically run as administrator, run this
 ```
 pyinstaller flightFollowing-no_Admin.spec
 ```
+Disregard the warning about UPX not being present.
 
 
 ## Bugs and issues
