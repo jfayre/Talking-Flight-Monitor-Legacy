@@ -4,7 +4,7 @@ For a compiled version, see the Releases section.
 ## features
 * reads closest city to the aircraft based on simulator GPS position
 * reads many  aircraft instruments and switches automatically
-* sonfication of key aircraft parameters, such as pitch and bank.
+* sonification of key aircraft parameters, such as pitch and bank.
 * Sonification of flight director to aide in manual flight
 * Reads SimConnect message windows, such as the ones displayed by GSX and Pro ATC/x
 * reads Radar Contact menus
