@@ -758,7 +758,7 @@ class FlightFollowing:
         # detect if aircraft is on ground or airborne.
         if not self.instr['OnGround'] and not self.airborne:
             self.output.speak ("Positive rate.")
-            
+            pyglet.clock.unschedule(self.readGroundSpeed)
             self.airborne = True
         # read parking Brakes
         
