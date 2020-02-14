@@ -995,10 +995,10 @@ class FlightFollowing:
             self.output.speak (f'down {GSPercent:.0f} percent G S I')
         if LocNeedle > 0 and LocNeedle < 127:
             LocPercent = GSNeedle / 127 * 100.0
-            self.output.speak (F'{LocPercent} percent right')    
+            self.output.speak (F'{LocPercent:.0f} percent right')    
         elif LocNeedle < 0 and LocNeedle > -127:
             LocPercent = abs(GSNeedle) / 127 * 100.0
-            self.output.speak (F'{LocPercent} percent left')    
+            self.output.speak (F'{LocPercent:.0f} percent left')    
 
 
 
