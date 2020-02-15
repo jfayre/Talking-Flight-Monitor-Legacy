@@ -759,25 +759,8 @@ class FlightFollowing:
         if not self.instr['OnGround'] and not self.airborne:
             self.output.speak ("Positive rate.")
             pyglet.clock.unschedule(self.readGroundSpeed)
+            self.groundSpeed = False
             self.airborne = True
-        # read parking Brakes
-        
-        if self.oldBrake != self.instr['ParkingBrake']:
-            if self.instr['ParkingBrake']:
-                self.output.speak ("parking Brake on.")
-                
-                self.airborne = True
-            # read parking Brakes
-            
-            if self.oldBrake != self.instr['ParkingBrake']:
-                if self.instr['ParkingBrake']:
-                    self.output.speak ("parking Brake on.")
-                    
-                else:
-                    self.output.speak ("parking Brake off.")
-                self.oldBrake = self.instr['ParkingBrake']
-
-        
         # landing gear
         if self.instr['Gear'] != self.oldGear:
             if self.instr['Gear'] == 0:
@@ -868,6 +851,7 @@ class FlightFollowing:
         else:
             pyglet.clock.unschedule(self.readILS)
         self.readToggle('PitotHeat', 'Pitot Heat', 'on', 'off')
+        self.readToggle('ParkingBrake', 'Parking brake', 'on', 'off')
         self.readToggle('AutoFeather', 'Auto Feather', 'Active', 'off')
         # autopilot mode switches
         self.readToggle ('ApMaster', 'Auto pilot master', 'active', 'off')
@@ -1053,6 +1037,7 @@ class FlightFollowing:
     def readSimConnectMessages(self, dt,triggered = False):
         ## reads any SimConnect messages that don't require special processing.
         ## right now, rc4 is the only message type that needs special processing.
+        SimCMessageRaw = ""
         try:
             RCMessage = False
             index = 0
