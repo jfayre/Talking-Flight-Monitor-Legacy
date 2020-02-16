@@ -48,7 +48,7 @@ from accessible_output2.outputs import auto
 import numpy as np
 from timeit import default_timer as timer
 # Import own packages.
-from VaLogger import VaLogger
+from        VaLogger import VaLogger
 
 # initialize the log settings
 logging.basicConfig(filename = 'error.log', level = logging.DEBUG)
@@ -108,6 +108,9 @@ class FlightFollowing:
                'ApSpeedHold': (0x07dc,'u'), # AP airspeed hold
                'ApMachHold': (0x07e4, 'u'), # autopilot mach hold
                'ApAirspeed': (0x07e2,'h'), # AP airspeed in knots
+               'ApMach': (0x07e8, 'u'), # Autopilot mach value, as Mach*65536
+               'ApVerticalSpeedHold': (0x07ec, 'u'), # autopilot vertical speed hold
+               'ApVerticalSpeed': (0x07f2, 'h'), # autopilot vertical speed
                'ApNavGPS': (0x132c,'u'), # nav gps switch: 0 - nav, 1 - GPS
                'ApApproachHold': (0x0800, 'u'), # autopilot approach hold
                'ApFlightDirector': (0x2ee0,'u'), # Flight director: 0 - off, 1 - on
@@ -176,6 +179,15 @@ class FlightFollowing:
                'Eng3ITT': (0x0a20, 'u'), # Engine 3 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
                'Eng4ITT': (0x0ab8, 'u'), # Engine 4 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
                'PitotHeat': (0x029c, 'b'), # pitot heat switch
+               'APUGenerator': (0x0b51, 'b'), # apu generator switch
+               'APUGeneratorActive': (0x0b52, 'b'), # apu generator active flag
+               'APUPercentage': (0x0b54, 'F'), # APU rpm percentage
+               'APUVoltage': (0x0b5c, 'F'), # apu generator voltage
+               'Lights1': (0x0d0c, 'b'), # lights
+               'Lights': (0x0d0d, 'b'), # lights
+
+
+
 
 
 
@@ -257,6 +269,7 @@ class FlightFollowing:
                 'dest_key': 'd',
                 'attitude_key': '[',
                 'manual_key': 'Ctrl+m',
+                'autopilot_key': 'shift+a',
                 'director_key': 'Ctrl+f',
                 'toggle_gpws_key': 'shift+a',
                 'toggle_ils_key': 'shift+i',
@@ -303,6 +316,11 @@ class FlightFollowing:
         self.oldSpoilers = 0
         self.oldApHeading = None
         self.oldApAltitude = None
+        self.oldApHeading = None
+        self.oldApSpeed = None
+        self.oldApMach = None
+        self.oldAPVSpeed = None
+
         self.oldTransponder = None
         self.oldWP = None
         self.oldSimCChanged = None
@@ -328,6 +346,15 @@ class FlightFollowing:
         self.Eng3N2 = False
         self.Eng4N1 = False
         self.Eng4N2 = False
+        self.APUStarting = False
+        self.APUShutdown = False
+        self.APURunning = False
+        self.APUGenerator = False
+        self.APUOff = True
+
+
+
+
         
         # grab a SAPI interface so we can use it periodically
         self.sapi5 = sapi5.SAPI5()
@@ -401,6 +428,7 @@ class FlightFollowing:
         self.sonifyEnabled = False
         self.manualEnabled = False
         self.directorEnabled = False
+        self.APEnabled = False
         # instantiate sound player objects for attitude and flight director modes
         self.PitchUpPlayer = pyglet.media.Player()
         self.PitchDownPlayer = pyglet.media.Player()
@@ -670,7 +698,14 @@ class FlightFollowing:
                     self.directorEnabled = True
                     self.output.speak ('flight director mode enabled')
 
-            
+            elif instrument == 'toggleap':
+                if self.APEnabled == False:
+                    self.output.speak (F'Autopilot control enabled')
+                    self.APEnabled = True
+                else:
+                    self.output.speak (F'autopilot control disabled')
+                    self.APEnabled = False
+
             elif instrument == 'manual':
                 if self.manualEnabled:
                     pyglet.clock.unschedule(self.manualFlight)
@@ -727,6 +762,7 @@ class FlightFollowing:
             self.CalloutsKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_gpws_key'], self.keyHandler, args=(['togglegpws']), suppress=True, timeout=2)
             self.ILSKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_ils_key'], self.keyHandler, args=(['toggleils']), suppress=True, timeout=2)
             self.flapsKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_flaps_key'], self.keyHandler, args=(['toggleflaps']), suppress=True, timeout=2)
+            self.apKey = keyboard.add_hotkey (self.config['hotkeys']['autopilot_key'], self.keyHandler, args=(['toggleap']), suppress=True, timeout=2)
             # winsound.Beep(500, 100)
         except Exception as e:
             logging.exception ("error in command mode.")
@@ -796,6 +832,22 @@ class FlightFollowing:
         if self.oldApAltitude != self.instr['ApAltitude']:
             self.output.speak(F"Altitude set to {round(self.instr['ApAltitude'])}")
             self.oldApAltitude = self.instr['ApAltitude']
+        if self.APEnabled:
+            if self.oldApHeading != self.instr['ApHeading']:
+                self.output.speak (F"{self.instr['ApHeading']} degrees")
+                self.oldApHeading = self.instr['ApHeading']
+            if self.oldApSpeed != self.instr['ApAirspeed']:
+                self.output.speak (F"{self.instr['ApAirspeed']}")
+                self.oldApSpeed = self.instr['ApAirspeed']
+            if self.oldApMach != self.instr['ApMach']:
+                self.output.speak (F"mach {self.instr['ApMach']:.2f}")
+                self.oldApMach = self.instr['ApMach']
+            if self.oldAPVSpeed != self.instr['ApVerticalSpeed']:
+                self.output.speak (F"{self.instr['ApVerticalSpeed']} feet per minute")
+                self.oldAPVSpeed = self.instr['ApVerticalSpeed']
+
+
+
         # transponder
         if self.instr['Transponder'] != self.oldTransponder:
             self.output.speak(F'Squawk {self.instr["Transponder"]:x}')
@@ -889,6 +941,13 @@ class FlightFollowing:
         self.readToggle('Eng2Combustion', 'Number 2 ignition', 'on', 'off')
         self.readToggle('Eng3Combustion', 'Number 3 ignition', 'on', 'off')
         self.readToggle('Eng4Combustion', 'Number 4 ignition', 'on', 'off')
+        self.readToggle('APUGenerator', 'A P U Generator', 'active', 'off')
+        self.readToggle('BeaconLights', 'Beacon light', 'on', 'off')
+        self.readToggle('LandingLights', 'Landing Lights', 'on', 'off')
+        self.readToggle('TaxiLights', 'Taxi Lights', 'on', 'off')
+        self.readToggle('NavigationLights', 'Nav lights', 'on', 'off')
+        self.readToggle('StrobeLights', 'strobe lights', 'on', 'off')
+        self.readToggle('InstrumentLights', 'Instrument lights', 'on', 'off')
         if self.groundspeedEnabled:
             if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
                 pyglet.clock.schedule_interval(self.readGroundSpeed, 3)
@@ -898,7 +957,6 @@ class FlightFollowing:
 
         
         # read engine status on startup.
-        
         if self.instr['Eng1FuelFlow'] > 10 and self.instr['Eng1Starter'] and self.Eng1FuelFlow == False:
             self.output.speak ('Number 1 fuel flow')
             self.Eng1FuelFlow = True
@@ -936,6 +994,36 @@ class FlightFollowing:
             self.output.speak ('number 4, 5 percent N1')
             self.Eng4N1 = True
 
+
+
+
+
+        # read APU status
+        if self.instr['APUPercentage'] > 0 and self.APUStarting == False and self.APURunning == False and self.APUShutdown == False:
+            self.output.speak('A P U starting')
+            self.APUStarting = True
+            self.APUOff = False
+        if self.instr['APUPercentage'] < 100 and self.APURunning:
+            self.output.speak ('Shutting down A P U')
+            self.APURunning = False
+            self.APUShutdown = True
+        if self.instr['APUPercentage'] == 100 and self.APUStarting:
+            self.APUStarting = False
+            self.APURunning = True
+            self.output.speak("apu at 100 percent")
+        if self.instr['APUPercentage'] == 0 and self.APUOff == False:
+            self.output.speak('A P U shut down')
+            self.APURunning = False
+            self.APUStarting = False
+            self.APUShutdown = False
+            self.APUOff = true
+
+
+        if self.instr['APUGenerator'] and self.APUGenerator == False:
+            self.output.speak (F"{round(self.instr['APUVoltage'])} volts")
+            self.APUGenerator = True
+        if self.instr['APUGenerator'] == False:
+            self.APUGenerator = False
 
 
 
@@ -1194,6 +1282,7 @@ class FlightFollowing:
             self.instr['GroundAltitude'] = self.instr['GroundAltitude'] / 256 * 3.28084
             self.instr['ApHeading'] = round(self.instr['ApHeading']/65536*360)
             self.instr['ApAltitude'] = self.instr['ApAltitude'] / 65536 * 3.28084
+            self.instr['ApMach'] = self.instr['ApMach'] / 65536
             self.headingTrue = floor(((self.instr['Heading'] * 360) / (65536 * 65536)) + 0.5)
             self.headingCorrected = self.instr['Heading'] - (self.instr['MagneticVariation'] * 65536)
             self.headingCorrected = floor(self.headingCorrected * 360 / (65536 * 65536) + 0.5)
@@ -1218,6 +1307,21 @@ class FlightFollowing:
             self.instr['Door2'] = self.DoorBits[6]
             self.instr['Door3'] = self.DoorBits[5]
             self.instr['Door4'] = self.DoorBits[4]
+            self.lights = list(map(int, '{0:08b}'.format(self.instr['Lights'])))
+            self.lights1 = list(map(int, '{0:08b}'.format(self.instr['Lights1'])))
+            # breakpoint()
+            self.instr['CabinLights'] = self.lights[0]
+            self.instr['LogoLights'] = self.lights[1]
+            self.instr['WingLights'] = self.lights1[0]
+            self.instr['RecognitionLights'] = self.lights1[1]
+            self.instr['InstrumentLights'] = self.lights1[2]
+            self.instr['StrobeLights'] = self.lights1[3]
+            self.instr['TaxiLights'] = self.lights1[4]
+            self.instr['LandingLights'] = self.lights1[5]
+            self.instr['BeaconLights'] = self.lights1[6]
+            self.instr['NavigationLights'] = self.lights1[7]
+
+
         
             self.AltQNH = self.instr['Altimeter'] / 16
             self.AltHPA = floor(self.AltQNH + 0.5)
@@ -1226,6 +1330,8 @@ class FlightFollowing:
             self.instr['Eng2ITT'] = round(self.instr['Eng2ITT'] / 16384)
             self.instr['Eng3ITT'] = round(self.instr['Eng3ITT'] / 16384)
             self.instr['Eng4ITT'] = round(self.instr['Eng4ITT'] / 16384)
+            self.instr['APUPercentage'] = round(self.instr['APUPercentage'])
+
 
 
 
