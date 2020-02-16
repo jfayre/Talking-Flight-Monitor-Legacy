@@ -236,6 +236,8 @@ class FlightFollowing:
                 'flight_following_interval': '10',
                 '# Time interval between manual flight announcements, in seconds': None,
                 'manual_interval': '5',
+                '# Interval between ILS messages': None,
+                'ils_interval': '5',
                 '# Distance units: 0 - Kilometers, 1 - Miles':None,
                 'distance_units': '0'}
         self.default_config['hotkeys'] = {'# command key: This key must be pressed before the other commands listed below':None,
@@ -467,6 +469,7 @@ class FlightFollowing:
 
             self.FFInterval = float(self.config.get('config','flight_following_interval'))
             self.ManualInterval = float(self.config.get('config','manual_interval'))
+            self.ILSInterval = float(self.config.get('config','ils_interval'))
             self.distance_units = self.config.get('config','distance_units')
             self.voice_rate = int(self.config.get('config','voice_rate'))
             if self.config['config']['speech_output'] == '1':
@@ -835,7 +838,7 @@ class FlightFollowing:
             if self.instr['Nav1Signal'] == 256 and self.LocDetected == False and self.instr['Nav1Type']:
                 self.sapi5.speak (F'localiser is alive')
                 self.LocDetected = True
-                pyglet.clock.schedule_interval (self.readILS, 3)
+                pyglet.clock.schedule_interval (self.readILS, self.ILSInterval)
             if self.instr['Nav1GS'] and self.GSDetected == False:
                 self.sapi5.speak (F'Glide slope is alive.')
                 self.GSDetected = True
