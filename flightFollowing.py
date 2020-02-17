@@ -269,7 +269,7 @@ class FlightFollowing:
                 'dest_key': 'd',
                 'attitude_key': '[',
                 'manual_key': 'Ctrl+m',
-                'autopilot_key': 'shift+a',
+                'autopilot_key': 'shift+p',
                 'director_key': 'Ctrl+f',
                 'toggle_gpws_key': 'shift+a',
                 'toggle_ils_key': 'shift+i',
