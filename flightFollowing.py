@@ -1,7 +1,7 @@
 
 # -*- coding: iso-8859-15 -*-
 #==============================================================================
-# Voice Flight Following - Periodically announce cities along your flight path
+# Talking Flight Monitor - an accessibility application for Microsoft Flight Simulator and Lockheed Martin Prepar3d.
 # Copyright (C) 2020 by Jason Fayre
 # based on the VoiceATIS addon by   Oliver Clemens
 # 
@@ -19,7 +19,6 @@
 # this program.	 If not, see <https://www.gnu.org/licenses/>.
 #==============================================================================
 
-# from __future__ import division
 
 
 import logging
@@ -31,7 +30,6 @@ import warnings
 import winsound
 from configparser import ConfigParser
 
-# from contextlib import closing
 from win32event import CreateMutex
 from win32api import GetLastError
 from winerror import ERROR_ALREADY_EXISTS
@@ -51,7 +49,7 @@ from timeit import default_timer as timer
 from        VaLogger import VaLogger
 
 # initialize the log settings
-logging.basicConfig(filename = 'error.log', level = logging.DEBUG)
+logging.basicConfig(filename = 'error.log', level = logging.INFO)
 # Set encoding
 #reload(sys)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
@@ -271,7 +269,7 @@ class FlightFollowing:
                 'manual_key': 'Ctrl+m',
                 'autopilot_key': 'shift+a',
                 'director_key': 'Ctrl+f',
-                'toggle_gpws_key': 'shift+a',
+                'toggle_gpws_key': 'shift+g',
                 'toggle_ils_key': 'shift+i',
                 'toggle_flaps_key': 'Shift+f',
                 'message_key': 'r'}
@@ -1180,7 +1178,7 @@ class FlightFollowing:
         msgUpdated = False
         msgRaw = self.SimCMessage[:self.SimCData['SimCLength']]
         msg = msgRaw.splitlines()
-        logging.error(F'{msg}')
+        # logging.error(F'{msg}')
         # breakpoint()
         if self.oldRCMsg != msg[1] and msg[1][:3] != 'Rwy' and msg[1][:1] != '<':
             msgUpdated = True
