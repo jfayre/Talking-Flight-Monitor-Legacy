@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['flightFollowing.py'],
+a = Analysis(['tfm.py'],
              pathex=['C:\\Users\\jfayr\\flight-following'],
              binaries=[],
              datas=[('sounds/*.wav', 'sounds')],
@@ -21,7 +21,7 @@ exe = EXE(pyz,
           a.scripts,
           [],
           exclude_binaries=True,
-          name='flightFollowing',
+          name='tfm',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
@@ -33,4 +33,4 @@ coll = COLLECT(exe,
                a.datas,
                strip=False,
                upx=True,
-               name='flightFollowing')
+               name='tfm')
