@@ -96,3 +96,102 @@ begin
   'you need a username from the GeoNames service.');
 UserPage.Add('GeoNames username:', False);
 end;
+const
+  CommentPrefix = ';';
+
+function SetIniComment(
+  FileName: string; Section: string; Key: string; Comment: string): Boolean;
+var
+  Lines: TArrayOfString;
+  Line: string;
+  InSection: string;
+  I, I2, P: Integer;
+begin
+  Result := False;
+
+  { load INI file lines }
+  if LoadStringsFromFile(FileName, Lines) then
+  begin
+    Log(Format('Read %d lines', [GetArrayLength(Lines)])); 
+
+    { iterate lines to look for the section and key }
+    for I := 0 to GetArrayLength(Lines) - 1 do
+    begin
+      Line := Lines[I];
+      { is it a start of a section? }
+      if (Length(Line) > 0) and (Line[1] = '[') then
+      begin
+        P := Pos(']', Line);
+        if P > 0 then
+        begin
+          InSection := Trim(Copy(Line, 2, P - 2));
+        end;
+      end
+        else
+      { are we in "our" section }
+      if CompareText(InSection, Section) = 0 then
+      begin
+        P := Pos('=', Line);
+
+        { is it "our" key? }
+        if (P > 0) and
+           (CompareText(Trim(Copy(Line, 1, P - 1)), Key) = 0) then
+        begin
+          { if there's already a comment on a previous line, replace it }
+          if (Length(Lines[I - 1]) > 0) and
+             (Lines[I - 1][1] = CommentPrefix) then
+          begin
+            Log(Format('Replacing existing comment on line %d', [I - 1]));
+            Lines[I - 1] := CommentPrefix + ' ' + Comment;
+          end
+            else
+          begin
+            { if there's no comment yet, insert new comment line }
+            Log(Format('Inserting comment to line %d', [I]));
+            SetArrayLength(Lines, GetArrayLength(Lines) + 1);
+
+            for I2 := GetArrayLength(Lines) - 1 downto I + 1 do
+            begin
+              Lines[I2] := Lines[I2 - 1];
+            end;
+            Lines[I] := CommentPrefix + ' ' + Comment;
+          end;
+
+          Log(Format('Writing %d lines', [GetArrayLength(Lines)])); 
+          Result := SaveStringsToFile(FileName, Lines, False);
+          break;
+        end;
+      end;
+    end;
+  end;
+
+  if not Result then
+  begin
+    Log('Section/Key not found');
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  FileName: string;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    FileName := ExpandConstant('{app}\tfm.ini');
+
+    SetIniComment(
+      FileName, 'config', 'geonames_username', 'flight following requires a username from the geonames service');
+
+    SetIniComment(
+      FileName, 'config', 'voice_rate', 'voice rate for SAPI output');
+    SetIniComment(
+      FileName, 'config', 'speech_output', 'speech output: 0 - screen reader, 1 - sapi5');
+    SetIniComment(
+      FileName, 'config', 'flight_following', 'read closest city, timezone, and oceanic info.');
+    SetIniComment(
+      FileName, 'config', 'read_instrumentation', 'automatically read aircraft instrumentation. if using ideal flight, you may want to turn this off.');
+    SetIniComment(
+      FileName, 'config', 'read_simconnect', 'read simconnect messages. not compatible with fsx and requires latest fsuipc.');
+    
+  end;
+end;
