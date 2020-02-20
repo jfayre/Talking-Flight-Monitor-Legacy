@@ -1,4 +1,4 @@
-# voice flight following
+# Talking Flight Monitor (TFM)
 Periodically read the name of the closest city to your aircraft. Also reads key aircraft instrumentation.
 For a compiled version, see the Releases section.
 ## features

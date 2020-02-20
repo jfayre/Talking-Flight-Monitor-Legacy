@@ -54,10 +54,10 @@ logging.basicConfig(filename = 'error.log', level = logging.INFO)
 #reload(sys)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
 # detect if another copy is running
-handle = CreateMutex(None, 1, 'FlightFollowing')
+handle = CreateMutex(None, 1, 'tfm')
 if GetLastError(  ) == ERROR_ALREADY_EXISTS:
     output = sapi5.SAPI5()
-    output.speak('Error! A version of Flight Following is already running. Exiting!')
+    output.speak('Error! A version of Talking Flight Monitor (TFM) is already running. Exiting!')
     time.sleep(5)
     sys.exit(1)
                 
@@ -72,9 +72,9 @@ except ImportError:
         pyuipcImported = False
         debug = True
 
-## Main Class of FlightFollowing.
+## Main Class of tfm.
 # Run constructor to run the program.
-class FlightFollowing:
+class tfm:
 #  - b: a 1-byte unsigned value, to be converted into a Python int
 #  - c: a 1-byte signed value, to be converted into a Python int
 #  - h: a 2-byte signed value, to be converted into a Python int
@@ -212,7 +212,7 @@ class FlightFollowing:
 
 
     }
-    ## Setup the FlightFollowing object.
+    ## Setup the tfm object.
     def __init__(self,**optional):
         # Get file path.
         self.rootDir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -226,7 +226,7 @@ class FlightFollowing:
         # initialize two config parser objects. One for defaults and one for config file.
         self.default_config = ConfigParser(allow_no_value=True)
         self.config = ConfigParser(allow_no_value=True)
-        self.default_config['config'] = {'# Flight Following requires a username from the Geonames service':None,
+        self.default_config['config'] = {'# Talking Flight Monitor (TFM) requires a username from the Geonames service':None,
                 'geonames_username': 'your_username',
                 '# voice rate for SAPI output':None,
                 'voice_rate': '5',
@@ -267,7 +267,7 @@ class FlightFollowing:
                 'dest_key': 'd',
                 'attitude_key': '[',
                 'manual_key': 'Ctrl+m',
-                'autopilot_key': 'shift+a',
+                'autopilot_key': 'shift+p',
                 'director_key': 'Ctrl+f',
                 'toggle_gpws_key': 'shift+g',
                 'toggle_ils_key': 'shift+i',
@@ -275,9 +275,9 @@ class FlightFollowing:
                 'message_key': 'r'}
 
         # First log message.
-        self.logger.info('Flight Following started')
+        self.logger.info('TFM started')
         # check for config file. Create it if it doesn't exist.
-        exists = os.path.isfile(self.rootDir + "/flightfollowing.ini")
+        exists = os.path.isfile(self.rootDir + "/tfm.ini")
         if exists:
             self.logger.info("config file exists.")
             self.read_config()
@@ -485,11 +485,11 @@ class FlightFollowing:
             logging.exception('Error during main loop:' + str(e))
 
     def read_config(self):
-            cfgfile = self.config.read(self.rootDir + "/flightfollowing.ini")
+            cfgfile = self.config.read(self.rootDir + "/tfm.ini")
             self.geonames_username = self.config.get('config','geonames_username')
             if self.geonames_username == 'your_username':
                 output = sapi5.SAPI5()
-                output.speak('Error: edit the flightfollowing.ini file and add your Geo names username. exiting!')
+                output.speak('Error: edit the tfm.ini file and add your Geo names username. exiting!')
                 time.sleep(8)
                 sys.exit(1)
 
@@ -507,7 +507,7 @@ class FlightFollowing:
                 self.FFEnabled = True
             else:
                 self.FFEnabled = False
-                self.output.speak('Flight Following functions disabled.')
+                self.output.speak('Nearest city announcementsdisabled.')
             if self.config['config'].getboolean('read_instrumentation'):
                 self.InstrEnabled = True
             else:
@@ -533,10 +533,10 @@ class FlightFollowing:
             
 
     def write_config(self):
-        with open(self.rootDir + "/flightfollowing.ini", 'w') as configfile:
+        with open(self.rootDir + "/tfm.ini", 'w') as configfile:
             self.default_config.write(configfile)
         output = sapi5.SAPI5()
-        output.speak('Configuration file created. Open the FlightFollowing.ini file and add your geonames username. Exiting.')
+        output.speak('Configuration file created. Open the tfm.ini file and add your geonames username. Exiting.')
         time.sleep(8)
         sys.exit()
 
@@ -1194,7 +1194,7 @@ class FlightFollowing:
         self.oldRCMsg = msg[1]
 
 
-    ## Announce flight following info
+    ## Announce Talking Flight Monitor (TFM) info
     def AnnounceInfo(self, dt, triggered = 0):
         # If invoked by hotkey, reset hotkey deffinitions.
         if triggered == 1:
@@ -1353,6 +1353,6 @@ class FlightFollowing:
             exit()
 
 if __name__ == '__main__':
-    FlightFollowing = FlightFollowing()
+    tfm = tfm()
     pyglet.app.run()
     pass
