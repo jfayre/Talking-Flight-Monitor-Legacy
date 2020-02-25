@@ -28,6 +28,8 @@ import sys
 import time
 import warnings
 import winsound
+import PySimpleGUIWx as sg
+
 from configparser import ConfigParser
 
 from win32event import CreateMutex
@@ -71,6 +73,48 @@ try:
 except ImportError:
         pyuipcImported = False
         debug = True
+def GUI():
+    # define the GUI for TFM.
+    # menus not used for WX port yet
+    menudef = [['&Application', ['E&xit']],
+        ['&Speech', ['Toggle &Flight Following info', 'Toggle &SimConnect Messages', 'Toggle &Autopilot announcements']]]
+    layout = [
+        [sg.Output(size=(80, 20))],
+        [ sg.Text("talking flight monitor")],
+        [ sg.Text("heading:"), sg.Input(key='hdg'), sg.Text("Altitude:"), sg.Input(key='alt')],
+        [ sg.Text("Speed:"), sg.Input(key = "spd"), sg.Text("Mach:"), sg.Input(key = 'mch')],
+        [ sg.Text("Vertical Speed:'"), sg.Input(key="vspd"), sg.Text("Transponder:"), sg.Input(key = "trans")],
+        [ sg.Button('set auto pilot', key="setap")] ]
+    window = sg.Window("Talking Flight Monitor", layout, finalize=True)
+    window.BringToFront()
+
+
+    #loop and process input events 
+    while True:
+        event, values = window.read(timeout=250)
+        pyglet.clock.tick()
+        if event in (None, 'Exit'):
+            break
+        
+        if event == 'setap':
+            print (hex(tfm.instr['Transponder']))
+            if values['spd'] != "":
+                tfm.set_speed(int(values['spd']))
+            if values['hdg'] != "":
+                tfm.set_heading(int(values['hdg']))
+            if values['alt'] != "":
+                tfm.set_altitude(int(values['alt']))
+            if values['mch'] != "":
+                tfm.set_mach(int(values['mch']))
+            if values['vspd'] != "":
+                tfm.set_vspeed(int(values['vspd']))
+            if values['trans'] != "":
+                tfm.set_transponder(values['trans'])
+
+
+        
+        
+    window.close()
 
 ## Main Class of tfm.
 # Run constructor to run the program.
@@ -554,7 +598,45 @@ class tfm:
                 self.output.speak (F'Up {abs(pitch)}')
         except Exception as e:
             logging.exception (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
+    def set_speed(self, speed):
+        # set the autopilot airspeed
+        offset, type = self.InstrOffsets['ApAirspeed']
+        data = [(offset, type, int(speed))]
+        pyuipc.write(data)
+    def set_heading(self, heading):
+        # set the auto pilot heading
+        offset, type = self.InstrOffsets['ApHeading']
+        # convert the supplied heading into the proper FSUIPC format (degrees*65536/360)
+        heading = int(heading * 65536 / 360)
+        data = [(offset, type, heading)]
+        pyuipc.write(data)
+    def set_altitude(self, altitude):
+        offset, type = self.InstrOffsets['ApAltitude']
+        # convert the supplied altitude into the proper FSUIPC format.
+        #  FSUIPC needs the altitude as metres*65536
+        altitude = int(altitude / 3.28084 * 65536)
+        data = [(offset, type, altitude)]
+        pyuipc.write(data)
+    def set_mach(self, mach):
+        # set mach speed
+        offset, type = self.InstrOffsets['ApMach']
+        # convert the supplied mach value into the proper FSUIPC format.
+        #  FSUIPC needs the mach multiplied by 65536
+        mach = int(mach * 65536)
+        data = [(offset, type, mach)]
+        pyuipc.write(data)
+    def set_vspeed(self, vspeed):
+        # set the autopilot vertical speed
+        offset, type = self.InstrOffsets['ApVerticalSpeed']
+        data = [(offset, type, int(vspeed))]
+        pyuipc.write(data)
 
+    def set_transponder(self, transponder):
+        # set the transponder
+        offset, type = self.InstrOffsets['Transponder']
+        data = [(offset, type, int(transponder, 16))]
+        pyuipc.write(data)
+        
     def sonifyFlightDirector(self, dt):
         try:
             pitch = round(self.instr['ApFlightDirectorPitch'], 1)
@@ -697,7 +779,7 @@ class tfm:
                     self.output.speak ('flight director mode enabled')
 
             elif instrument == 'toggleap':
-                if self.APEnabled == False:
+                if not self.APEnabled:
                     self.output.speak (F'Autopilot control enabled')
                     self.APEnabled = True
                 else:
@@ -1354,5 +1436,8 @@ class tfm:
 
 if __name__ == '__main__':
     tfm = tfm()
-    pyglet.app.run()
+    GUI()
+
+
+    # pyglet.app.run()
     pass
