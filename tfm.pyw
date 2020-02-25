@@ -97,6 +97,7 @@ def GUI():
             break
         
         if event == 'setap':
+            print (hex(tfm.instr['Transponder']))
             if values['spd'] != "":
                 tfm.set_speed(int(values['spd']))
             if values['hdg'] != "":

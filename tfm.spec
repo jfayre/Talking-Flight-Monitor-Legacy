@@ -1,13 +1,13 @@
-# -*- mode: python -*-
+# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
 
 
-a = Analysis(['tfm.py'],
-             pathex=['C:\\Users\\jfayr\\flight-following'],
+a = Analysis(['tfm.pyw'],
+             pathex=['C:\\Users\\jfayr\\projects\\talking-flight-monitor'],
              binaries=[],
-             datas=[('sounds/*.wav', 'sounds')],
-             hiddenimports=['babel.numbers'],
+             datas=[],
+             hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
@@ -26,11 +26,12 @@ exe = EXE(pyz,
           bootloader_ignore_signals=False,
           strip=False,
           upx=True,
-          console=True , uac_admin=True)
+          console=False )
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
                a.datas,
                strip=False,
                upx=True,
+               upx_exclude=[],
                name='tfm')
