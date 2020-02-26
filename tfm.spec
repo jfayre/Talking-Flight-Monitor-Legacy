@@ -3,11 +3,11 @@
 block_cipher = None
 
 
-a = Analysis(['tfm.pyw'],
+a = Analysis(['tfm.py'],
              pathex=['C:\\Users\\jfayr\\projects\\talking-flight-monitor'],
              binaries=[],
-             datas=[],
-             hiddenimports=[],
+             datas=[('sounds/*.wav', 'sounds')],
+             hiddenimports=['babel.numbers'],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
@@ -26,7 +26,7 @@ exe = EXE(pyz,
           bootloader_ignore_signals=False,
           strip=False,
           upx=True,
-          console=False )
+          console=True )
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,

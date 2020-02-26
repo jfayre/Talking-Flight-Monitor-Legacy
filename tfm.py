@@ -104,7 +104,7 @@ def GUI():
             if values['alt'] != "":
                 tfm.set_altitude(int(values['alt']))
             if values['mch'] != "":
-                tfm.set_mach(int(values['mch']))
+                tfm.set_mach(values['mch'])
             if values['vspd'] != "":
                 tfm.set_vspeed(int(values['vspd']))
             if values['trans'] != "":
@@ -615,7 +615,9 @@ class tfm:
         offset, type = self.InstrOffsets['ApMach']
         # convert the supplied mach value into the proper FSUIPC format.
         #  FSUIPC needs the mach multiplied by 65536
-        mach = int(mach * 65536)
+        mach = float(mach) * 65536
+        mach = int(mach)
+        
         data = [(offset, type, mach)]
         pyuipc.write(data)
     def set_vspeed(self, vspeed):
