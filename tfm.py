@@ -43,6 +43,7 @@ from aviationFormula.aviationFormula import calcBearing
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
 import pyglet
+import threading
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
 import numpy as np
@@ -73,6 +74,10 @@ try:
 except ImportError:
         pyuipcImported = False
         debug = True
+def pyglet_event_loop():
+    pyglet.app.run()
+
+
 def GUI():
     # define the GUI for TFM.
     # menus not used for WX port yet
@@ -92,7 +97,7 @@ def GUI():
     #loop and process input events 
     while True:
         event, values = window.read(timeout=250)
-        pyglet.clock.tick()
+        pyglet.clock.tick(poll=True)
         if event in (None, 'Exit'):
             break
         
@@ -692,6 +697,8 @@ class tfm:
 
             if bank == 0:
                 self.BankPlayer.pause()
+            pyglet.clock.tick()
+
         except Exception as e:
             logging.exception (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
 
@@ -1402,9 +1409,16 @@ class tfm:
             exit()
 
 if __name__ == '__main__':
+    # start the main tfm class.
     tfm = tfm()
+    # for attitude mode to work properly, we need to run the standard pyglet event loop in a second thread.
+    t = threading.Thread(target=pyglet_event_loop)
+    t.start()
+
+
+    # start the GUI
     GUI()
 
 
-    # pyglet.app.run()
+    
     pass
