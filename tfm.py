@@ -734,7 +734,7 @@ class tfm:
                 AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
                 self.output.speak(F"{round(AGLAltitude)} feet A G L")
             elif instrument == 'heading':
-                self.output.speak(F'Heading: {self.headingCorrected}')
+                self.output.speak(F'Heading: {round(self.headingCorrected)}')
             elif instrument == 'wp':
                 self.readWaypoint(triggered=True)
             elif instrument == 'tas':
