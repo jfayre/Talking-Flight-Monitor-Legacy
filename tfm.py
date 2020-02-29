@@ -3,7 +3,7 @@
 #==============================================================================
 # Talking Flight Monitor - an accessibility application for Microsoft Flight Simulator and Lockheed Martin Prepar3d.
 # Copyright (C) 2020 by Jason Fayre
-# based on the VoiceATIS addon by   Oliver Clemens
+# 
 # 
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -28,7 +28,7 @@ import sys
 import time
 import warnings
 import winsound
-import PySimpleGUIWx as sg
+import PySimpleGUIQt as sg
 
 from configparser import ConfigParser
 
@@ -66,7 +66,7 @@ if GetLastError(  ) == ERROR_ALREADY_EXISTS:
                 
 # Import pyuipc package (except failure with debug mode). 
 
-
+pyglet.options['shadow_window'] = False
 try:
     import pyuipc
     pyuipcImported = True
@@ -75,7 +75,12 @@ except ImportError:
         pyuipcImported = False
         debug = True
 def pyglet_event_loop():
-    pyglet.app.run()
+    # not currently used
+    while True:
+        pyglet.clock.tick()
+        pyglet.app.platform_event_loop.dispatch_posted_events()
+        time.sleep(100)
+
 
 
 def GUI():
@@ -84,19 +89,30 @@ def GUI():
     menudef = [['&Application', ['E&xit']],
         ['&Speech', ['Toggle &Flight Following info', 'Toggle &SimConnect Messages', 'Toggle &Autopilot announcements']]]
     layout = [
-        [sg.Output(size=(80, 20))],
         [ sg.Text("talking flight monitor")],
         [ sg.Text("heading:"), sg.Input(key='hdg', do_not_clear=True), sg.Text("Altitude:"), sg.Input(key='alt')],
         [ sg.Text("Speed:"), sg.Input(key = "spd"), sg.Text("Mach:"), sg.Input(key = 'mch')],
         [ sg.Text("Vertical Speed:'"), sg.Input(key="vspd"), sg.Text("Transponder:"), sg.Input(key = "trans")],
+        # [ sg.Text("Altimeter setting:"), sg.Input(key="altimeter"), sg.Radio("Inches", "altimeter", default=True), sg.Radio("hPa", "altimeter") ],
         [ sg.Button('set auto pilot', key="setap")] ]
     window = sg.Window("Talking Flight Monitor", layout, finalize=True)
     window.BringToFront()
+    window['hdg'].Widget.setAccessibleName("heading")
+    window['alt'].Widget.setAccessibleName("altitude")
+    window['spd'].Widget.setAccessibleName("speed")
+    window['vspd'].Widget.setAccessibleName("vertical speed")
+    # window['altimeter'].Widget.setAccessibleName("altimeter")
+    window['mch'].Widget.setAccessibleName("mach")
+    window['trans'].Widget.setAccessibleName("transponder")
+
 
 
     #loop and process input events 
     while True:
-        event, values = window.read(timeout=250)
+        event, values = window.read(timeout=50)
+        pyglet.clock.tick()
+        pyglet.app.platform_event_loop.dispatch_posted_events()
+
         if event in (None, 'Exit'):
             break
         
@@ -699,7 +715,8 @@ class tfm:
 
             if bank == 0:
                 self.BankPlayer.pause()
-
+            pyglet.clock.tick()
+            pyglet.app.platform_event_loop.dispatch_posted_events()
         except Exception as e:
             logging.exception (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
 
@@ -1422,7 +1439,7 @@ if __name__ == '__main__':
     # for attitude mode to work properly, we need to run the standard pyglet event loop in a second thread.
     t = threading.Thread(target=pyglet_event_loop)
     t.daemon = True
-    t.start()
+    # t.start()
 
 
     # start the GUI
