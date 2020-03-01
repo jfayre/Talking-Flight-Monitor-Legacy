@@ -28,7 +28,7 @@ import sys
 import time
 import warnings
 import winsound
-import PySimpleGUIQt as sg
+import PySimpleGUIWx as sg
 
 from configparser import ConfigParser
 
@@ -36,7 +36,8 @@ from win32event import CreateMutex
 from win32api import GetLastError
 from winerror import ERROR_ALREADY_EXISTS
 from math import degrees, floor
-import keyboard
+# import keyboard
+from keyboard_handler.wx_handler import WXKeyboardHandler
 import requests
 
 from aviationFormula.aviationFormula import calcBearing
@@ -56,6 +57,7 @@ logging.basicConfig(filename = 'error.log', level = logging.INFO)
 # Set encoding
 #reload(sys)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
+
 # detect if another copy is running
 handle = CreateMutex(None, 1, 'tfm')
 if GetLastError(  ) == ERROR_ALREADY_EXISTS:
@@ -84,8 +86,10 @@ def pyglet_event_loop():
 
 
 def GUI():
-    # define the GUI for TFM.
+    # define the GUI for TFM. Also initializes the keyboard handler.
+    
     # menus not used for WX port yet
+    
     menudef = [['&Application', ['E&xit']],
         ['&Speech', ['Toggle &Flight Following info', 'Toggle &SimConnect Messages', 'Toggle &Autopilot announcements']]]
     layout = [
@@ -97,14 +101,10 @@ def GUI():
         [ sg.Button('set auto pilot', key="setap")] ]
     window = sg.Window("Talking Flight Monitor", layout, finalize=True)
     window.BringToFront()
-    window['hdg'].Widget.setAccessibleName("heading")
-    window['alt'].Widget.setAccessibleName("altitude")
-    window['spd'].Widget.setAccessibleName("speed")
-    window['vspd'].Widget.setAccessibleName("vertical speed")
-    # window['altimeter'].Widget.setAccessibleName("altimeter")
-    window['mch'].Widget.setAccessibleName("mach")
-    window['trans'].Widget.setAccessibleName("transponder")
-
+    # initialize the keyboard handler.
+    
+    tfm.keyboard_handler = WXKeyboardHandler(window.MasterFrame)
+    tfm.keyboard_handler.register_keys({']': tfm.commandMode})
 
 
     #loop and process input events 
@@ -279,6 +279,7 @@ class tfm:
     }
     ## Setup the tfm object.
     def __init__(self,**optional):
+        global keyboard_handler
         # Get file path.
         self.rootDir = os.path.abspath(os.path.dirname(sys.argv[0]))
         # window = pyglet.window.Window()        
@@ -369,7 +370,7 @@ class tfm:
                 time.sleep(20)
         
         ## add global hotkey definitions
-        self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
+        # self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
         # variables to track states of various aircraft instruments
         self.oldTz = 'none' ## variable for storing timezone name
         self.old_flaps = 0
@@ -511,6 +512,8 @@ class tfm:
         self.getPyuipcData()
         
         self.oldInstr = self.instr
+        # keyboard_handler.register_key(']', self.commandMode)
+        
 
         
         # Infinite loop.
@@ -722,118 +725,126 @@ class tfm:
 
 
 
+    def readAltitude(self):
+        self.output.speak(F'{self.instr["Altitude"]} feet A S L')
+        self.reset_hotkeys()
+    def readGroundAltitude(self):
+        AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
+        self.output.speak(F"{round(AGLAltitude)} feet A G L")
+        self.reset_hotkeys()
 
-    ## handle hotkeys for reading instruments on demand
-    def keyHandler(self, instrument):
-        try:
-            if instrument == 'asl':
-                self.output.speak(F'{self.instr["Altitude"]} feet A S L')
-                
-                
-            elif instrument == 'agl':
-                AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
-                self.output.speak(F"{round(AGLAltitude)} feet A G L")
-            elif instrument == 'heading':
-                self.output.speak(F'Heading: {round(self.headingCorrected)}')
-            elif instrument == 'wp':
-                self.readWaypoint(triggered=True)
-            elif instrument == 'tas':
-                self.output.speak (F'{self.instr["AirspeedTrue"]} knots true')
-            elif instrument == 'ias':
-                self.output.speak (F'{self.instr["AirspeedIndicated"]} knots indicated')
-            elif instrument == 'mach':
-                self.output.speak (F'Mach {self.instr["AirspeedMach"]:0.2f}')
-            elif instrument == 'vspeed':
-                self.output.speak (F"{self.instr['VerticalSpeed']:.0f} feet per minute")
-            elif instrument =='dest':
-                self.output.speak(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
-            elif instrument == 'airtemp':
-                self.output.speak (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
-            elif instrument == 'toggletrim':
-                if self.trimEnabled:
-                    self.output.speak ('trim announcement disabled')
-                    self.trimEnabled = False
-                else:
-                    self.trimEnabled = True
-                    self.output.speak ('trim announcement enabled')
-            elif instrument == 'togglegpws':
-                if self.calloutsEnabled:
-                    self.output.speak ('GPWS callouts disabled')
-                    self.calloutsEnabled = False
-                else:
-                    self.calloutsEnabled = True
-                    self.output.speak ("GPWS callouts enabled")
-            elif instrument == 'togglesimc':
-                if self.MuteSimC:
-                    self.output.speak ('Sim Connect messages unmuted')
-                    self.MuteSimC = False
-                else:
-                    self.MuteSimC = True
-                    self.output.speak ('Sim Connect messages muted')
+    def readFlightFollowing(self):
+        self.reset_hotkeys()
+        self.AnnounceInfo()
+    def readHeading(self):
+        self.output.speak(F'Heading: {round(self.headingCorrected)}')
+        self.reset_hotkeys()
+    def readTAS(self):
+        self.output.speak (F'{self.instr["AirspeedTrue"]} knots true')
+        self.reset_hotkeys()
+    def readIAS(self):
+        self.output.speak (F'{self.instr["AirspeedIndicated"]} knots indicated')
+        self.reset_hotkeys()
+    def readMach(self):
+        self.output.speak (F'Mach {self.instr["AirspeedMach"]:0.2f}')
+        self.reset_hotkeys()
+    def readVSpeed(self):
+        self.output.speak (F"{self.instr['VerticalSpeed']:.0f} feet per minute")
+        self.reset_hotkeys()
+    def readDest(self):
+        self.output.speak(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
+        self.reset_hotkeys()
+    def readTemp(self):
+        self.output.speak (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
+        self.reset_hotkeys()
+    def toggleTrim(self):
+        if self.trimEnabled:
+            self.output.speak ('trim announcement disabled')
+            self.trimEnabled = False
+        else:
+            self.trimEnabled = True
+            self.output.speak ('trim announcement enabled')
+        self.reset_hotkeys()
 
-            elif instrument =="toggleflaps":
-                if self.flapsEnabled:
-                    self.output.speak ("flaps disabled")
-                    self.flapsEnabled = False
-                else:
-                    self.output.speak ("Flaps enabled")
-                    self.flapsEnabled = True
-            elif instrument =='toggleils':
-                if self.readILSEnabled:
-                    self.output.speak ('I L S info disabled')
-                    self.readILSEnabled = False
-                else:
-                    self.output.speak ('I L S info enabled')
-                    self.readILSEnabled = True
-            elif instrument == 'director':
-                if self.directorEnabled:
-                    pyglet.clock.unschedule(self.sonifyFlightDirector)
-                    self.directorEnabled = False
-                    self.PitchUpPlayer.pause()
-                    self.PitchDownPlayer.pause()
-                    self.BankPlayer.pause ()
-                    self.output.speak ('flight director mode disabled.')
-                else:
-                    pyglet.clock.schedule_interval(self.sonifyFlightDirector, 0.2)
-                    self.directorEnabled = True
-                    self.output.speak ('flight director mode enabled')
+    def toggleGPWS(self):
+        if self.calloutsEnabled:
+            self.output.speak ('GPWS callouts disabled')
+            self.calloutsEnabled = False
+        else:
+            self.calloutsEnabled = True
+            self.output.speak ("GPWS callouts enabled")
+        self.reset_hotkeys()
 
-            elif instrument == 'toggleap':
-                if not self.APEnabled:
-                    self.output.speak (F'Autopilot control enabled')
-                    self.APEnabled = True
-                else:
-                    self.output.speak (F'autopilot control disabled')
-                    self.APEnabled = False
+    def toggleMuteSimconnect(self):
+        if self.MuteSimC:
+            self.output.speak ('Sim Connect messages unmuted')
+            self.MuteSimC = False
+        else:
+            self.MuteSimC = True
+            self.output.speak ('Sim Connect messages muted')
+        self.reset_hotkeys()
+    def toggleFlaps(self):
+        if self.flapsEnabled:
+            self.output.speak ("flaps disabled")
+            self.flapsEnabled = False
+        else:
+            self.output.speak ("Flaps enabled")
+            self.flapsEnabled = True
+        self.reset_hotkeys()
+    def toggleILS(self):
+        if self.readILSEnabled:
+            self.output.speak ('I L S info disabled')
+            self.readILSEnabled = False
+        else:
+            self.output.speak ('I L S info enabled')
+            self.readILSEnabled = True
+        self.reset_hotkeys()
+    def toggleDirectorMode(self):
+        if self.directorEnabled:
+            pyglet.clock.unschedule(self.sonifyFlightDirector)
+            self.directorEnabled = False
+            self.PitchUpPlayer.pause()
+            self.PitchDownPlayer.pause()
+            self.BankPlayer.pause ()
+            self.output.speak ('flight director mode disabled.')
+        else:
+            pyglet.clock.schedule_interval(self.sonifyFlightDirector, 0.2)
+            self.directorEnabled = True
+            self.output.speak ('flight director mode enabled')
+        self.reset_hotkeys()
 
-            elif instrument == 'manual':
-                if self.manualEnabled:
-                    pyglet.clock.unschedule(self.manualFlight)
-                    self.manualEnabled = False
-                    self.output.speak ('manual flight  mode disabled.')
-                else:
-                    pyglet.clock.schedule_interval(self.manualFlight, self.ManualInterval)
-                    self.manualEnabled = True
-                    self.output.speak ('manual flight mode enabled')
+    def toggleAutoPilot(self):
+        if not self.APEnabled:
+            self.output.speak (F'Autopilot control enabled')
+            self.APEnabled = True
+        else:
+            self.output.speak (F'autopilot control disabled')
+            self.APEnabled = False
+        self.reset_hotkeys()
+    def toggleManualMode(self):
+        if self.manualEnabled:
+            pyglet.clock.unschedule(self.manualFlight)
+            self.manualEnabled = False
+            self.output.speak ('manual flight  mode disabled.')
+        else:
+            pyglet.clock.schedule_interval(self.manualFlight, self.ManualInterval)
+            self.manualEnabled = True
+            self.output.speak ('manual flight mode enabled')
+        self.reset_hotkeys()
 
-            elif instrument == 'attitude':
-                if self.sonifyEnabled:
-                    pyglet.clock.unschedule(self.sonifyPitch)
-                    
-                    self.PitchUpPlayer.pause()
-                    self.PitchDownPlayer.pause()
-                    self.BankPlayer.pause ()
-                    self.sonifyEnabled = False
-                    self.output.speak ('attitude mode disabled.')
-                else:
-                    pyglet.clock.schedule_interval(self.sonifyPitch, 0.05)
-                    self.sonifyEnabled = True
-                    self.output.speak ('attitude mode enabled')
-            self.reset_hotkeys()
-        except Exception as e:
-            logging.exception(F'error in hotkey handler. Instrument was {instrument} ' + str(e))
-                
-
+    def toggleAttitudeMode(self):
+        if self.sonifyEnabled:
+            pyglet.clock.unschedule(self.sonifyPitch)
+            self.PitchUpPlayer.pause()
+            self.PitchDownPlayer.pause()
+            self.BankPlayer.pause ()
+            self.sonifyEnabled = False
+            self.output.speak ('attitude mode disabled.')
+        else:
+            pyglet.clock.schedule_interval(self.sonifyPitch, 0.05)
+            self.sonifyEnabled = True
+            self.output.speak ('attitude mode enabled')
+        self.reset_hotkeys()
 
 
 
@@ -841,34 +852,38 @@ class tfm:
     ## Layered key support for reading various instrumentation
     def commandMode(self):
         try:
+            self.keyboard_handler.unregister_all_keys()
             self.output.speak ('command?', interrupt=True)
-            self.aslKey= keyboard.add_hotkey (self.config['hotkeys']['asl_key'], self.keyHandler, args=(['asl']), suppress=True, timeout=2)
-            self.aglKey = keyboard.add_hotkey (self.config['hotkeys']['agl_key'], self.keyHandler, args=(['agl']), suppress=True, timeout=2)
-            self.cityKey = keyboard.add_hotkey(self.config['hotkeys']['city_key'], self.AnnounceInfo, args=([0, 1]))
-            self.headingKey = keyboard.add_hotkey (self.config['hotkeys']['heading_key'], self.keyHandler, args=(['heading']), suppress=True, timeout=2)
-            self.WPKey = keyboard.add_hotkey (self.config['hotkeys']['waypoint_key'], self.keyHandler, args=(['wp']), suppress=True, timeout=2)
-            self.tasKey = keyboard.add_hotkey (self.config['hotkeys']['tas_key'], self.keyHandler, args=(['tas']), suppress=True, timeout=2)
-            self.iasKey = keyboard.add_hotkey (self.config['hotkeys']['ias_key'], self.keyHandler, args=(['ias']), suppress=True, timeout=2)
-            self.machKey = keyboard.add_hotkey (self.config['hotkeys']['mach_key'], self.keyHandler, args=(['mach']), suppress=True, timeout=2)
-            self.messageKey = keyboard.add_hotkey(self.config['hotkeys']['message_key'], self.readCachedSimConnectMessages, args=(), suppress=True, timeout=2)
-            self.destKey = keyboard.add_hotkey (self.config['hotkeys']['dest_key'], self.keyHandler, args=(['dest']), suppress=True, timeout=2)
-            self.attitudeKey = keyboard.add_hotkey (self.config['hotkeys']['attitude_key'], self.keyHandler, args=(['attitude']), suppress=True, timeout=2)
-            self.manualKey = keyboard.add_hotkey (self.config['hotkeys']['manual_key'], self.keyHandler, args=(['manual']), suppress=True, timeout=2)
-            self.directorKey = keyboard.add_hotkey (self.config['hotkeys']['director_key'], self.keyHandler, args=(['director']), suppress=True, timeout=2)
-            self.vspeedKey = keyboard.add_hotkey (self.config['hotkeys']['vspeed_key'], self.keyHandler, args=(['vspeed']), suppress=True, timeout=2)
-            self.airtempKey = keyboard.add_hotkey (self.config['hotkeys']['airtemp_key'], self.keyHandler, args=(['airtemp']), suppress=True, timeout=2)
-            self.trimKey = keyboard.add_hotkey (self.config['hotkeys']['trim_key'], self.keyHandler, args=(['toggletrim']), suppress=True, timeout=2)
-            self.MuteSimCKey = keyboard.add_hotkey (self.config['hotkeys']['mute_simconnect_key'], self.keyHandler, args=(['togglesimc']), suppress=True, timeout=2)
-            self.CalloutsKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_gpws_key'], self.keyHandler, args=(['togglegpws']), suppress=True, timeout=2)
-            self.ILSKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_ils_key'], self.keyHandler, args=(['toggleils']), suppress=True, timeout=2)
-            self.flapsKey = keyboard.add_hotkey (self.config['hotkeys']['toggle_flaps_key'], self.keyHandler, args=(['toggleflaps']), suppress=True, timeout=2)
-            self.apKey = keyboard.add_hotkey (self.config['hotkeys']['autopilot_key'], self.keyHandler, args=(['toggleap']), suppress=True, timeout=2)
-            # winsound.Beep(500, 100)
+            keymap = {
+                self.config['hotkeys']['asl_key']: self.readAltitude,
+                self.config['hotkeys']['agl_key']: self.readGroundAltitude,
+                self.config['hotkeys']['city_key']: self.readFlightFollowing,
+                self.config['hotkeys']['heading_key']: self.readHeading,
+                self.config['hotkeys']['waypoint_key']: self.readWaypoint,
+                self.config['hotkeys']['tas_key']: self.readTAS,
+                self.config['hotkeys']['ias_key']: self.readIAS,
+                self.config['hotkeys']['mach_key']: self.readMach,
+                self.config['hotkeys']['message_key']: self.readCachedSimConnectMessages,
+                self.config['hotkeys']['dest_key']: self.readDest,
+                self.config['hotkeys']['attitude_key']: self.toggleAttitudeMode,
+                self.config['hotkeys']['manual_key']: self.toggleManualMode,
+                self.config['hotkeys']['director_key']: self.toggleDirectorMode,
+                self.config['hotkeys']['vspeed_key']: self.readVSpeed,
+                self.config['hotkeys']['airtemp_key']: self.readTemp,
+                self.config['hotkeys']['trim_key']: self.toggleTrim,
+                self.config['hotkeys']['mute_simconnect_key']: self.toggleMuteSimconnect,
+                self.config['hotkeys']['toggle_gpws_key']: self.toggleGPWS,
+                self.config['hotkeys']['toggle_ils_key']:self.toggleILS,
+                self.config['hotkeys']['toggle_flaps_key']: self.toggleFlaps,
+                self.config['hotkeys']['autopilot_key']: self.toggleAutoPilot
+
+            }
+            self.keyboard_handler.register_keys(keymap)
         except Exception as e:
             logging.exception ("error in command mode.")
     def reset_hotkeys(self):
-        keyboard.remove_all_hotkeys()
-        self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
+        self.keyboard_handler.unregister_all_keys()
+        self.keyboard_handler.register_keys({']': tfm.commandMode})    
 
     def readCallouts (self, dt=0):
         if self.calloutsEnabled:
@@ -1191,6 +1206,7 @@ class tfm:
             if triggered:
                 self.output.speak(F'ETA: {self.instr["NextWPETA"]}')
                 self.reset_hotkeys()
+            self.reset_hotkeys()
         except Exception as e:
             logging.exception ("error reading waypoint info")
 
@@ -1270,11 +1286,7 @@ class tfm:
 
 
     ## Announce Talking Flight Monitor (TFM) info
-    def AnnounceInfo(self, dt, triggered = 0):
-        # If invoked by hotkey, reset hotkey deffinitions.
-        if triggered == 1:
-            self.reset_hotkeys()
-            triggered = '0'
+    def AnnounceInfo(self, dt=0, triggered = 0):
         # Get data from simulator
         self.getPyuipcData()
         # Lookup nearest cities to aircraft position using the Geonames database.
@@ -1440,10 +1452,9 @@ if __name__ == '__main__':
     t = threading.Thread(target=pyglet_event_loop)
     t.daemon = True
     # t.start()
-
-
     # start the GUI
     GUI()
+
 
 
     
