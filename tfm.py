@@ -36,7 +36,7 @@ from win32event import CreateMutex
 from win32api import GetLastError
 from winerror import ERROR_ALREADY_EXISTS
 from math import degrees, floor
-# import keyboard
+import wx
 from keyboard_handler.wx_handler import WXKeyboardHandler
 import requests
 
@@ -76,12 +76,142 @@ try:
 except ImportError:
         pyuipcImported = False
         debug = True
-def pyglet_event_loop():
-    # not currently used
-    while True:
+
+class Form(wx.Panel):
+    ''' The Form class is a wx.Panel that creates a bunch of controls
+        and handlers for callbacks. Doing the layout of the controls is 
+        the responsibility of subclasses (by means of the doLayout()
+        method). '''
+
+    def __init__(self, *args, **kwargs):
+        super(Form, self).__init__(*args, **kwargs)
+        self.createControls()
+        self.bindEvents()
+        self.doLayout()
+
+    def createControls(self):
+        # define the menu bar
+        self.app_menu = wx.Menu()
+        self.help_menu = wx.Menu()
+        self.app_menu.Append (wx.ID_EXIT,"E&xit"," Terminate the program")
+        self.help_menu.Append(wx.ID_ABOUT, "&About"," Information about this program")
+        self.menu_bar = wx.MenuBar()
+        self.menu_bar.Append(self.app_menu, '&Application')
+        self.menu_bar.Append(self.help_menu, '&Help')
+        self.logger = wx.TextCtrl(self, style=wx.TE_MULTILINE|wx.TE_READONLY)
+        self.hdg_label = wx.StaticText(self, label='heading:')
+        self.hdg_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.alt_label = wx.StaticText(self, label='Altitude:')
+        self.alt_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.spd_label = wx.StaticText(self, label='Speed:')
+        self.spd_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.mch_label = wx.StaticText (self, label='Mach:')
+        self.mch_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.vspd_label = wx.StaticText(self, label='Vertical speed:')
+        self.vspd_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.trans_label = wx.StaticText(self, label='transponder:')
+        self.trans_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.qnh_label = wx.StaticText (self, label='Altimeter QNH:')
+        self.qnh_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.inches_label = wx.StaticText (self, label='Altimeter inches:')
+        self.inches_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.com1_label = wx.StaticText(self, label='Com 1:')
+        self.com1_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.timer = wx.Timer(self)  
+    def bindEvents(self):
+        
+        for control, event, handler in \
+            [(self.hdg_edit, wx.EVT_TEXT_ENTER, self.onHeadingEntered),
+            (self.alt_edit, wx.EVT_TEXT_ENTER, self.onAltitudeEntered),
+            (self.spd_edit, wx.EVT_TEXT_ENTER, self.onSpeedEntered),
+            (self.mch_edit, wx.EVT_TEXT_ENTER,self.onMachEntered),
+            (self.vspd_edit, wx.EVT_TEXT_ENTER, self.onVerticalSpeedEntered),
+            (self.trans_edit, wx.EVT_TEXT_ENTER, self.OnTransponderEntered),
+            (self.qnh_edit, wx.EVT_TEXT_ENTER, self.onQNHEntered),
+            (self.inches_edit, wx.EVT_TEXT_ENTER, self.onInchesEntered),
+            (self.com1_edit, wx.EVT_TEXT_ENTER, self.onCom1Entered)]:
+                control.Bind(event, handler)
+
+    def doLayout(self):
+        ''' Layout the controls by means of sizers. '''
+
+        # A horizontal BoxSizer will contain the GridSizer (on the left)
+        # and the logger text control (on the right):
+        boxSizer = wx.BoxSizer(orient=wx.HORIZONTAL)
+        # A GridSizer will contain the other controls:
+        gridSizer = wx.FlexGridSizer(cols=2, vgap=10, hgap=10)
+
+        # Prepare some reusable arguments for calling sizer.Add():
+        expandOption = dict(flag=wx.EXPAND)
+        noOptions = dict()
+        emptySpace = ((0, 0), noOptions)
+    
+        # Add the controls to the sizers:
+        for control, options in \
+                [(self.hdg_label, noOptions),
+                 (self.hdg_edit, expandOption),
+                 (self.alt_label, noOptions),
+                 (self.alt_edit, expandOption),
+                 (self.spd_label, noOptions),
+                 (self.spd_edit, expandOption),
+                 (self.mch_label, noOptions),
+                 (self.mch_edit, expandOption),
+                 (self.vspd_label, noOptions),
+                 (self.vspd_edit, expandOption),
+                 (self.trans_label, noOptions),
+                 (self.trans_edit, expandOption),
+                 (self.qnh_label, noOptions),
+                 (self.qnh_edit, expandOption),
+                 (self.inches_label, noOptions),
+                 (self.inches_edit, expandOption),
+                 (self.com1_label, noOptions),
+                 (self.com1_edit, expandOption)]:
+            gridSizer.Add(control, **options)
+
+        for control, options in \
+                [(gridSizer, dict(border=5, flag=wx.ALL)),
+                 (self.logger, dict(border=5, flag=wx.ALL|wx.EXPAND, 
+                    proportion=1))]:
+            boxSizer.Add(control, **options)
+
+        self.SetSizerAndFit(boxSizer)
+
+
+    # callback methods for events
+
+    def onHeadingEntered(self, event):
+        tfm.set_heading(event.GetString())
+    def onAltitudeEntered(self, event):
+        tfm.set_altitude(event.GetString())
+    def onSpeedEntered(self, event):
+        tfm.set_speed(event.GetString())
+    def onMachEntered(self, event):
+        tfm.set_mach(event.GetString())
+    def onQNHEntered(self, event):
+        pass
+    def onInchesEntered(self, event):
+        pass
+
+    def onVerticalSpeedEntered(self, event):
+        tfm.set_vspeed(event.GetString())
+    def OnTransponderEntered(self, event):
+        tfm.set_transponder(event.GetString())
+    def onCom1Entered(self, event):
+        pass
+class TFMFrame(wx.Frame, wx.Accessible):
+    def __init__(self, *args, **kwargs):
+        super(TFMFrame, self).__init__(*args, **kwargs)
+        panel = Form(self)
+        panel.SetMenu
+        self.timer = wx.Timer(self)  
+        self.Bind(wx.EVT_TIMER, self.update, self.timer)  
+        self.timer.Start(100)
+    def update(self, event):
         pyglet.clock.tick()
         pyglet.app.platform_event_loop.dispatch_posted_events()
-        time.sleep(100)
+
+
+
 
 
 
@@ -625,6 +755,7 @@ class tfm:
         # set the auto pilot heading
         offset, type = self.InstrOffsets['ApHeading']
         # convert the supplied heading into the proper FSUIPC format (degrees*65536/360)
+        heading = int(heading)
         heading = int(heading * 65536 / 360)
         data = [(offset, type, heading)]
         pyuipc.write(data)
@@ -632,6 +763,7 @@ class tfm:
         offset, type = self.InstrOffsets['ApAltitude']
         # convert the supplied altitude into the proper FSUIPC format.
         #  FSUIPC needs the altitude as metres*65536
+        altitude =int(altitude)
         altitude = int(altitude / 3.28084 * 65536)
         data = [(offset, type, altitude)]
         pyuipc.write(data)
@@ -1449,11 +1581,15 @@ if __name__ == '__main__':
     # start the main tfm class.
     tfm = tfm()
     # for attitude mode to work properly, we need to run the standard pyglet event loop in a second thread.
-    t = threading.Thread(target=pyglet_event_loop)
-    t.daemon = True
+    # t = threading.Thread(target=pyglet_event_loop)
+    # t.daemon = True
     # t.start()
     # start the GUI
-    GUI()
+    # GUI()
+    app = wx.App(0)
+    frame = TFMFrame(None, title='Talking Flight Monitor')
+    frame.Show()
+    app.MainLoop()    
 
 
 
