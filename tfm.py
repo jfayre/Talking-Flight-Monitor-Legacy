@@ -327,17 +327,17 @@ class tfm:
                 'vspeed_key': 'v',
                 'airtemp_key': 'o',
                 'trim_key': 'shift+t',
-                'mute_simconnect_key': 'Shift+r',
+                'mute_simconnect_key': 'shift+r',
                 'city_key': 'c',
                 'waypoint_key': 'w',
                 'dest_key': 'd',
                 'attitude_key': '[',
-                'manual_key': 'Ctrl+m',
+                'manual_key': 'control+m',
                 'autopilot_key': 'shift+p',
-                'director_key': 'Ctrl+f',
+                'director_key': 'control+f',
                 'toggle_gpws_key': 'shift+g',
                 'toggle_ils_key': 'shift+i',
-                'toggle_flaps_key': 'Shift+f',
+                'toggle_flaps_key': 'shift+f',
                 'message_key': 'r'}
 
         # First log message.
