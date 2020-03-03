@@ -28,7 +28,7 @@ import sys
 import time
 import warnings
 import winsound
-import PySimpleGUIWx as sg
+# import PySimpleGUIWx as sg
 
 from configparser import ConfigParser
 
@@ -36,7 +36,9 @@ from win32event import CreateMutex
 from win32api import GetLastError
 from winerror import ERROR_ALREADY_EXISTS
 from math import degrees, floor
-import wx
+import wx, wx.adv
+import webbrowser
+import application
 from keyboard_handler.wx_handler import WXKeyboardHandler
 import requests
 
@@ -86,18 +88,10 @@ class Form(wx.Panel):
     def __init__(self, *args, **kwargs):
         super(Form, self).__init__(*args, **kwargs)
         self.createControls()
-        self.bindEvents()
+        # self.bindEvents()
         self.doLayout()
 
     def createControls(self):
-        # define the menu bar
-        self.app_menu = wx.Menu()
-        self.help_menu = wx.Menu()
-        self.app_menu.Append (wx.ID_EXIT,"E&xit"," Terminate the program")
-        self.help_menu.Append(wx.ID_ABOUT, "&About"," Information about this program")
-        self.menu_bar = wx.MenuBar()
-        self.menu_bar.Append(self.app_menu, '&Application')
-        self.menu_bar.Append(self.help_menu, '&Help')
         self.logger = wx.TextCtrl(self, style=wx.TE_MULTILINE|wx.TE_READONLY)
         self.hdg_label = wx.StaticText(self, label='heading:')
         self.hdg_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
@@ -202,69 +196,55 @@ class TFMFrame(wx.Frame, wx.Accessible):
     def __init__(self, *args, **kwargs):
         super(TFMFrame, self).__init__(*args, **kwargs)
         panel = Form(self)
-        panel.SetMenu
+        # define the menu bar
+        # application menu
+        app_menu = wx.Menu()
+        app_exit = app_menu.Append (wx.ID_EXIT,"E&xit"," Terminate the program")
+        # help menu
+        help_menu = wx.Menu()
+        help_website = help_menu.Append(wx.ID_ANY, "visit &website")
+        help_issue = help_menu.Append(wx.ID_ANY, "&Report an issue")
+        help_about = help_menu.Append(wx.ID_ABOUT, "&About"," Information about this program")
+        # set up the menu bar
+        menu_bar = wx.MenuBar()
+        menu_bar.Append(app_menu, '&Application')
+        menu_bar.Append(help_menu, '&Help')
+        self.SetMenuBar(menu_bar)  # Adding the MenuBar to the Frame content.
+        # bind menu events
+        self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
+        self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
+        self.Bind(wx.EVT_MENU, self.onIssue, help_issue)
         self.timer = wx.Timer(self)  
         self.Bind(wx.EVT_TIMER, self.update, self.timer)  
         self.timer.Start(100)
+        # initialize the keyboard handler.
+        tfm.keyboard_handler = WXKeyboardHandler(self)
+        # register the command key
+        tfm.keyboard_handler.register_keys({']': tfm.commandMode})
+
+    
+    # menu event handlers
+    def onAbout(self, event):
+        info = wx.adv.AboutDialogInfo()
+        info.SetName(application.name)
+        info.SetVersion(application.version)
+        info.SetDescription(application.description)
+        info.SetCopyright(application.copyright)
+        #  info.SetLicence(application.licence)
+        for i in application.authors:
+            info.AddDeveloper(i)
+        wx.adv.AboutBox(info)
+    def onWebsite(self, event):
+        webbrowser.open_new_tab(application.url)
+
+    def onIssue(self, event):
+        webbrowser.open_new_tab(application.report_bugs_url)
+    # event handler for the timer
     def update(self, event):
+        # we need to tick the clock for pyglet scheduling functions to work
         pyglet.clock.tick()
+        # dispatch any pending events so audio looping works
         pyglet.app.platform_event_loop.dispatch_posted_events()
-
-
-
-
-
-
-def GUI():
-    # define the GUI for TFM. Also initializes the keyboard handler.
-    
-    # menus not used for WX port yet
-    
-    menudef = [['&Application', ['E&xit']],
-        ['&Speech', ['Toggle &Flight Following info', 'Toggle &SimConnect Messages', 'Toggle &Autopilot announcements']]]
-    layout = [
-        [ sg.Text("talking flight monitor")],
-        [ sg.Text("heading:"), sg.Input(key='hdg', do_not_clear=True), sg.Text("Altitude:"), sg.Input(key='alt')],
-        [ sg.Text("Speed:"), sg.Input(key = "spd"), sg.Text("Mach:"), sg.Input(key = 'mch')],
-        [ sg.Text("Vertical Speed:'"), sg.Input(key="vspd"), sg.Text("Transponder:"), sg.Input(key = "trans")],
-        # [ sg.Text("Altimeter setting:"), sg.Input(key="altimeter"), sg.Radio("Inches", "altimeter", default=True), sg.Radio("hPa", "altimeter") ],
-        [ sg.Button('set auto pilot', key="setap")] ]
-    window = sg.Window("Talking Flight Monitor", layout, finalize=True)
-    window.BringToFront()
-    # initialize the keyboard handler.
-    
-    tfm.keyboard_handler = WXKeyboardHandler(window.MasterFrame)
-    tfm.keyboard_handler.register_keys({']': tfm.commandMode})
-
-
-    #loop and process input events 
-    while True:
-        event, values = window.read(timeout=50)
-        pyglet.clock.tick()
-        pyglet.app.platform_event_loop.dispatch_posted_events()
-
-        if event in (None, 'Exit'):
-            break
-        
-        if event == 'setap':
-            if values['spd'] != "":
-                tfm.set_speed(int(values['spd']))
-            if values['hdg'] != "":
-                tfm.set_heading(int(values['hdg']))
-            if values['alt'] != "":
-                tfm.set_altitude(int(values['alt']))
-            if values['mch'] != "":
-                tfm.set_mach(values['mch'])
-            if values['vspd'] != "":
-                tfm.set_vspeed(int(values['vspd']))
-            if values['trans'] != "":
-                tfm.set_transponder(values['trans'])
-
-
-        
-        
-    window.close()
-    sys.exit(0)
 
 
 ## Main Class of tfm.
