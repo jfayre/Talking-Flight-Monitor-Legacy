@@ -88,7 +88,7 @@ class Form(wx.Panel):
     def __init__(self, *args, **kwargs):
         super(Form, self).__init__(*args, **kwargs)
         self.createControls()
-        # self.bindEvents()
+        self.bindEvents()
         self.doLayout()
 
     def createControls(self):
@@ -113,7 +113,6 @@ class Form(wx.Panel):
         self.com1_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         self.timer = wx.Timer(self)  
     def bindEvents(self):
-        
         for control, event, handler in \
             [(self.hdg_edit, wx.EVT_TEXT_ENTER, self.onHeadingEntered),
             (self.alt_edit, wx.EVT_TEXT_ENTER, self.onAltitudeEntered),
@@ -133,7 +132,7 @@ class Form(wx.Panel):
         # and the logger text control (on the right):
         boxSizer = wx.BoxSizer(orient=wx.HORIZONTAL)
         # A GridSizer will contain the other controls:
-        gridSizer = wx.FlexGridSizer(cols=2, vgap=10, hgap=10)
+        gridSizer = wx.FlexGridSizer(rows = 12, cols=2, vgap=10, hgap=10)
 
         # Prepare some reusable arguments for calling sizer.Add():
         expandOption = dict(flag=wx.EXPAND)
@@ -182,16 +181,16 @@ class Form(wx.Panel):
     def onMachEntered(self, event):
         tfm.set_mach(event.GetString())
     def onQNHEntered(self, event):
-        pass
+        tfm.set_qnh(event.GetString())
     def onInchesEntered(self, event):
-        pass
+        tfm.set_inches(event.GetString())
 
     def onVerticalSpeedEntered(self, event):
         tfm.set_vspeed(event.GetString())
     def OnTransponderEntered(self, event):
         tfm.set_transponder(event.GetString())
     def onCom1Entered(self, event):
-        pass
+        tfm.set_com1(event.GetString())
 class TFMFrame(wx.Frame, wx.Accessible):
     def __init__(self, *args, **kwargs):
         super(TFMFrame, self).__init__(*args, **kwargs)
@@ -768,7 +767,30 @@ class tfm:
         offset, type = self.InstrOffsets['Transponder']
         data = [(offset, type, int(transponder, 16))]
         pyuipc.write(data)
-        
+    def set_com1(self, com1):
+        # set com 1 frequency
+        offset, type = self.InstrOffsets['Com1Freq']
+        freq = float(com1) * 100
+        freq = int(freq) - 10000
+        freq = F"{freq}"
+        data = [(offset, type, int(freq, 16))]
+        pyuipc.write(data)
+    def set_qnh(self, qnh):
+        offset, type = self.InstrOffsets['Altimeter']
+        qnh = int(qnh) * 16
+        data = [(offset, type, qnh)]
+        pyuipc.write(data)
+    def set_inches(self, inches):
+        # we need to convert altimeter value to qnh, since that is what the fsuipc expects
+        offset, type = self.InstrOffsets['Altimeter']
+        qnh = float(inches) * 33.864
+        qnh = round(qnh, 1) * 16
+        qnh = int(qnh)
+        data = [(offset, type, qnh)]
+        pyuipc.write(data)
+
+
+
     def sonifyFlightDirector(self, dt):
         try:
             pitch = round(self.instr['ApFlightDirectorPitch'], 1)
