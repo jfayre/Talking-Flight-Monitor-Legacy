@@ -271,6 +271,8 @@ class tfm:
             'Altitude': (0x3324,'d'),	#altitude in feet or meters
             'GroundAltitude': (0x0020,'u'),	# ground altitude x 256
             'SpoilersArm': (0x0bcc,'u'),	# spoilers armed: 0 - off, 1 - armed
+            'Spoilers': (0x0bd0, 'u'), # Spoilers control, 0 off, 4800 arm, then 5620 (7%) to 16383 (100% fully deployed).
+
             'ApMaster': (0x07bc,'u'), # AP master switch
             'ApNavLock': (0x07c4,'u'), # AP Nav1 lock
             'ApHeadingLock': (0x07c8,'u'), # AP heading lock
@@ -1080,9 +1082,17 @@ class tfm:
             self.oldCom2 = self.instr['Com2Freq']
 
         # spoilers
-        if self.instr['SpoilersArm'] == 1 and self.oldSpoilers != self.instr['SpoilersArm']:
-            self.output.speak ("spoilers armed.")
-            self.oldSpoilers = self.instr['SpoilersArm']
+        if self.oldSpoilers != self.instr['Spoilers']:
+            if self.instr['Spoilers'] == 4800:
+                self.output.speak ("spoilers armed.")
+            elif self.instr['Spoilers'] == 16384:
+                self.output.speak(f'Spoilers deployed')
+            elif self.instr['Spoilers'] == 0:
+                if self.oldSpoilers == 4800:
+                    self.output.speak(F'arm spoilers off')
+                else:
+                    self.output.speak(F'Spoilers retracted')
+            self.oldSpoilers = self.instr['Spoilers']
         if self.oldApAltitude != self.instr['ApAltitude']:
             self.output.speak(F"Altitude set to {round(self.instr['ApAltitude'])}")
             self.oldApAltitude = self.instr['ApAltitude']
