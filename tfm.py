@@ -359,6 +359,9 @@ class tfm:
             'PitotHeat': (0x029c, 'b'), # pitot heat switch
             'Lights1': (0x0d0c, 'b'), # lights
             'Lights': (0x0d0d, 'b'), # lights
+            'WindSpeed': (0x0e90, 'H'), # Ambient wind speed in knots
+            'WindDirection': (0x0e92, 'H'), # Ambient wind direction (at aircraft), *360/65536 to get degrees True.
+            'WindGust': (0x0e94, 'H'), # At aircraft altitude: wind gusting value: max speed in knots, or 0 if no gusts
 
 
 
@@ -449,6 +452,7 @@ class tfm:
                 'toggle_gpws_key': 'shift+g',
                 'toggle_ils_key': 'shift+i',
                 'toggle_flaps_key': 'shift+f',
+                'wind_key': 'i',
                 'message_key': 'r'}
 
         # First log message.
@@ -624,7 +628,6 @@ class tfm:
         self.getPyuipcData()
         
         self.oldInstr = self.instr
-        # keyboard_handler.register_key(']', self.commandMode)
         
 
         
@@ -894,6 +897,13 @@ class tfm:
     def readTemp(self):
         self.output.speak (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
         self.reset_hotkeys()
+    def readWind(self):
+        windSpeed = self.instr['WindSpeed']
+        windDirection = round(self.instr['WindDirection'])
+        windGust = self.instr['WindGust']
+        self.output.speak(F'Wind: {windDirection} at {windSpeed} knotts. Gusts at {windGust} knotts.')
+        self.reset_hotkeys()
+
     def toggleTrim(self):
         if self.trimEnabled:
             self.output.speak ('trim announcement disabled')
@@ -1012,7 +1022,8 @@ class tfm:
                 self.config['hotkeys']['toggle_gpws_key']: self.toggleGPWS,
                 self.config['hotkeys']['toggle_ils_key']:self.toggleILS,
                 self.config['hotkeys']['toggle_flaps_key']: self.toggleFlaps,
-                self.config['hotkeys']['autopilot_key']: self.toggleAutoPilot
+                self.config['hotkeys']['autopilot_key']: self.toggleAutoPilot,
+                self.config['hotkeys']['wind_key']: self.readWind,
 
             }
             self.keyboard_handler.register_keys(keymap)
@@ -1053,12 +1064,12 @@ class tfm:
             self.groundSpeed = False
             self.airborne = True
         # landing gear
-        if self.instr['Gear'] != self.oldGear:
+        if self.instr['Gear'] != self.oldInstr['Gear']:
             if self.instr['Gear'] == 0:
                 self.output.speak ('Gear up.')
             elif self.instr['Gear'] == 16383:
                 self.output.speak ('Gear down.')
-            self.oldGear = self.instr['Gear']
+            self.oldInstr['Gear'] = self.instr['Gear']
 
         # if flaps position has changed, flaps are in motion. We need to wait until they have stopped moving to read the value.
         if self.flapsEnabled:
@@ -1522,6 +1533,11 @@ class tfm:
                 self.headingTrue = self.instr['Heading'] * 360 / (65536 * 65536)
                 self.headingCorrected = self.instr['Heading'] - (self.instr['MagneticVariation'] * 65536)
                 self.headingCorrected = self.headingCorrected * 360 / (65536 * 65536)
+                if self.headingCorrected > 360:
+                    self.headingCorrected = self.headingCorrected - 360
+
+
+
 
 
                 # self.headingCorrected = self.instr['Heading'] - (self.instr['MagneticVariation'] * 65536)
@@ -1560,9 +1576,6 @@ class tfm:
                 self.instr['LandingLights'] = self.lights1[5]
                 self.instr['BeaconLights'] = self.lights1[6]
                 self.instr['NavigationLights'] = self.lights1[7]
-
-
-            
                 self.AltQNH = self.instr['Altimeter'] / 16
                 self.AltHPA = floor(self.AltQNH + 0.5)
                 self.AltInches = floor(((100 * self.AltQNH * 29.92) / 1013.2) + 0.5)
@@ -1570,6 +1583,7 @@ class tfm:
                 self.instr['Eng2ITT'] = round(self.instr['Eng2ITT'] / 16384)
                 self.instr['Eng3ITT'] = round(self.instr['Eng3ITT'] / 16384)
                 self.instr['Eng4ITT'] = round(self.instr['Eng4ITT'] / 16384)
+                self.instr['WindDirection'] = self.instr['WindDirection'] *360/65536
 
 
 
