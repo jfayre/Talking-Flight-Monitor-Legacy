@@ -191,7 +191,7 @@ class Form(wx.Panel):
         tfm.set_transponder(event.GetString())
     def onCom1Entered(self, event):
         tfm.set_com1(event.GetString())
-class TFMFrame(wx.Frame, wx.Accessible):
+class TFMFrame(wx.Frame):
     def __init__(self, *args, **kwargs):
         super(TFMFrame, self).__init__(*args, **kwargs)
         panel = Form(self)
@@ -486,6 +486,7 @@ class tfm:
         self.airborne = False
         self.oldBrake = True
         self.oldCom1 = None
+        self.oldCom2 = None
         self.oldSpoilers = 0
         self.oldApHeading = None
         self.oldApAltitude = None
@@ -1074,6 +1075,10 @@ class tfm:
         if self.instr['Com1Freq'] != self.oldCom1:
             self.output.speak (F"com 1, {self.instr['Com1Freq']}")
             self.oldCom1 = self.instr['Com1Freq']
+        if self.instr['Com2Freq'] != self.oldCom2:
+            self.output.speak (F"com 2, {self.instr['Com1Freq']}")
+            self.oldCom2 = self.instr['Com2Freq']
+
         # spoilers
         if self.instr['SpoilersArm'] == 1 and self.oldSpoilers != self.instr['SpoilersArm']:
             self.output.speak ("spoilers armed.")
