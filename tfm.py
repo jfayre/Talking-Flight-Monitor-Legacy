@@ -298,6 +298,7 @@ class tfm:
             'Heading': (0x0580,'u'), # Heading, *360/(65536*65536) for degrees TRUE.[Can be set in slew or pause states]
             'MagneticVariation': (0x02a0,'h'), # Magnetic variation (signed, –ve = West). For degrees *360/65536. Convert True headings to Magnetic by subtracting this value, Magnetic headings to True by adding this value.
             'Transponder': (0x0354,'H'), # transponder in BCD format
+            'CompassHeading': (0x2b00, 'f'), # Gyro compass heading (magnetic), including any drift. 
             'NextWPDistance': (0x6048,'f'), # distance to next waypoint
             'NextWPId': (0x60a4,-6), # next waypoint string
             'NextWPETE': (0x60e4,'u'), # time enroute to next waypoint in seconds
@@ -1531,17 +1532,7 @@ class tfm:
                 self.instr['ApMach'] = self.instr['ApMach'] / 65536
                 # self.headingTrue = floor(((self.instr['Heading'] * 360) / (65536 * 65536)) + 0.5)
                 self.headingTrue = self.instr['Heading'] * 360 / (65536 * 65536)
-                self.headingCorrected = self.instr['Heading'] - (self.instr['MagneticVariation'] * 65536)
-                self.headingCorrected = self.headingCorrected * 360 / (65536 * 65536)
-                if self.headingCorrected > 360:
-                    self.headingCorrected = self.headingCorrected - 360
-
-
-
-
-
-                # self.headingCorrected = self.instr['Heading'] - (self.instr['MagneticVariation'] * 65536)
-                # self.headingCorrected = floor(self.headingCorrected * 360 / (65536 * 65536) + 0.5)
+                self.headingCorrected = self.instr['CompassHeading']
                 self.instr['AirspeedTrue'] = round(self.instr['AirspeedTrue'] / 128)
                 self.instr['AirspeedIndicated'] = round(self.instr['AirspeedIndicated'] / 128)
                 self.instr['AirspeedMach'] = self.instr['AirspeedMach'] / 20480
