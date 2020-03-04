@@ -27,8 +27,6 @@ import os
 import sys
 import time
 import warnings
-import winsound
-# import PySimpleGUIWx as sg
 
 from configparser import ConfigParser
 
@@ -111,6 +109,9 @@ class Form(wx.Panel):
         self.inches_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         self.com1_label = wx.StaticText(self, label='Com 1:')
         self.com1_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.nav1_label = wx.StaticText(self, label='Com 1:')
+        self.nav1_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        
         self.timer = wx.Timer(self)  
     def bindEvents(self):
         for control, event, handler in \
@@ -122,7 +123,8 @@ class Form(wx.Panel):
             (self.trans_edit, wx.EVT_TEXT_ENTER, self.OnTransponderEntered),
             (self.qnh_edit, wx.EVT_TEXT_ENTER, self.onQNHEntered),
             (self.inches_edit, wx.EVT_TEXT_ENTER, self.onInchesEntered),
-            (self.com1_edit, wx.EVT_TEXT_ENTER, self.onCom1Entered)]:
+            (self.com1_edit, wx.EVT_TEXT_ENTER, self.onCom1Entered),
+            (self.nav1_edit, wx.EVT_TEXT_ENTER, self.onNav1Entered)]:
                 control.Bind(event, handler)
 
     def doLayout(self):
@@ -158,7 +160,9 @@ class Form(wx.Panel):
                  (self.inches_label, noOptions),
                  (self.inches_edit, expandOption),
                  (self.com1_label, noOptions),
-                 (self.com1_edit, expandOption)]:
+                 (self.com1_edit, expandOption),
+                 (self.nav1_label, noOptions),
+                 (self.nav1_edit, expandOption)]:
             gridSizer.Add(control, **options)
 
         for control, options in \
@@ -191,6 +195,9 @@ class Form(wx.Panel):
         tfm.set_transponder(event.GetString())
     def onCom1Entered(self, event):
         tfm.set_com1(event.GetString())
+    def onNav1Entered(self, event):
+        tfm.set_nav1(event.GetString())
+
 class TFMFrame(wx.Frame):
     def __init__(self, *args, **kwargs):
         super(TFMFrame, self).__init__(*args, **kwargs)
@@ -262,6 +269,7 @@ class tfm:
     InstrOffsets = {'Com1Freq': (0x034E,'H'),	# com1freq
             'Com2Freq': (0x3118,'H'),	# com2freq
             'RadioActive': (0x3122,'b'),	# radioActive
+            'Nav1Freq': (0x0350, 'H'), # Nav1 frequency
             'Lat': (0x0560,'l'),	# ac Latitude
             'Long': (0x0568,'l'),	# ac Longitude
             'Flaps': (0x30f0,'h'),	# flaps angle
@@ -781,6 +789,15 @@ class tfm:
         freq = F"{freq}"
         data = [(offset, type, int(freq, 16))]
         pyuipc.write(data)
+    def set_nav1(self, nav1):
+        # set nav 1 frequency
+        offset, type = self.InstrOffsets['Nav1Freq']
+        freq = float(nav1) * 100
+        freq = int(freq) - 10000
+        freq = F"{freq}"
+        data = [(offset, type, int(freq, 16))]
+        pyuipc.write(data)
+    
     def set_qnh(self, qnh):
         offset, type = self.InstrOffsets['Altimeter']
         qnh = int(qnh) * 16
@@ -1517,6 +1534,9 @@ class tfm:
                 self.instr['Com1Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
                 hexCode = hex(self.instr['Com2Freq'])[2:]
                 self.instr['Com2Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
+                hexCode = hex(self.instr['Nav1Freq'])[2:]
+                self.instr['Nav1Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
+                
                 # lat lon
                 self.instr['Lat'] = self.instr['Lat'] * (90.0/(10001750.0 * 65536.0 * 65536.0))
                 self.instr['Long'] = self.instr['Long'] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
