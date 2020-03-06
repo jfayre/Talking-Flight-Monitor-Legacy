@@ -230,11 +230,11 @@ class TFMFrame(wx.Frame):
         self.SetMenuBar(menu_bar)  # Adding the MenuBar to the Frame content.
         # bind menu events
         self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
-        self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
+        self.Bind(wx.EVT_MENU, self.onAbout, help_about)
         self.Bind(wx.EVT_MENU, self.onIssue, help_issue)
         self.timer = wx.Timer(self)  
         self.Bind(wx.EVT_TIMER, self.update, self.timer)  
-        self.timer.Start(100)
+        self.timer.Start(50)
         # initialize the keyboard handler.
         tfm.keyboard_handler = WXKeyboardHandler(self)
         # register the command key
@@ -291,7 +291,7 @@ class tfm:
             'GroundAltitude': (0x0020,'u'),	# ground altitude x 256
             'SpoilersArm': (0x0bcc,'u'),	# spoilers armed: 0 - off, 1 - armed
             'Spoilers': (0x0bd0, 'u'), # Spoilers control, 0 off, 4800 arm, then 5620 (7%) to 16383 (100% fully deployed).
-
+            'AvionicsMaster': (0x2e80, 'u'), # Avionics master switch
             'ApMaster': (0x07bc,'u'), # AP master switch
             'ApNavLock': (0x07c4,'u'), # AP Nav1 lock
             'ApHeadingLock': (0x07c8,'u'), # AP heading lock
@@ -442,25 +442,11 @@ class tfm:
         
         # variables to track states of various aircraft instruments
         self.oldTz = 'none' ## variable for storing timezone name
-        self.old_flaps = 0
         self.airborne = False
-        self.oldBrake = True
-        self.oldCom1 = None
-        self.oldCom2 = None
-        self.oldSpoilers = 0
-        self.oldApHeading = None
-        self.oldApAltitude = None
-        self.oldApHeading = None
-        self.oldApSpeed = None
-        self.oldApMach = None
-        self.oldAPVSpeed = None
-
-        self.oldTransponder = None
         self.oldWP = None
+
         self.oldSimCChanged = None
-        self.oldAutoBrake = None
         self.oldGear = 16383
-        self.oldElevatorTrim = None
         self.oldRCMsg = None
         self.GSDetected = False
         self.LocDetected = False
@@ -1028,27 +1014,25 @@ class tfm:
 
         # if flaps position has changed, flaps are in motion. We need to wait until they have stopped moving to read the value.
         if self.flapsEnabled:
-            if self.instr['Flaps'] != self.old_flaps:
+            if self.instr['Flaps'] != self.oldInstr['Flaps']:
                 flapsTransit = True
                 while flapsTransit:
                     self.getPyuipcData()
-                    if self.instr['Flaps'] != self.old_flaps:
-                        self.old_flaps = self.instr['Flaps']
+                    if self.instr['Flaps'] != self.oldInstr['Flaps']:
+                        self.oldInstr['Flaps'] = self.instr['Flaps']
                         time.sleep (0.2)
                     else:
                         flapsTransit = False
                 self.output.speak (F'Flaps {self.instr["Flaps"]:.0f}')
-                self.old_flaps = self.instr['Flaps']
+                self.oldInstr['Flaps'] = self.instr['Flaps']
             # announce radio frequency changes
-        if self.instr['Com1Freq'] != self.oldCom1:
+        if self.instr['Com1Freq'] != self.oldInstr['Com1Freq']:
             self.output.speak (F"com 1, {self.instr['Com1Freq']}")
-            self.oldCom1 = self.instr['Com1Freq']
-        if self.instr['Com2Freq'] != self.oldCom2:
+        if self.instr['Com2Freq'] != self.oldInstr['Com2Freq']:
             self.output.speak (F"com 2, {self.instr['Com1Freq']}")
-            self.oldCom2 = self.instr['Com2Freq']
 
         # spoilers
-        if self.oldSpoilers != self.instr['Spoilers']:
+        if self.oldInstr['Spoilers'] != self.instr['Spoilers']:
             if self.instr['Spoilers'] == 4800:
                 self.output.speak ("spoilers armed.")
             elif self.instr['Spoilers'] == 16384:
@@ -1058,30 +1042,23 @@ class tfm:
                     self.output.speak(F'arm spoilers off')
                 else:
                     self.output.speak(F'Spoilers retracted')
-            self.oldSpoilers = self.instr['Spoilers']
-        if self.oldApAltitude != self.instr['ApAltitude']:
+        if self.oldInstr['ApAltitude'] != self.instr['ApAltitude']:
             self.output.speak(F"Altitude set to {round(self.instr['ApAltitude'])}")
-            self.oldApAltitude = self.instr['ApAltitude']
         if self.APEnabled:
-            if self.oldApHeading != self.instr['ApHeading']:
+            if self.oldInstr['ApHeading'] != self.instr['ApHeading']:
                 self.output.speak (F"{self.instr['ApHeading']} degrees")
-                self.oldApHeading = self.instr['ApHeading']
-            if self.oldApSpeed != self.instr['ApAirspeed']:
+            if self.oldInstr['ApAirspeed'] != self.instr['ApAirspeed']:
                 self.output.speak (F"{self.instr['ApAirspeed']}")
-                self.oldApSpeed = self.instr['ApAirspeed']
-            if self.oldApMach != self.instr['ApMach']:
+            if self.oldInstr['ApMach'] != self.instr['ApMach']:
                 self.output.speak (F"mach {self.instr['ApMach']:.2f}")
-                self.oldApMach = self.instr['ApMach']
-            if self.oldAPVSpeed != self.instr['ApVerticalSpeed']:
+            if self.oldInstr['ApVerticalSpeed'] != self.instr['ApVerticalSpeed']:
                 self.output.speak (F"{self.instr['ApVerticalSpeed']} feet per minute")
-                self.oldAPVSpeed = self.instr['ApVerticalSpeed']
 
 
 
         # transponder
-        if self.instr['Transponder'] != self.oldTransponder:
+        if self.instr['Transponder'] != self.oldInstr['Transponder']:
             self.output.speak(F'Squawk {self.instr["Transponder"]:x}')
-            self.oldTransponder = self.instr['Transponder']
         # next waypoint
         if self.instr['NextWPId'] != self.oldWP:
             time.sleep(3)
@@ -1089,7 +1066,7 @@ class tfm:
             self.readWaypoint(0)
             self.oldWP = self.instr['NextWPId']
         # read autobrakes
-        if self.instr['AutoBrake'] != self.oldAutoBrake:
+        if self.instr['AutoBrake'] != self.oldInstr['AutoBrake']:
             if self.instr['AutoBrake'] == 0:
                 brake = 'R T O'
             elif self.instr['AutoBrake'] == 1:
@@ -1103,14 +1080,12 @@ class tfm:
             elif self.instr['AutoBrake'] == 5:
                 brake = 'maximum'
             self.output.speak (F'Auto brake {brake}')
-            self.oldAutoBrake = self.instr['AutoBrake']
-        if self.instr['ElevatorTrim'] != self.oldElevatorTrim and self.instr['ApMaster'] != 1 and self.trimEnabled:
+        if self.instr['ElevatorTrim'] != self.oldInstr['ElevatorTrim'] and self.instr['ApMaster'] != 1 and self.trimEnabled:
             if self.instr['ElevatorTrim'] < 0:
                 self.output.speak (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
             else:
                 self.output.speak (F"Trim up {round (self.instr['ElevatorTrim'], 2)}")
 
-            self.oldElevatorTrim = self.instr['ElevatorTrim']
 
         if self.AltHPA != self.oldHPA:
             self.output.speak (F'Altimeter: {self.AltHPA}, {self.AltInches / 100} inches')
@@ -1182,6 +1157,8 @@ class tfm:
         self.readToggle('StrobeLights', 'strobe lights', 'on', 'off')
         self.readToggle('InstrumentLights', 'Instrument lights', 'on', 'off')
         self.readToggle('APUGenerator', 'A P U Generator', 'active', 'off')
+        self.readToggle('AvionicsMaster', 'Avionics master', 'active', 'off')
+
         if self.groundspeedEnabled:
             if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
                 pyglet.clock.schedule_interval(self.readGroundSpeed, 3)
@@ -1266,6 +1243,8 @@ class tfm:
                 self.altFlag[i] = True
             elif self.instr['Altitude'] >= i + 100:
                 self.altFlag[i] = False
+        # maintain state of instruments so we can check on the next run.
+        self.oldInstr = self.instr
 
     def readEngTemps(self, dt = 0):
         if self.distance_units == '1':
