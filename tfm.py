@@ -72,7 +72,6 @@ from accessible_output2.outputs import auto
 import numpy as np
 from timeit import default_timer as timer
 # Import own packages.
-from        VaLogger import VaLogger
 
 # initialize the log settings
 logging.basicConfig(filename = 'error.log', level = logging.INFO)
@@ -432,7 +431,7 @@ class tfm:
                 self.pyuipcOffsets = pyuipc.prepare_data(list(self.InstrOffsets.values()))
                 self.pyuipcSIMC = pyuipc.prepare_data(list (self.SimCOffsets.values()))
                 self.pyuipcAttitude = pyuipc.prepare_data(list (self.AttitudeOffsets.values()))
-                self.logger.info('FSUIPC connection established.')
+                # self.logger.info('FSUIPC connection established.')
                 break
             except NameError:
                 self.pyuipcConnection = None
@@ -670,7 +669,7 @@ class tfm:
         dlg.ShowModal()
         config.app['config']['geonames_username'] = dlg.GetValue()
         config.app.write()
-        self.geonames_username= config.app[config']['geonames_username']
+        self.geonames_username= config.app['config']['geonames_username']
         
 
     def manualFlight(self, dt, triggered = 0):
@@ -1191,7 +1190,7 @@ class tfm:
                 pyglet.clock.unschedule(self.readGroundSpeed)
 
         # read APU status
-        if self.instr['APUPercentage'] > 0 and self.APUStarting == False and self.APURunning == False and self.APUShutdown == False:
+        if self.instr['APUPercentage'] > 4 and self.APUStarting == False and self.APURunning == False and self.APUShutdown == False and self.APUOff == True:
             self.output.speak('A P U starting')
             self.APUStarting = True
             self.APUOff = False
@@ -1208,7 +1207,7 @@ class tfm:
             self.APURunning = False
             self.APUStarting = False
             self.APUShutdown = False
-            self.APUOff = true
+            self.APUOff = True
 
 
         if self.instr['APUGenerator'] and self.APUGenerator == False:
@@ -1530,6 +1529,7 @@ class tfm:
                 self.tempF = round(9.0/5.0 * self.tempC + 32)
                 self.AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
                 self.RadioAltitude = self.instr['RadioAltimeter']  / 65536 * 3.28084
+                self.instr['APUPercentage'] = round(self.instr['APUPercentage'])
                 self.Nav1Bits = list(map(int, '{0:08b}'.format(self.instr['Nav1Flags'])))
                 self.instr['Nav1Type'] = self.Nav1Bits[0]
                 self.instr['Nav1GSAvailable'] = self.Nav1Bits[6]
