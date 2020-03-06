@@ -28,10 +28,30 @@ import sys
 import time
 import warnings
 import winsound
-# import PySimpleGUIWx as sg
 
-from configparser import ConfigParser
-
+# from configparser import ConfigParser
+import config
+#redirect the original stdout and stderr
+stdout=sys.stdout
+stderr=sys.stderr
+sys.stdout = open(os.path.join(os.getenv("temp"), "stdout.log"), "w")
+sys.stderr = open(os.path.join(os.getenv("temp"), "stderr.log"), "w")
+import paths
+from logger import logger
+stdout_temp=sys.stdout
+stderr_temp=sys.stderr
+if hasattr(sys, 'frozen'):
+    sys.stderr = open(os.path.join(paths.logs_path(), "stderr.log"), 'w')
+    sys.stdout = open(os.path.join(paths.logs_path(), "stdout.log"), 'w')
+else:
+    sys.stdout=stdout
+    sys.stderr=stderr
+#the final log files have been opened succesfully, let's close the temporary files
+stdout_temp.close()
+stderr_temp.close()
+#finally, remove the temporary files. TW Blue doesn't need them anymore, and we will get more free space on the harddrive
+os.remove(stdout_temp.name)
+os.remove(stderr_temp.name)
 from win32event import CreateMutex
 from win32api import GetLastError
 from winerror import ERROR_ALREADY_EXISTS
@@ -52,7 +72,6 @@ from accessible_output2.outputs import auto
 import numpy as np
 from timeit import default_timer as timer
 # Import own packages.
-from        VaLogger import VaLogger
 
 # initialize the log settings
 logging.basicConfig(filename = 'error.log', level = logging.INFO)
@@ -329,6 +348,10 @@ class tfm:
             'Nav1GSNeedle': (0x0c49, 'c'), # Nav1 glideslope needle: -119 up to 119 down
             'Altimeter': (0x0330, 'H'), # Altimeter pressure setting (“Kollsman” window). As millibars (hectoPascals) * 16
             'Doors': (0x3367, 'b'), # byte indicating open exits. One bit per door.
+            'APUGenerator': (0x0b51, 'b'), # apu generator switch
+            'APUGeneratorActive': (0x0b52, 'b'), # apu generator active flag
+            'APUPercentage': (0x0b54, 'F'), # APU rpm percentage
+            'APUVoltage': (0x0b5c, 'F'), # apu generator voltage
             'Eng1Starter': (0x3b00, 'u'), # engine 1 starter
             'Eng2Starter': (0x3a40, 'u'), # engine 2 starter
             'Eng3Starter': (0x3980, 'u'), # engine 3 starter
@@ -363,6 +386,7 @@ class tfm:
             'WindSpeed': (0x0e90, 'H'), # Ambient wind speed in knots
             'WindDirection': (0x0e92, 'H'), # Ambient wind direction (at aircraft), *360/65536 to get degrees True.
             'WindGust': (0x0e94, 'H'), # At aircraft altitude: wind gusting value: max speed in knots, or 0 if no gusts
+            'RadioAltimeter': (0x31e4, 'u'), # Radio altitude in metres * 65536
 
 
 
@@ -395,78 +419,11 @@ class tfm:
     ## Setup the tfm object.
     def __init__(self,**optional):
         global keyboard_handler
-        # Get file path.
-        self.rootDir = os.path.abspath(os.path.dirname(sys.argv[0]))
-        # window = pyglet.window.Window()        
-        # @window.event
-        # def on_draw():
-            # window.clear()
-
         # Init logging.
-        self.logger = VaLogger(os.path.join(self.rootDir,'voiceAtis','logs'))
-        # initialize two config parser objects. One for defaults and one for config file.
-        self.default_config = ConfigParser(allow_no_value=True)
-        self.config = ConfigParser(allow_no_value=True)
-        self.default_config['config'] = {'# Talking Flight Monitor (TFM) requires a username from the Geonames service':None,
-                'geonames_username': 'your_username',
-                '# voice rate for SAPI output':None,
-                'voice_rate': '5',
-                '# speech output: 0 - screen reader, 1 - SAPI5':None,
-                'speech_output': '0',
-                '# Read closest city info. ':None,
-                'flight_following': '1',
-                '# Automatically read aircraft instrumentation. If using Ideal Flight, you may want to turn this off.':None,
-                'read_instrumentation':'1',
-                '# Read SimConnect messages. Not compatible with FSX and requires latest FSUIPC.':None,
-                'read_simconnect':'1',
-                '# GPWS callouts.': None,
-                'read_gpws': '1',
-                'read_ils': '1',
-                'read_groundspeed': '0',
-                '# time interval for reading of nearest city, in minutes':None,
-                'flight_following_interval': '10',
-                '# Time interval between manual flight announcements, in seconds': None,
-                'manual_interval': '5',
-                '# Interval between ILS messages': None,
-                'ils_interval': '5',
-                '# Distance units: 0 - Kilometers, 1 - Miles':None,
-                'distance_units': '0'}
-        self.default_config['hotkeys'] = {'# command key: This key must be pressed before the other commands listed below':None,
-                'command_key': ']',
-                'agl_key': 'g',
-                'asl_key': 'a',
-                'heading_key': 'h',
-                'ias_key': 's',
-                'tas_key': 't',
-                'mach_key': 'm',
-                'vspeed_key': 'v',
-                'airtemp_key': 'o',
-                'trim_key': 'shift+t',
-                'mute_simconnect_key': 'shift+r',
-                'city_key': 'c',
-                'waypoint_key': 'w',
-                'dest_key': 'd',
-                'attitude_key': '[',
-                'manual_key': 'control+m',
-                'autopilot_key': 'shift+p',
-                'director_key': 'control+f',
-                'toggle_gpws_key': 'shift+g',
-                'toggle_ils_key': 'shift+i',
-                'toggle_flaps_key': 'shift+f',
-                'wind_key': 'i',
-                'message_key': 'r'}
-
+        # self.logger = VaLogger(os.path.join(self.rootDir,'voiceAtis','logs'))
         # First log message.
-        self.logger.info('TFM started')
-        # check for config file. Create it if it doesn't exist.
-        exists = os.path.isfile(self.rootDir + "/tfm.ini")
-        if exists:
-            self.logger.info("config file exists.")
-            self.read_config()
-        else:
-            self.logger.info ("no config file found. It will be created.")
-            self.write_config()
-            
+        # self.logger.info('TFM started')
+        self.read_config()
         # Establish pyuipc connection
         while True:
             try:
@@ -474,19 +431,15 @@ class tfm:
                 self.pyuipcOffsets = pyuipc.prepare_data(list(self.InstrOffsets.values()))
                 self.pyuipcSIMC = pyuipc.prepare_data(list (self.SimCOffsets.values()))
                 self.pyuipcAttitude = pyuipc.prepare_data(list (self.AttitudeOffsets.values()))
-                self.logger.info('FSUIPC connection established.')
+                # self.logger.info('FSUIPC connection established.')
                 break
             except NameError:
                 self.pyuipcConnection = None
-                self.logger.warning('Using voiceAtis without FSUIPC.')
                 break
             except Exception as e:
                 logging.error('error initializing fsuipc: ' + str(e))
-                self.logger.warning('FSUIPC: No simulator detected. Start your simulator first! Retrying in 20 seconds.')
                 time.sleep(20)
         
-        ## add global hotkey definitions
-        # self.commandKey = keyboard.add_hotkey(self.config['hotkeys']['command_key'], self.commandMode, args=(), suppress=True, timeout=2)
         # variables to track states of various aircraft instruments
         self.oldTz = 'none' ## variable for storing timezone name
         self.old_flaps = 0
@@ -527,9 +480,11 @@ class tfm:
         self.Eng3N2 = False
         self.Eng4N1 = False
         self.Eng4N2 = False
-
-
-
+        self.APUStarting = False
+        self.APUShutdown = False
+        self.APURunning = False
+        self.APUGenerator = False
+        self.APUOff = True
         
         # grab a SAPI interface so we can use it periodically
         self.sapi5 = sapi5.SAPI5()
@@ -654,7 +609,6 @@ class tfm:
                 
         except KeyboardInterrupt:
             # Actions at Keyboard Interrupt.
-            self.logger.info('Loop interrupted by user.')
             if pyuipcImported:
                 pyuipc.close()
             sys.exit()
@@ -663,60 +617,60 @@ class tfm:
             logging.exception('Error during main loop:' + str(e))
 
     def read_config(self):
-            cfgfile = self.config.read(self.rootDir + "/tfm.ini")
-            self.geonames_username = self.config.get('config','geonames_username')
+            self.geonames_username = config.app['config']['geonames_username']
             if self.geonames_username == 'your_username':
-                output = sapi5.SAPI5()
-                output.speak('Error: edit the tfm.ini file and add your Geo names username. exiting!')
-                time.sleep(8)
-                sys.exit(1)
+                # output = sapi5.SAPI5()
+                # output.speak('Error: edit the tfm.ini file and add your Geo names username. exiting!')
+                # time.sleep(8)
+                # sys.exit(1)
+                self.username()
 
-            self.FFInterval = float(self.config.get('config','flight_following_interval'))
-            self.ManualInterval = float(self.config.get('config','manual_interval'))
-            self.ILSInterval = float(self.config.get('config','ils_interval'))
-            self.distance_units = self.config.get('config','distance_units')
-            self.voice_rate = int(self.config.get('config','voice_rate'))
-            if self.config['config']['speech_output'] == '1':
+            self.FFInterval = float(config.app['config']['flight_following_interval'])
+            self.ManualInterval = float(config.app['config']['manual_interval'])
+            self.ILSInterval = float(config.app['config']['ils_interval'])
+            self.distance_units = config.app['config']['distance_units']
+            self.voice_rate = int(config.app['config']['voice_rate'])
+            if config.app['config']['speech_output'] == '1':
                 self.output = sapi5.SAPI5()
                 self.output.set_rate(self.voice_rate)
             else:
                 self.output = auto.Auto()
-            if self.config['config'].getboolean('flight_following'):
+            if config.app['config']['flight_following']:
                 self.FFEnabled = True
             else:
                 self.FFEnabled = False
                 self.output.speak('Nearest city announcementsdisabled.')
-            if self.config['config'].getboolean('read_instrumentation'):
+            if config.app['config']['read_instrumentation']:
                 self.InstrEnabled = True
             else:
                 self.InstrEnabled = False
                 self.output.speak('instrumentation disabled.')
-            if self.config['config'].getboolean('read_simconnect'):
+            if config.app['config']['read_simconnect']:
                 self.SimCEnabled = True
             else:
                 self.SimCEnabled = False
                 self.output.speak("Sim Connect messages disabled.")
-            if self.config['config'].getboolean ('read_gpws'):
+            if config.app['config']['read_gpws']:
                 self.calloutsEnabled = True
             else:
                 self.calloutsEnabled = False
-            if self.config['config'].getboolean ('read_ils'):
+            if config.app['config']['read_ils']:
                 self.readILSEnabled = True
             else:
                 self.readILSEnabled = False
-            if self.config['config'].getboolean ('read_groundspeed'):
+            if config.app['config']['read_groundspeed']:
                 self.groundspeedEnabled = True
             else:
                 self.groundspeedEnabled = False
             
 
-    def write_config(self):
-        with open(self.rootDir + "/tfm.ini", 'w') as configfile:
-            self.default_config.write(configfile)
-        output = sapi5.SAPI5()
-        output.speak('Configuration file created. Open the tfm.ini file and add your geonames username. Exiting.')
-        time.sleep(8)
-        sys.exit()
+    def username(self):
+        dlg = wx.TextEntryDialog(None, "Please enter your Geonames user name in order to use flight following features.", "GeoNames username")
+        dlg.ShowModal()
+        config.app['config']['geonames_username'] = dlg.GetValue()
+        config.app.write()
+        self.geonames_username= config.app['config']['geonames_username']
+        
 
     def manualFlight(self, dt, triggered = 0):
         try:
@@ -1003,28 +957,28 @@ class tfm:
             self.keyboard_handler.unregister_all_keys()
             self.output.speak ('command?', interrupt=True)
             keymap = {
-                self.config['hotkeys']['asl_key']: self.readAltitude,
-                self.config['hotkeys']['agl_key']: self.readGroundAltitude,
-                self.config['hotkeys']['city_key']: self.readFlightFollowing,
-                self.config['hotkeys']['heading_key']: self.readHeading,
-                self.config['hotkeys']['waypoint_key']: self.readWaypoint,
-                self.config['hotkeys']['tas_key']: self.readTAS,
-                self.config['hotkeys']['ias_key']: self.readIAS,
-                self.config['hotkeys']['mach_key']: self.readMach,
-                self.config['hotkeys']['message_key']: self.readCachedSimConnectMessages,
-                self.config['hotkeys']['dest_key']: self.readDest,
-                self.config['hotkeys']['attitude_key']: self.toggleAttitudeMode,
-                self.config['hotkeys']['manual_key']: self.toggleManualMode,
-                self.config['hotkeys']['director_key']: self.toggleDirectorMode,
-                self.config['hotkeys']['vspeed_key']: self.readVSpeed,
-                self.config['hotkeys']['airtemp_key']: self.readTemp,
-                self.config['hotkeys']['trim_key']: self.toggleTrim,
-                self.config['hotkeys']['mute_simconnect_key']: self.toggleMuteSimconnect,
-                self.config['hotkeys']['toggle_gpws_key']: self.toggleGPWS,
-                self.config['hotkeys']['toggle_ils_key']:self.toggleILS,
-                self.config['hotkeys']['toggle_flaps_key']: self.toggleFlaps,
-                self.config['hotkeys']['autopilot_key']: self.toggleAutoPilot,
-                self.config['hotkeys']['wind_key']: self.readWind,
+                config.app['hotkeys']['asl_key']: self.readAltitude,
+                config.app['hotkeys']['agl_key']: self.readGroundAltitude,
+                config.app['hotkeys']['city_key']: self.readFlightFollowing,
+                config.app['hotkeys']['heading_key']: self.readHeading,
+                config.app['hotkeys']['waypoint_key']: self.readWaypoint,
+                config.app['hotkeys']['tas_key']: self.readTAS,
+                config.app['hotkeys']['ias_key']: self.readIAS,
+                config.app['hotkeys']['mach_key']: self.readMach,
+                config.app['hotkeys']['message_key']: self.readCachedSimConnectMessages,
+                config.app['hotkeys']['dest_key']: self.readDest,
+                config.app['hotkeys']['attitude_key']: self.toggleAttitudeMode,
+                config.app['hotkeys']['manual_key']: self.toggleManualMode,
+                config.app['hotkeys']['director_key']: self.toggleDirectorMode,
+                config.app['hotkeys']['vspeed_key']: self.readVSpeed,
+                config.app['hotkeys']['airtemp_key']: self.readTemp,
+                config.app['hotkeys']['trim_key']: self.toggleTrim,
+                config.app['hotkeys']['mute_simconnect_key']: self.toggleMuteSimconnect,
+                config.app['hotkeys']['toggle_gpws_key']: self.toggleGPWS,
+                config.app['hotkeys']['toggle_ils_key']:self.toggleILS,
+                config.app['hotkeys']['toggle_flaps_key']: self.toggleFlaps,
+                config.app['hotkeys']['autopilot_key']: self.toggleAutoPilot,
+                config.app['hotkeys']['wind_key']: self.readWind,
 
             }
             self.keyboard_handler.register_keys(keymap)
@@ -1040,13 +994,13 @@ class tfm:
             callout = 0
             if vspeed < -50:
                 for i in self.calloutsHigh:
-                    if self.AGLAltitude <= i + 5 and self.AGLAltitude >= i - 5 and self.calloutState[i] == False:
+                    if self.RadioAltitude <= i + 5 and self.RadioAltitude >= i - 5 and self.calloutState[i] == False:
                         source = pyglet.media.load (F'sounds\\{str(i)}.wav')
                         source.play()
                         self.calloutState[i] = True
                         
                 for i in self.calloutsLow:
-                    if self.AGLAltitude <= i + 3 and self.AGLAltitude >= i - 3 and self.calloutState[i] == False:
+                    if self.RadioAltitude <= i + 3 and self.RadioAltitude >= i - 3 and self.calloutState[i] == False:
                         source = pyglet.media.load (F'sounds\\{str(i)}.wav')
                         source.play()
                         self.calloutState[i] = True
@@ -1227,6 +1181,7 @@ class tfm:
         self.readToggle('NavigationLights', 'Nav lights', 'on', 'off')
         self.readToggle('StrobeLights', 'strobe lights', 'on', 'off')
         self.readToggle('InstrumentLights', 'Instrument lights', 'on', 'off')
+        self.readToggle('APUGenerator', 'A P U Generator', 'active', 'off')
         if self.groundspeedEnabled:
             if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
                 pyglet.clock.schedule_interval(self.readGroundSpeed, 3)
@@ -1234,7 +1189,34 @@ class tfm:
             elif self.instr['GroundSpeed'] == 0 and self.groundSpeed:
                 pyglet.clock.unschedule(self.readGroundSpeed)
 
-        
+        # read APU status
+        if self.instr['APUPercentage'] > 4 and self.APUStarting == False and self.APURunning == False and self.APUShutdown == False and self.APUOff == True:
+            self.output.speak('A P U starting')
+            self.APUStarting = True
+            self.APUOff = False
+        if self.instr['APUPercentage'] < 100 and self.APURunning:
+            self.output.speak ('Shutting down A P U')
+            self.APURunning = False
+            self.APUShutdown = True
+        if self.instr['APUPercentage'] == 100 and self.APUStarting:
+            self.APUStarting = False
+            self.APURunning = True
+            self.output.speak("apu at 100 percent")
+        if self.instr['APUPercentage'] == 0 and self.APUOff == False:
+            self.output.speak('A P U shut down')
+            self.APURunning = False
+            self.APUStarting = False
+            self.APUShutdown = False
+            self.APUOff = True
+
+
+        if self.instr['APUGenerator'] and self.APUGenerator == False:
+            self.output.speak (F"{round(self.instr['APUVoltage'])} volts")
+            self.APUGenerator = True
+        if self.instr['APUGenerator'] == False:
+            self.APUGenerator = False
+
+
         # read engine status on startup.
         if self.instr['Eng1FuelFlow'] > 10 and self.instr['Eng1Starter'] and self.Eng1FuelFlow == False:
             self.output.speak ('Number 1 fuel flow')
@@ -1546,6 +1528,8 @@ class tfm:
                 self.tempC = round(self.instr['AirTemp'] / 256, 0)
                 self.tempF = round(9.0/5.0 * self.tempC + 32)
                 self.AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
+                self.RadioAltitude = self.instr['RadioAltimeter']  / 65536 * 3.28084
+                self.instr['APUPercentage'] = round(self.instr['APUPercentage'])
                 self.Nav1Bits = list(map(int, '{0:08b}'.format(self.instr['Nav1Flags'])))
                 self.instr['Nav1Type'] = self.Nav1Bits[0]
                 self.instr['Nav1GSAvailable'] = self.Nav1Bits[6]
@@ -1600,6 +1584,14 @@ class tfm:
             exit()
 
 if __name__ == '__main__':
+    log = logging.getLogger("main")
+    app = wx.App(0)
+    frame = TFMFrame(None, title='Talking Flight Monitor')
+    
+    # setup configuration files
+    config.setup()
+    # breakpoint()
+
     # start the main tfm class.
     tfm = tfm()
     # for attitude mode to work properly, we need to run the standard pyglet event loop in a second thread.
@@ -1608,8 +1600,6 @@ if __name__ == '__main__':
     # t.start()
     # start the GUI
     # GUI()
-    app = wx.App(0)
-    frame = TFMFrame(None, title='Talking Flight Monitor')
     frame.Show()
     app.MainLoop()    
 

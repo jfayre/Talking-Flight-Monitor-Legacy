@@ -1,0 +1,52 @@
+[config]
+# talking flight monitor (tfm) requires a username from the geonames service
+geonames_username = string(default="")
+# voice rate for sapi output
+voice_rate = integer(default=5)
+# speech output: 0 - screen reader, 1 - sapi5
+speech_output = integer(default=0)
+# read closest city info. 
+flight_following = boolean(default=True)
+# automatically read aircraft instrumentation. if using ideal flight, you may want to turn this off.
+read_instrumentation = boolean(default=True)
+# read simconnect messages. not compatible with fsx and requires latest fsuipc.
+read_simconnect = boolean(default=True)
+# gpws callouts.
+read_gpws = boolean(default=True)
+read_ils = boolean(default=True)
+read_groundspeed = boolean(default=False)
+# time interval for reading of nearest city, in minutes
+flight_following_interval = integer(default=10)
+# time interval between manual flight announcements, in seconds
+manual_interval = integer(default=5)
+# interval between ils messages
+ils_interval = integer(default=5)
+# distance units: 0 - kilometers, 1 - miles
+distance_units = integer(default=0)
+
+[hotkeys]
+# command key: this key must be pressed before the other commands listed below
+command_key = string(default="]")
+agl_key = string(default="g")
+asl_key = string(default="a")
+heading_key = string(default="h")
+ias_key = string(default="s")
+tas_key = string(default="t")
+mach_key = string(default="m")
+vspeed_key = string(default="v")
+airtemp_key = string(default="o")
+trim_key = string(default="shift+t")
+mute_simconnect_key = string(default="shift+r")
+city_key = string(default="c")
+waypoint_key = string(default="w")
+dest_key = string(default="d")
+attitude_key = string(default="[")
+manual_key = string(default="control+m")
+autopilot_key = string(default="shift+p")
+director_key = string(default="control+f")
+toggle_gpws_key = string(default="shift+g")
+toggle_ils_key = string(default="shift+i")
+toggle_flaps_key = string(default="shift+f")
+message_key = string(default="r")
+wind_key = string(default="i")
+
