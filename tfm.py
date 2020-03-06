@@ -615,10 +615,11 @@ class tfm:
     def read_config(self):
             self.geonames_username = config.app['config']['geonames_username']
             if self.geonames_username == 'your_username':
-                output = sapi5.SAPI5()
-                output.speak('Error: edit the tfm.ini file and add your Geo names username. exiting!')
-                time.sleep(8)
-                sys.exit(1)
+                # output = sapi5.SAPI5()
+                # output.speak('Error: edit the tfm.ini file and add your Geo names username. exiting!')
+                # time.sleep(8)
+                # sys.exit(1)
+                self.username()
 
             self.FFInterval = float(config.app['config']['flight_following_interval'])
             self.ManualInterval = float(config.app['config']['manual_interval'])
@@ -659,6 +660,13 @@ class tfm:
                 self.groundspeedEnabled = False
             
 
+    def username(self):
+        dlg = wx.TextEntryDialog(None, "Please enter your Geonames user name in order to use flight following features.", "GeoNames username")
+        dlg.ShowModal()
+        config.app['config']['geonames_username'] = dlg.GetValue()
+        config.app.write()
+        self.geonames_username= config.app[config']['geonames_username']
+        
 
     def manualFlight(self, dt, triggered = 0):
         try:
@@ -1544,9 +1552,12 @@ class tfm:
 
 if __name__ == '__main__':
     log = logging.getLogger("main")
+    app = wx.App(0)
+    frame = TFMFrame(None, title='Talking Flight Monitor')
+    
     # setup configuration files
     config.setup()
-    breakpoint()
+    # breakpoint()
 
     # start the main tfm class.
     tfm = tfm()
@@ -1556,8 +1567,6 @@ if __name__ == '__main__':
     # t.start()
     # start the GUI
     # GUI()
-    app = wx.App(0)
-    frame = TFMFrame(None, title='Talking Flight Monitor')
     frame.Show()
     app.MainLoop()    
 
