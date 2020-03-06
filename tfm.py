@@ -349,7 +349,10 @@ class tfm:
             'Nav1GSNeedle': (0x0c49, 'c'), # Nav1 glideslope needle: -119 up to 119 down
             'Altimeter': (0x0330, 'H'), # Altimeter pressure setting (“Kollsman” window). As millibars (hectoPascals) * 16
             'Doors': (0x3367, 'b'), # byte indicating open exits. One bit per door.
-            'APUVoltage': (0x0b5c, 'F'), # apu voltage test
+            'APUGenerator': (0x0b51, 'b'), # apu generator switch
+            'APUGeneratorActive': (0x0b52, 'b'), # apu generator active flag
+            'APUPercentage': (0x0b54, 'F'), # APU rpm percentage
+            'APUVoltage': (0x0b5c, 'F'), # apu generator voltage
             'Eng1Starter': (0x3b00, 'u'), # engine 1 starter
             'Eng2Starter': (0x3a40, 'u'), # engine 2 starter
             'Eng3Starter': (0x3980, 'u'), # engine 3 starter
@@ -478,9 +481,11 @@ class tfm:
         self.Eng3N2 = False
         self.Eng4N1 = False
         self.Eng4N2 = False
-
-
-
+        self.APUStarting = False
+        self.APUShutdown = False
+        self.APURunning = False
+        self.APUGenerator = False
+        self.APUOff = True
         
         # grab a SAPI interface so we can use it periodically
         self.sapi5 = sapi5.SAPI5()
@@ -1177,6 +1182,7 @@ class tfm:
         self.readToggle('NavigationLights', 'Nav lights', 'on', 'off')
         self.readToggle('StrobeLights', 'strobe lights', 'on', 'off')
         self.readToggle('InstrumentLights', 'Instrument lights', 'on', 'off')
+        self.readToggle('APUGenerator', 'A P U Generator', 'active', 'off')
         if self.groundspeedEnabled:
             if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
                 pyglet.clock.schedule_interval(self.readGroundSpeed, 3)
@@ -1184,7 +1190,34 @@ class tfm:
             elif self.instr['GroundSpeed'] == 0 and self.groundSpeed:
                 pyglet.clock.unschedule(self.readGroundSpeed)
 
-        
+        # read APU status
+        if self.instr['APUPercentage'] > 0 and self.APUStarting == False and self.APURunning == False and self.APUShutdown == False:
+            self.output.speak('A P U starting')
+            self.APUStarting = True
+            self.APUOff = False
+        if self.instr['APUPercentage'] < 100 and self.APURunning:
+            self.output.speak ('Shutting down A P U')
+            self.APURunning = False
+            self.APUShutdown = True
+        if self.instr['APUPercentage'] == 100 and self.APUStarting:
+            self.APUStarting = False
+            self.APURunning = True
+            self.output.speak("apu at 100 percent")
+        if self.instr['APUPercentage'] == 0 and self.APUOff == False:
+            self.output.speak('A P U shut down')
+            self.APURunning = False
+            self.APUStarting = False
+            self.APUShutdown = False
+            self.APUOff = true
+
+
+        if self.instr['APUGenerator'] and self.APUGenerator == False:
+            self.output.speak (F"{round(self.instr['APUVoltage'])} volts")
+            self.APUGenerator = True
+        if self.instr['APUGenerator'] == False:
+            self.APUGenerator = False
+
+
         # read engine status on startup.
         if self.instr['Eng1FuelFlow'] > 10 and self.instr['Eng1Starter'] and self.Eng1FuelFlow == False:
             self.output.speak ('Number 1 fuel flow')
