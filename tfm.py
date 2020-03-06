@@ -329,6 +329,7 @@ class tfm:
             'Nav1GSNeedle': (0x0c49, 'c'), # Nav1 glideslope needle: -119 up to 119 down
             'Altimeter': (0x0330, 'H'), # Altimeter pressure setting (“Kollsman” window). As millibars (hectoPascals) * 16
             'Doors': (0x3367, 'b'), # byte indicating open exits. One bit per door.
+            'APUVoltage': (0x0b5c, 'F'), # apu voltage test
             'Eng1Starter': (0x3b00, 'u'), # engine 1 starter
             'Eng2Starter': (0x3a40, 'u'), # engine 2 starter
             'Eng3Starter': (0x3980, 'u'), # engine 3 starter
@@ -363,6 +364,7 @@ class tfm:
             'WindSpeed': (0x0e90, 'H'), # Ambient wind speed in knots
             'WindDirection': (0x0e92, 'H'), # Ambient wind direction (at aircraft), *360/65536 to get degrees True.
             'WindGust': (0x0e94, 'H'), # At aircraft altitude: wind gusting value: max speed in knots, or 0 if no gusts
+            'RadioAltimeter': (0x31e4, 'u'), # Radio altitude in metres * 65536
 
 
 
@@ -1040,13 +1042,13 @@ class tfm:
             callout = 0
             if vspeed < -50:
                 for i in self.calloutsHigh:
-                    if self.AGLAltitude <= i + 5 and self.AGLAltitude >= i - 5 and self.calloutState[i] == False:
+                    if self.RadioAltitude <= i + 5 and self.RadioAltitude >= i - 5 and self.calloutState[i] == False:
                         source = pyglet.media.load (F'sounds\\{str(i)}.wav')
                         source.play()
                         self.calloutState[i] = True
                         
                 for i in self.calloutsLow:
-                    if self.AGLAltitude <= i + 3 and self.AGLAltitude >= i - 3 and self.calloutState[i] == False:
+                    if self.RadioAltitude <= i + 3 and self.RadioAltitude >= i - 3 and self.calloutState[i] == False:
                         source = pyglet.media.load (F'sounds\\{str(i)}.wav')
                         source.play()
                         self.calloutState[i] = True
@@ -1546,6 +1548,7 @@ class tfm:
                 self.tempC = round(self.instr['AirTemp'] / 256, 0)
                 self.tempF = round(9.0/5.0 * self.tempC + 32)
                 self.AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
+                self.RadioAltitude = self.instr['RadioAltimeter']  / 65536 * 3.28084
                 self.Nav1Bits = list(map(int, '{0:08b}'.format(self.instr['Nav1Flags'])))
                 self.instr['Nav1Type'] = self.Nav1Bits[0]
                 self.instr['Nav1GSAvailable'] = self.Nav1Bits[6]
