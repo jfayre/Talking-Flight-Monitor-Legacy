@@ -28,7 +28,7 @@ import sys
 import time
 import warnings
 import winsound
-
+import copy
 # from configparser import ConfigParser
 import config
 #redirect the original stdout and stderr
@@ -569,7 +569,7 @@ class tfm:
         # initially read simulator data so we can populate instrument dictionaries
         self.getPyuipcData()
         
-        self.oldInstr = self.instr
+        self.oldInstr = copy.deepcopy(self.instr)
         
 
         
@@ -625,7 +625,7 @@ class tfm:
                 self.FFEnabled = True
             else:
                 self.FFEnabled = False
-                self.output.speak('Nearest city announcementsdisabled.')
+                self.output.speak('Flight Following  announcements disabled.')
             if config.app['config']['read_instrumentation']:
                 self.InstrEnabled = True
             else:
@@ -1060,11 +1060,11 @@ class tfm:
         if self.instr['Transponder'] != self.oldInstr['Transponder']:
             self.output.speak(F'Squawk {self.instr["Transponder"]:x}')
         # next waypoint
-        if self.instr['NextWPId'] != self.oldWP:
+        if self.instr['NextWPId'] != self.oldInstr['NextWPId']:
             time.sleep(3)
-            self.getPyuipcData()
-            self.readWaypoint(0)
-            self.oldWP = self.instr['NextWPId']
+            # self.getPyuipcData()
+            # self.readWaypoint(0)
+            # self.oldInstr['NextWPId'] = self.instr['NextWPId']
         # read autobrakes
         if self.instr['AutoBrake'] != self.oldInstr['AutoBrake']:
             if self.instr['AutoBrake'] == 0:
@@ -1244,7 +1244,7 @@ class tfm:
             elif self.instr['Altitude'] >= i + 100:
                 self.altFlag[i] = False
         # maintain state of instruments so we can check on the next run.
-        self.oldInstr = self.instr
+        self.oldInstr = copy.deepcopy(self.instr)
 
     def readEngTemps(self, dt = 0):
         if self.distance_units == '1':
