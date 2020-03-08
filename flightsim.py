@@ -14,6 +14,10 @@ from math import degrees, floor
 import pyglet
 import numpy as np
 from pubsub import pub
+import logging
+from logger import logger
+log = logging.getLogger("tfm")
+
 ## Main Class of tfm.
 class TFM(threading.Thread):
 #  - b: a 1-byte unsigned value, to be converted into a Python int
@@ -734,6 +738,8 @@ class TFM(threading.Thread):
                         time.sleep (0.2)
                     else:
                         flapsTransit = False
+                log.debug("flaps")
+                
                 self.q.put (F'Flaps {self.instr["Flaps"]:.0f}')
                 self.oldInstr['Flaps'] = self.instr['Flaps']
             # announce radio frequency changes
