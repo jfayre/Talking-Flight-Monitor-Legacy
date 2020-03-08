@@ -20,14 +20,12 @@
 
 
 
-import logging
 # Import built-ins
+import logging
 import os
 import sys
 import time
 import warnings
-import copy
-# from configparser import ConfigParser
 import config
 #redirect the original stdout and stderr
 stdout=sys.stdout
@@ -58,23 +56,17 @@ import wx, wx.adv
 import webbrowser
 import application
 from keyboard_handler.wx_handler import WXKeyboardHandler
-import requests
+import queue
 import flightsim
-from aviationFormula.aviationFormula import calcBearing
-from babel import Locale
-from babel.dates import get_timezone, get_timezone_name
 import pyglet
 import threading
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
-import numpy as np
-from timeit import default_timer as timer
 from pubsub import pub
 
 # Import own packages.
 
 # initialize the log settings
-logging.basicConfig(filename = 'error.log', level = logging.INFO)
 # Set encoding
 #reload(sys)
 #sys.setdefaultencoding('iso-8859-15')  # @UndefinedVariable
@@ -90,6 +82,8 @@ if GetLastError(  ) == ERROR_ALREADY_EXISTS:
 # Import pyuipc package (except failure with debug mode). 
 
 pyglet.options['shadow_window'] = False
+cmd_sound = pyglet.media.load('sounds\\command.wav')
+
 try:
     import pyuipc
     pyuipcImported = True
@@ -97,7 +91,6 @@ try:
 except ImportError:
         pyuipcImported = False
         debug = True
-
 def reset_hotkeys(arg1=None):
     keyboard_handler.unregister_all_keys()
     keyboard_handler.register_keys({']': commandMode})    
@@ -106,7 +99,10 @@ def reset_hotkeys(arg1=None):
 def commandMode():
     try:
         keyboard_handler.unregister_all_keys()
-        tfm.output.speak ('command?', interrupt=True)
+        if config.app['config']['speech_output'] == 0:
+            cmd_sound.play()
+        else:
+            output.speak('command?', interrupt=True)
         keymap = {
             config.app['hotkeys']['asl_key']: tfm.readAltitude,
             config.app['hotkeys']['agl_key']: tfm.readGroundAltitude,
@@ -298,6 +294,18 @@ class TFMFrame(wx.Frame):
         pyglet.clock.tick()
         # dispatch any pending events so audio looping works
         pyglet.app.platform_event_loop.dispatch_posted_events()
+        if not queue.empty():
+            message = queue.get_nowait()
+            output.speak(message)
+output = None
+def setup_speech():
+    global output
+    if config.app['config']['speech_output'] == 1:
+        output = sapi5.SAPI5()
+        output.set_rate(self.voice_rate)
+    else:
+        output = auto.Auto()
+        
 if __name__ == '__main__':
     log = logging.getLogger("main")
     app = wx.App(0)
@@ -307,19 +315,18 @@ if __name__ == '__main__':
     keyboard_handler = WXKeyboardHandler(frame)
     # register the command key
     keyboard_handler.register_keys({']': commandMode})
-    pub.subscribe(reset_hotkeys, "reset")    
+    # register the listener for resetting hotkeys
+    pub.subscribe(reset_hotkeys, "reset")
     # setup configuration files
     config.setup()
+    # set up speech object
+    setup_speech()
     # breakpoint()
-
+    # setup the queue to receive speech messages
+    queue = queue.Queue()
     # start the main tfm class.
-    tfm = flightsim.TFM()
-    # for attitude mode to work properly, we need to run the standard pyglet event loop in a second thread.
-    # t = threading.Thread(target=pyglet_event_loop)
-    # t.daemon = True
-    # t.start()
-    # start the GUI
-    # GUI()
+    tfm = flightsim.TFM(queue)
+    tfm.start()
     frame.Show()
     app.MainLoop()    
 
