@@ -330,6 +330,10 @@ class TFM(threading.Thread):
         self.tmrCity = timer.Timer()
         self.tmrInstruments = timer.Timer()
         self.tmrSimc = timer.Timer()
+        self.tmrEng= timer.Timer()
+        self.tmrCallouts = timer.Timer()
+        
+
 
 
 
@@ -358,11 +362,16 @@ class TFM(threading.Thread):
 
                 if self.calloutsEnabled:
                     # pyglet.clock.schedule_interval (self.readCallouts, 0.2)
-                    pass
+                    if self.tmrCallouts.elapsed > 200:
+                        self.readCallouts()
+                        self.tmrCallouts.restart()
+
 
                 # read engine temperatures while engine is starting. Does nothing before and after startup.
-                # pyglet.clock.schedule_interval(self.readEngTemps, 3)
-                pass
+                if self.tmrEng.elapsed > 3000:
+                    self.readEngTemps()
+                    self.tmrEng.restart()
+
 
 
                     
