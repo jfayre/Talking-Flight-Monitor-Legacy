@@ -1,5 +1,6 @@
 venv
 build
+config
 dist
 logs
 *.pyc

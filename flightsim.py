@@ -14,6 +14,7 @@ from math import degrees, floor
 import pyglet
 import numpy as np
 from pubsub import pub
+import logging
 ## Main Class of tfm.
 class TFM(threading.Thread):
 #  - b: a 1-byte unsigned value, to be converted into a Python int
@@ -1038,8 +1039,8 @@ class TFM(threading.Thread):
             # if we were triggered with a hotkey, read the ETA to the next waypoint.
             if triggered:
                 self.q.put(F'ETA: {self.instr["NextWPETA"]}')
-                reset_hotkeys()
-            reset_hotkeys()
+                pub.sendMessage('reset', arg1=True)
+            pub.sendMessage('reset', arg1=True)
         except Exception as e:
             logging.exception ("error reading waypoint info")
 
@@ -1080,9 +1081,9 @@ class TFM(threading.Thread):
                         self.CachedMessage[index] = 'EOM'
                     self.oldSimCChanged = self.SimCData['SimCChanged']
                 if triggered == 1:
-                    reset_hotkeys()
+                    pub.sendMessage('reset', arg1=True)
             # else:
-                    # reset_hotkeys()
+                    # pub.sendMessage('reset', arg1=True)
         except KeyError:
             pass
         except Exception as e:
@@ -1096,7 +1097,7 @@ class TFM(threading.Thread):
                 break
             else:
                 self.q.put (message)
-        reset_hotkeys()
+        pub.sendMessage('reset', arg1=True)
     
     def readRC4(self, triggered = False):
         msgUpdated = False
