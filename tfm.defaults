@@ -1,6 +1,6 @@
 [config]
 # talking flight monitor (tfm) requires a username from the geonames service
-geonames_username = string(default="")
+geonames_username = string(default="your_username")
 # voice rate for sapi output
 voice_rate = integer(default=5)
 # speech output: 0 - screen reader, 1 - sapi5

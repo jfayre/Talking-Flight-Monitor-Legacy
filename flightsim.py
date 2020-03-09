@@ -7,6 +7,7 @@ import queue
 import time
 import requests
 import copy
+import wx
 from aviationFormula.aviationFormula import calcBearing
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
@@ -384,16 +385,7 @@ class TFM(threading.Thread):
             time.sleep(1)
 
     def read_config(self):
-            
-
             self.geonames_username = config.app['config']['geonames_username']
-            if self.geonames_username == 'your_username':
-                # output = sapi5.SAPI5()
-                # output.speak('Error: edit the tfm.ini file and add your Geo names username. exiting!')
-                # time.sleep(8)
-                # sys.exit(1)
-                self.username()
-
             self.FFInterval = float(config.app['config']['flight_following_interval'])
             self.ManualInterval = float(config.app['config']['manual_interval'])
             self.ILSInterval = float(config.app['config']['ils_interval'])

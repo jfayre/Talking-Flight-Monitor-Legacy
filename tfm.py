@@ -305,10 +305,29 @@ def setup_speech():
         output.set_rate(self.voice_rate)
     else:
         output = auto.Auto()
-        
+    geonames_username = config.app['config']['geonames_username']
+    if geonames_username == 'your_username':
+                # output = sapi5.SAPI5()
+                # output.speak('Error: edit the tfm.ini file and add your Geo names username. exiting!')
+                # time.sleep(8)
+                # sys.exit(1)
+                print ("launching username dialog")
+                get_username()
+def get_username():
+    dlg = wx.TextEntryDialog(None, "Please enter your Geonames user name in order to use flight following features.", "GeoNames username")
+    dlg.ShowModal()
+    config.app['config']['geonames_username'] = dlg.GetValue()
+    config.app.write()
+    
 if __name__ == '__main__':
     log = logging.getLogger("main")
     app = wx.App(0)
+    # setup configuration files
+    config.setup()
+    # set up speech object
+    setup_speech()
+    
+    
     frame = TFMFrame(None, title='Talking Flight Monitor')
     # initialize the keyboard handler.
     
@@ -317,10 +336,6 @@ if __name__ == '__main__':
     keyboard_handler.register_keys({']': commandMode})
     # register the listener for resetting hotkeys
     pub.subscribe(reset_hotkeys, "reset")
-    # setup configuration files
-    config.setup()
-    # set up speech object
-    setup_speech()
     # breakpoint()
     # setup the queue to receive speech messages
     queue = queue.Queue()
