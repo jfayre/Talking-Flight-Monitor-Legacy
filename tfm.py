@@ -27,6 +27,7 @@ import sys
 import time
 import warnings
 import config
+import winsound
 #redirect the original stdout and stderr
 stdout=sys.stdout
 stderr=sys.stderr
@@ -58,7 +59,7 @@ import application
 from keyboard_handler.wx_handler import WXKeyboardHandler
 import queue
 import flightsim
-import pyglet
+# import pyglet
 import threading
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
@@ -81,8 +82,8 @@ if GetLastError(  ) == ERROR_ALREADY_EXISTS:
                 
 # Import pyuipc package (except failure with debug mode). 
 
-pyglet.options['shadow_window'] = False
-cmd_sound = pyglet.media.load('sounds\\command.wav')
+# pyglet.options['shadow_window'] = False
+# cmd_sound = pyglet.media.load('sounds\\command.wav')
 
 try:
     import pyuipc
@@ -93,14 +94,15 @@ except ImportError:
         debug = True
 def reset_hotkeys(arg1=None):
     keyboard_handler.unregister_all_keys()
-    keyboard_handler.register_keys({']': commandMode})    
+    keyboard_handler.register_keys({config.app['hotkeys']['command_key']: commandMode})    
 
 ## Layered key support for reading various instrumentation
 def commandMode():
     try:
         keyboard_handler.unregister_all_keys()
         if config.app['config']['speech_output'] == 0:
-            cmd_sound.play()
+            filename = 'sounds\\command.wav'
+            winsound.PlaySound(filename, winsound.SND_FILENAME|winsound.SND_ASYNC)
         else:
             output.speak('command?', interrupt=True)
         keymap = {
@@ -290,10 +292,6 @@ class TFMFrame(wx.Frame):
         webbrowser.open_new_tab(application.report_bugs_url)
     # event handler for the timer
     def update(self, event):
-        # we need to tick the clock for pyglet scheduling functions to work
-        pyglet.clock.tick()
-        # dispatch any pending events so audio looping works
-        pyglet.app.platform_event_loop.dispatch_posted_events()
         if not queue.empty():
             message = queue.get_nowait()
             output.speak(message)
@@ -333,7 +331,7 @@ if __name__ == '__main__':
     
     keyboard_handler = WXKeyboardHandler(frame)
     # register the command key
-    keyboard_handler.register_keys({']': commandMode})
+    keyboard_handler.register_keys({config.app['hotkeys']['command_key']: commandMode})    
     # register the listener for resetting hotkeys
     pub.subscribe(reset_hotkeys, "reset")
     # breakpoint()

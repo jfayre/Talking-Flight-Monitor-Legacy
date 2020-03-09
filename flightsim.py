@@ -203,6 +203,7 @@ class TFM(threading.Thread):
         self.oldWP = None
 
         self.oldSimCChanged = None
+        self.oldSimCData = None
         self.oldGear = 16383
         self.oldRCMsg = None
         self.GSDetected = False
@@ -327,62 +328,26 @@ class TFM(threading.Thread):
         self.getPyuipcData()
         
         self.oldInstr = copy.deepcopy(self.instr)
-        # start timers
-        self.tmrCity = timer.Timer()
-        self.tmrInstruments = timer.Timer()
-        self.tmrSimc = timer.Timer()
-        self.tmrEng= timer.Timer()
-        self.tmrCallouts = timer.Timer()
-        
-
-
-
-
-        
+        # Start closest city loop if enabled.
+        if self.FFEnabled:
+            pyglet.clock.schedule_interval(self.AnnounceInfo, self.FFInterval * 60)
+        # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
+        if self.InstrEnabled:
+            pyglet.clock.schedule_interval(self.readInstruments, 0.5)
+        # # start simConnect message reading loop
+        if self.SimCEnabled:
+            pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
+        if self.calloutsEnabled:
+            pyglet.clock.schedule_interval (self.readCallouts, 0.2)
+        # read engine temperatures while engine is starting. Does nothing before and after startup.
+        pyglet.clock.schedule_interval(self.readEngTemps, 3)        
         # Infinite loop.
         while True:
-            try:
-                # Start closest city loop if enabled.
-                if self.FFEnabled:
-                    if self.tmrCity.elapsed > (self.FFInterval * 60 * 1000):
-                        self.AnnounceInfo()
-                        self.tmrCity.restart()
-
-                # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
-                if self.InstrEnabled:
-                    if self.tmrInstruments.elapsed > 500:
-                        self.readInstruments()
-                        self.tmrInstruments.restart()
-
-                # start simConnect message reading loop
-                if self.SimCEnabled:
-                    # pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
-                    if self.tmrSimc.elapsed > 1000:
-                        self.readSimConnectMessages()
-                        self.tmrSimc.restart()
-
-                if self.calloutsEnabled:
-                    # pyglet.clock.schedule_interval (self.readCallouts, 0.2)
-                    if self.tmrCallouts.elapsed > 200:
-                        self.readCallouts()
-                        self.tmrCallouts.restart()
-
-
-                # read engine temperatures while engine is starting. Does nothing before and after startup.
-                if self.tmrEng.elapsed > 3000:
-                    self.readEngTemps()
-                    self.tmrEng.restart()
-
-
-
-                    
-            except KeyboardInterrupt:
-                # Actions at Keyboard Interrupt.
-                pyuipc.close()
-                sys.exit()
-            except Exception as e:
-                log.exception('Error during main loop:' + str(e))
-            time.sleep(1)
+            # we need to tick the clock for pyglet scheduling functions to work
+            pyglet.clock.tick()
+            # dispatch any pending events so audio looping works
+            pyglet.app.platform_event_loop.dispatch_posted_events()
+            time.sleep(0.1)
 
     def read_config(self):
             self.geonames_username = config.app['config']['geonames_username']
@@ -429,6 +394,7 @@ class TFM(threading.Thread):
         
 
     def manualFlight(self, dt, triggered = 0):
+        log.debug("manual flight mode")
         try:
             pitch = round(self.attitude['Pitch'], 1)
             bank = round(self.attitude['Bank'])
@@ -1082,7 +1048,7 @@ class TFM(threading.Thread):
                 # If the change is due to an old message clearing, just return without doing anything.
                 if self.SimCData['SimCLength'] == 0:
                     return
-                if self.oldSimCChanged != self.SimCData['SimCChanged'] or triggered:
+                if self.oldSimCChanged != self.SimCData['SimCChanged'] or self.oldSimCData != self.SimCData['SimCData']:
                     # if this is an rc message, handle that.
                     if self.SimCData['SimCType'] == 768:
                         self.readRC4(triggered=triggered)
@@ -1103,6 +1069,8 @@ class TFM(threading.Thread):
                     if not RCMessage:
                         self.CachedMessage[index] = 'EOM'
                     self.oldSimCChanged = self.SimCData['SimCChanged']
+                    self.oldSimCData = self.SimCData['SimCData']
+                    
                 if triggered == 1:
                     pub.sendMessage('reset', arg1=True)
             # else:
