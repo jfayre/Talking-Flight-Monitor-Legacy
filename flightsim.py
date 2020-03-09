@@ -7,6 +7,7 @@ import queue
 import time
 import requests
 import copy
+import wx
 from aviationFormula.aviationFormula import calcBearing
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
@@ -14,7 +15,11 @@ from math import degrees, floor
 import pyglet
 import numpy as np
 from pubsub import pub
+import timer
 import logging
+from logger import logger
+log = logging.getLogger("tfm")
+
 ## Main Class of tfm.
 class TFM(threading.Thread):
 #  - b: a 1-byte unsigned value, to be converted into a Python int
@@ -171,7 +176,7 @@ class TFM(threading.Thread):
         threading.Thread.__init__(self)
         self.q = queue
     def run(self):
-        # Init logging.
+        # Init log.
         # self.logger = VaLogger(os.path.join(self.rootDir,'voiceAtis','logs'))
         # First log message.
         # self.logger.info('TFM started')
@@ -189,7 +194,7 @@ class TFM(threading.Thread):
                 self.pyuipcConnection = None
                 break
             except Exception as e:
-                logging.error('error initializing fsuipc: ' + str(e))
+                log.error('error initializing fsuipc: ' + str(e))
                 time.sleep(20)
         
         # variables to track states of various aircraft instruments
@@ -322,48 +327,65 @@ class TFM(threading.Thread):
         self.getPyuipcData()
         
         self.oldInstr = copy.deepcopy(self.instr)
+        # start timers
+        self.tmrCity = timer.Timer()
+        self.tmrInstruments = timer.Timer()
+        self.tmrSimc = timer.Timer()
+        self.tmrEng= timer.Timer()
+        self.tmrCallouts = timer.Timer()
         
+
+
+
 
         
         # Infinite loop.
-        try:
-            # Start closest city loop if enabled.
-            if self.FFEnabled:
-                pyglet.clock.schedule_interval(self.AnnounceInfo, self.FFInterval * 60)
-            # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
-            if self.InstrEnabled:
-                pyglet.clock.schedule_interval(self.readInstruments, 1.0)
-            else: 
-                pyglet.clock.schedule_interval (self.getPyuipcData, 1.0)
-            # start simConnect message reading loop
-            if self.SimCEnabled:
-                pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
-            if self.calloutsEnabled:
-                pyglet.clock.schedule_interval (self.readCallouts, 0.2)
-            # read engine temperatures while engine is starting. Does nothing before and after startup.
-            pyglet.clock.schedule_interval(self.readEngTemps, 3)
+        while True:
+            try:
+                # Start closest city loop if enabled.
+                if self.FFEnabled:
+                    if self.tmrCity.elapsed > (self.FFInterval * 60 * 1000):
+                        self.AnnounceInfo()
+                        self.tmrCity.restart()
+
+                # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
+                if self.InstrEnabled:
+                    if self.tmrInstruments.elapsed > 500:
+                        self.readInstruments()
+                        self.tmrInstruments.restart()
+
+                # start simConnect message reading loop
+                if self.SimCEnabled:
+                    # pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
+                    if self.tmrSimc.elapsed > 1000:
+                        self.readSimConnectMessages()
+                        self.tmrSimc.restart()
+
+                if self.calloutsEnabled:
+                    # pyglet.clock.schedule_interval (self.readCallouts, 0.2)
+                    if self.tmrCallouts.elapsed > 200:
+                        self.readCallouts()
+                        self.tmrCallouts.restart()
 
 
-                
-        except KeyboardInterrupt:
-            # Actions at Keyboard Interrupt.
-            pyuipc.close()
-            sys.exit()
+                # read engine temperatures while engine is starting. Does nothing before and after startup.
+                if self.tmrEng.elapsed > 3000:
+                    self.readEngTemps()
+                    self.tmrEng.restart()
 
-        except Exception as e:
-            logging.exception('Error during main loop:' + str(e))
+
+
+                    
+            except KeyboardInterrupt:
+                # Actions at Keyboard Interrupt.
+                pyuipc.close()
+                sys.exit()
+            except Exception as e:
+                log.exception('Error during main loop:' + str(e))
+            time.sleep(1)
 
     def read_config(self):
-            
-
             self.geonames_username = config.app['config']['geonames_username']
-            if self.geonames_username == 'your_username':
-                # output = sapi5.SAPI5()
-                # output.speak('Error: edit the tfm.ini file and add your Geo names username. exiting!')
-                # time.sleep(8)
-                # sys.exit(1)
-                self.username()
-
             self.FFInterval = float(config.app['config']['flight_following_interval'])
             self.ManualInterval = float(config.app['config']['manual_interval'])
             self.ILSInterval = float(config.app['config']['ils_interval'])
@@ -419,7 +441,7 @@ class TFM(threading.Thread):
             elif pitch < 0:
                 self.q.put (F'Up {abs(pitch)}')
         except Exception as e:
-            logging.exception (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
+            log.exception (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
     def set_speed(self, speed):
         # set the autopilot airspeed
         offset, type = self.InstrOffsets['ApAirspeed']
@@ -515,7 +537,7 @@ class TFM(threading.Thread):
             if bank == 0:
                 self.BankPlayer.pause()
         except Exception as e:
-            logging.exception (F'Error in flight director. Pitch: {pitch}, Bank: {bank}' + str(e))
+            log.exception (F'Error in flight director. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
 
@@ -550,7 +572,7 @@ class TFM(threading.Thread):
             pyglet.clock.tick()
             pyglet.app.platform_event_loop.dispatch_posted_events()
         except Exception as e:
-            logging.exception (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
+            log.exception (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
 
 
 
@@ -705,7 +727,7 @@ class TFM(threading.Thread):
                         
             
     ## read various instrumentation automatically
-    def readInstruments(self, dt):
+    def readInstruments(self, dt=0):
         flapsTransit = False
         # Get data from simulator
         self.getPyuipcData()
@@ -735,6 +757,7 @@ class TFM(threading.Thread):
                         time.sleep (0.2)
                     else:
                         flapsTransit = False
+                
                 self.q.put (F'Flaps {self.instr["Flaps"]:.0f}')
                 self.oldInstr['Flaps'] = self.instr['Flaps']
             # announce radio frequency changes
@@ -1010,7 +1033,7 @@ class TFM(threading.Thread):
                     self.q.put (F'{name} {offMessage}')
                 self.oldInstr[instrument] = self.instr[instrument]
         except Exception as e:
-            logging.exception(F"error in instrument toggle. Instrument was {instrument}")
+            log.exception(F"error in instrument toggle. Instrument was {instrument}")
 
     def secondsToText(self, secs):
         ## convert number of seconds into human readable format. Thanks to Stack Overflow for this!
@@ -1042,13 +1065,13 @@ class TFM(threading.Thread):
                 pub.sendMessage('reset', arg1=True)
             pub.sendMessage('reset', arg1=True)
         except Exception as e:
-            logging.exception ("error reading waypoint info")
+            log.exception ("error reading waypoint info")
 
 
 
         
 
-    def readSimConnectMessages(self, dt,triggered = False):
+    def readSimConnectMessages(self, dt=0,triggered = False):
         ## reads any SimConnect messages that don't require special processing.
         ## right now, rc4 is the only message type that needs special processing.
         SimCMessageRaw = ""
@@ -1087,7 +1110,7 @@ class TFM(threading.Thread):
         except KeyError:
             pass
         except Exception as e:
-            logging.exception (F'error reading SimConnect message. {SimCMessageRaw}')
+            log.exception (F'error reading SimConnect message. {SimCMessageRaw}')
 
 
     def readCachedSimConnectMessages(self):
@@ -1103,7 +1126,7 @@ class TFM(threading.Thread):
         msgUpdated = False
         msgRaw = self.SimCMessage[:self.SimCData['SimCLength']]
         msg = msgRaw.splitlines()
-        # logging.error(F'{msg}')
+        # log.error(F'{msg}')
         # breakpoint()
         if self.oldRCMsg != msg[1] and msg[1][:3] != 'Rwy' and msg[1][:1] != '<':
             msgUpdated = True
@@ -1142,12 +1165,12 @@ class TFM(threading.Thread):
             else:
                 distance = 0
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            logging.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
-            logging.exception('error getting nearest city: ' + str(e))
+            log.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
+            log.exception('error getting nearest city: ' + str(e))
             self.q.put ('cannot find nearest city. Geonames connection error. Check error log.')
         except requests.exceptions.HTTPError as e:
-            logging.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
-            logging.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
+            log.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
+            log.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
             self.q.put ('cannot find nearest city. Geonames may be busy. Check error log.')
             
         ## Check if we are flying over water.
@@ -1160,8 +1183,8 @@ class TFM(threading.Thread):
                 self.q.put ('currently over {}'.format(data['ocean']['name']))
                 self.oceanic = True
         except Exception as e:
-            logging.error('Error determining oceanic information: ' + str(e))
-            logging.exception(str(e))
+            log.error('Error determining oceanic information: ' + str(e))
+            log.exception(str(e))
             
         ## Read time zone information
         try:
@@ -1175,8 +1198,8 @@ class TFM(threading.Thread):
                     self.q.put ('{}.'.format(tzName))
                     self.oldTz = tzName
         except Exception as e:
-            logging.error('Error determining timezone: ' + str(e))
-            logging.exception(str(e))
+            log.error('Error determining timezone: ' + str(e))
+            log.exception(str(e))
 
 
     
@@ -1262,7 +1285,7 @@ class TFM(threading.Thread):
                     self.SimCData = dict(zip(self.SimCOffsets.keys(), pyuipc.read(self.pyuipcSIMC)))
                     self.SimCMessage = self.SimCData['SimCData'].decode ('UTF-8', 'ignore')
             except Exception as e:
-                logging.exception ('error reading simconnect message data')
+                log.exception ('error reading simconnect message data')
         if type == 0 or type == 3:
             # Read attitude
             self.attitude = dict(zip(self.AttitudeOffsets.keys(), pyuipc.read(self.pyuipcAttitude)))
