@@ -59,12 +59,13 @@ import application
 from keyboard_handler.wx_handler import WXKeyboardHandler
 import queue
 import flightsim
+import settings
 # import pyglet
 import threading
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
 from pubsub import pub
-
+import widgetUtils
 # Import own packages.
 
 # initialize the log settings
@@ -102,7 +103,7 @@ def commandMode():
         keyboard_handler.unregister_all_keys()
         # send a message indicating that the next speech event has been triggered by a hotkey.
         pub.sendMessage("triggered", msg=True)
-        if config.app['config']['speech_output'] == 0:
+        if config.app['config']['use_sapi'] == False:
             filename = 'sounds\\command.wav'
             winsound.PlaySound(filename, winsound.SND_FILENAME|winsound.SND_ASYNC)
         else:
@@ -259,6 +260,7 @@ class TFMFrame(wx.Frame):
         # define the menu bar
         # application menu
         app_menu = wx.Menu()
+        app_settings = app_menu.Append(wx.ID_ANY, "&Settings")
         app_exit = app_menu.Append (wx.ID_EXIT,"E&xit"," Terminate the program")
         # help menu
         help_menu = wx.Menu()
@@ -271,6 +273,7 @@ class TFMFrame(wx.Frame):
         menu_bar.Append(help_menu, '&Help')
         self.SetMenuBar(menu_bar)  # Adding the MenuBar to the Frame content.
         # bind menu events
+        self.Bind(wx.EVT_MENU, self.onSettings, app_settings)
         self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
         self.Bind(wx.EVT_MENU, self.onAbout, help_about)
         self.Bind(wx.EVT_MENU, self.onIssue, help_issue)
@@ -280,6 +283,11 @@ class TFMFrame(wx.Frame):
         
     
     # menu event handlers
+    def onSettings(self, event):
+        d = settings.settingsController()
+        if d.response == widgetUtils.OK:
+            d.save_configuration()
+ 
     def onAbout(self, event):
         info = wx.adv.AboutDialogInfo()
         info.SetName(application.name)
@@ -308,10 +316,11 @@ output = None
 sapi_output = None
 def setup_speech():
     global output, sapi_output
+    voice_rate = int(config.app['config']['voice_rate'])
     sapi_output = sapi5.SAPI5()
-    sapi_output.set_rate(config.app['config']['voice_rate'])
+    sapi_output.set_rate(voice_rate)
 
-    if config.app['config']['speech_output'] == 1:
+    if config.app['config']['use_sapi']:
         output = sapi5.SAPI5()
         output.set_rate(config.app['config']['voice_rate'])
     else:
