@@ -100,6 +100,8 @@ def reset_hotkeys(arg1=None):
 def commandMode():
     try:
         keyboard_handler.unregister_all_keys()
+        # send a message indicating that the next speech event has been triggered by a hotkey.
+        pub.sendMessage("triggered", msg=True)
         if config.app['config']['speech_output'] == 0:
             filename = 'sounds\\command.wav'
             winsound.PlaySound(filename, winsound.SND_FILENAME|winsound.SND_ASYNC)
@@ -180,6 +182,9 @@ class Form(wx.Panel):
             (self.inches_edit, wx.EVT_TEXT_ENTER, self.onInchesEntered),
             (self.com1_edit, wx.EVT_TEXT_ENTER, self.onCom1Entered)]:
                 control.Bind(event, handler)
+        pub.subscribe(self.update_logger, "update")
+    def update_logger(self, msg):
+        self.logger.AppendText(msg + '\n')
 
     def doLayout(self):
         ''' Layout the controls by means of sizers. '''
@@ -292,24 +297,27 @@ class TFMFrame(wx.Frame):
         webbrowser.open_new_tab(application.report_bugs_url)
     # event handler for the timer
     def update(self, event):
-        if not queue.empty():
-            message = queue.get_nowait()
+        if not main_queue.empty():
+            message = main_queue.get_nowait()
             output.speak(message)
+        if not sapi_queue.empty():
+            message = sapi_queue.get_nowait()
+            sapi_output.speak(message)
+
 output = None
+sapi_output = None
 def setup_speech():
-    global output
+    global output, sapi_output
+    sapi_output = sapi5.SAPI5()
+    sapi_output.set_rate(config.app['config']['voice_rate'])
+
     if config.app['config']['speech_output'] == 1:
         output = sapi5.SAPI5()
-        output.set_rate(self.voice_rate)
+        output.set_rate(config.app['config']['voice_rate'])
     else:
         output = auto.Auto()
     geonames_username = config.app['config']['geonames_username']
     if geonames_username == 'your_username':
-                # output = sapi5.SAPI5()
-                # output.speak('Error: edit the tfm.ini file and add your Geo names username. exiting!')
-                # time.sleep(8)
-                # sys.exit(1)
-                print ("launching username dialog")
                 get_username()
 def get_username():
     dlg = wx.TextEntryDialog(None, "Please enter your Geonames user name in order to use flight following features.", "GeoNames username")
@@ -336,9 +344,10 @@ if __name__ == '__main__':
     pub.subscribe(reset_hotkeys, "reset")
     # breakpoint()
     # setup the queue to receive speech messages
-    queue = queue.Queue()
+    main_queue = queue.Queue()
+    sapi_queue = queue.Queue()
     # start the main tfm class.
-    tfm = flightsim.TFM(queue)
+    tfm = flightsim.TFM(main_queue, sapi_queue)
     tfm.start()
     frame.Show()
     app.MainLoop()    
