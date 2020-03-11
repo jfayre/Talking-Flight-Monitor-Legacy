@@ -20,11 +20,11 @@ class settingsController(object):
         super(settingsController, self).__init__()
         self.dialog = configuration.configurationDialog()
         self.create_config()
-        self.is_started = True
 
     def create_config(self):
         # general tab
         self.dialog.create_general()
+        self.dialog.set_value("general", "geonames_username", config.app['config']['geonames_username'])
         self.dialog.set_value("general", "use_sapi", config.app['config']['use_sapi'])
         self.dialog.set_value("general", "voice_rate", config.app['config']['voice_rate'])
         self.dialog.set_value("general", "flight_following", config.app['config']['flight_following'])
@@ -36,10 +36,11 @@ class settingsController(object):
         self.dialog.set_value("general", "use_metric", config.app['config']['use_metric'])
         # timings tab
         self.dialog.create_timing()
-        self.dialog.set_value("timing", "flight_following_interval", config.app['config']['flight_following_interval'])
-        self.dialog.set_value("timing", "manual_interval", config.app['config']['manual_interval'])
-        self.dialog.set_value("timing", "ils_interval", config.app['config']['ils_interval'])
+        self.dialog.set_value("timing", "flight_following_interval", str(config.app['timing']['flight_following_interval']))
+        self.dialog.set_value("timing", "manual_interval", str(config.app['timing']['manual_interval']))
+        self.dialog.set_value("timing", "ils_interval", str(config.app['timing']['ils_interval']))
         # hotkeys tab
+        self.dialog.create_hotkeys()
         self.dialog.set_value("hotkeys", "command_key", config.app['hotkeys']['command_key'])
         self.dialog.set_value("hotkeys", "asl_key", config.app['hotkeys']['asl_key'])
         self.dialog.set_value("hotkeys", "agl_key", config.app['hotkeys']['agl_key'])
@@ -70,5 +71,11 @@ class settingsController(object):
 
 
     def save_configuration(self):
-        config.app["config"]["use_sapi"] = self.dialog.get_value("general", "use_sapi")
+        for key in config.app['config'].keys():
+            config.app['config'][key] = self.dialog.get_value("general", key)
+        for key in config.app['timing'].keys():
+            config.app['timing'][key] = self.dialog.get_value("timing", key)
+        for key in config.app['hotkeys'].keys():
+            config.app['hotkeys'][key] = self.dialog.get_value("hotkeys", key)
+        
         config.app.write()

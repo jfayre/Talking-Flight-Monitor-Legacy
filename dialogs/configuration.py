@@ -14,6 +14,12 @@ class general(wx.Panel, baseDialog.BaseWXDialog):
  def __init__(self, parent):
   super(general, self).__init__(parent)
   sizer = wx.BoxSizer(wx.VERTICAL)
+  lbl = wx.StaticText(self, wx.ID_ANY, "Geonames username: ")
+  self.geonames_username = wx.TextCtrl(self, -1)
+  geonames_box = wx.BoxSizer(wx.HORIZONTAL)
+  geonames_box.Add(lbl, 0, wx.ALL, 5)
+  geonames_box.Add(self.geonames_username, 0, wx.ALL, 5)
+  sizer.Add(geonames_box, 0, wx.ALL, 5)
   self.use_sapi = wx.CheckBox(self, -1, "Use SAPI for speech output")
   sizer.Add(self.use_sapi, 0, wx.ALL, 5)
   voice_rate_box = wx.BoxSizer(wx.HORIZONTAL)
@@ -67,8 +73,54 @@ class timing(wx.Panel, baseDialog.BaseWXDialog):
 class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
   def __init__(self, parent):
     super(hotkeys, self).__init__(parent)
-    
-    gridSizer = wx.FlexGridSizer(rows = 12, cols=2, vgap=10, hgap=10)
+    self.command_label = wx.StaticText(self, wx.ID_ANY, "Command mode key: ")
+    self.command_key = wx.TextCtrl(self, -1)
+    self.asl_label = wx.StaticText(self, wx.ID_ANY, "ASL Altitude: ")
+    self.asl_key = wx.TextCtrl(self, -1)
+    self.agl_label = wx.StaticText(self, wx.ID_ANY, "AGL Altitude: ")
+    self.agl_key = wx.TextCtrl(self, -1)
+    self.city_label = wx.StaticText(self, wx.ID_ANY, "Read nearest city: : ")
+    self.city_key = wx.TextCtrl(self, -1)
+    self.heading_label = wx.StaticText(self, wx.ID_ANY, "current heading: ")
+    self.heading_key = wx.TextCtrl(self, -1)
+    self.waypoint_label = wx.StaticText(self, wx.ID_ANY, "next waypoint: ")
+    self.waypoint_key = wx.TextCtrl(self, -1)
+    self.ias_label = wx.StaticText(self, wx.ID_ANY, "Indicated airspeed: ")
+    self.ias_key = wx.TextCtrl(self, -1)
+    self.tas_label = wx.StaticText(self, wx.ID_ANY, "True airspeed: ")
+    self.tas_key = wx.TextCtrl(self, -1)
+    self.mach_label = wx.StaticText(self, wx.ID_ANY, "Mach: ")
+    self.mach_key = wx.TextCtrl(self, -1)
+    self.message_label = wx.StaticText(self, wx.ID_ANY, "repeat last SimConnect message: ")
+    self.message_key = wx.TextCtrl(self, -1)
+    self.attitude_label = wx.StaticText(self, wx.ID_ANY, "Attitude mode: ")
+    self.attitude_key = wx.TextCtrl(self, -1)
+    self.manual_label = wx.StaticText(self, wx.ID_ANY, "Manual flight mode: ")
+    self.manual_key = wx.TextCtrl(self, -1)
+    self.dest_label = wx.StaticText(self, wx.ID_ANY, "Destination info: ")
+    self.dest_key = wx.TextCtrl(self, -1)
+    self.director_label = wx.StaticText(self, wx.ID_ANY, "Flight director mode: ")
+    self.director_key = wx.TextCtrl(self, -1)
+    self.vspeed_label = wx.StaticText(self, wx.ID_ANY, "Vertical speed: ")
+    self.vspeed_key = wx.TextCtrl(self, -1)
+    self.trim_label = wx.StaticText(self, wx.ID_ANY, "Toggle trim announcements: ")
+    self.trim_key = wx.TextCtrl(self, -1)
+    self.airtemp_label = wx.StaticText(self, wx.ID_ANY, "Outside air temperature: ")
+    self.airtemp_key = wx.TextCtrl(self, -1)
+    self.toggle_flaps_label = wx.StaticText(self, wx.ID_ANY, "Toggle flap announcements: ")
+    self.toggle_flaps_key = wx.TextCtrl(self, -1)
+    self.toggle_gpws_label = wx.StaticText(self, wx.ID_ANY, "Toggle GPWS announcements: ")
+    self.toggle_gpws_key = wx.TextCtrl(self, -1)
+    self.mute_simconnect_label = wx.StaticText(self, wx.ID_ANY, "Mute SimConnect messages: ")
+    self.mute_simconnect_key = wx.TextCtrl(self, -1)
+    self.toggle_ils_label = wx.StaticText(self, wx.ID_ANY, "Toggle ILS announcements: ")
+    self.toggle_ils_key = wx.TextCtrl(self, -1)
+    self.autopilot_label = wx.StaticText(self, wx.ID_ANY, "Toggle autopilot announcements: ")
+    self.autopilot_key = wx.TextCtrl(self, -1)
+    self.wind_label = wx.StaticText(self, wx.ID_ANY, "Wind information: ")
+    self.wind_key = wx.TextCtrl(self, -1)
+
+    gridSizer = wx.FlexGridSizer(rows = 25, cols=2, vgap=10, hgap=10)
     # Prepare some reusable arguments for calling sizer.Add():
     expandOption = dict(flag=wx.EXPAND)
     noOptions = dict()
@@ -85,7 +137,7 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
                  (self.city_label, noOptions),
                  (self.city_key, expandOption),
                  (self.heading_label, noOptions),
-                 (self.vheading_key, expandOption),
+                 (self.heading_key, expandOption),
                  (self.waypoint_label, noOptions),
                  (self.waypoint_key, expandOption),
                  (self.tas_label, noOptions),
@@ -105,7 +157,7 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
                  (self.director_label, noOptions),
                  (self.director_key, expandOption),
                  (self.vspeed_label, noOptions),
-                 (self.vvspeed_key, expandOption),
+                 (self.vspeed_key, expandOption),
                  (self.airtemp_label, noOptions),
                  (self.airtemp_key, expandOption),
                  (self.trim_label, noOptions),
@@ -123,6 +175,7 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
                  (self.wind_label, noOptions),
                  (self.wind_key, expandOption)]:
             gridSizer.Add(control, **options)
+            self.SetSizerAndFit(gridSizer)
 
 
 class configurationDialog(baseDialog.BaseWXDialog):

@@ -364,10 +364,10 @@ class TFM(threading.Thread):
         self.q.put(msg)
     def read_config(self):
             self.geonames_username = config.app['config']['geonames_username']
-            self.FFInterval = float(config.app['config']['flight_following_interval'])
-            self.ManualInterval = float(config.app['config']['manual_interval'])
-            self.ILSInterval = float(config.app['config']['ils_interval'])
-            self.distance_units = config.app['config']['distance_units']
+            self.FFInterval = float(config.app['timing']['flight_following_interval'])
+            self.ManualInterval = float(config.app['timing']['manual_interval'])
+            self.ILSInterval = float(config.app['timing']['ils_interval'])
+            self.use_metric = config.app['config']['use_metric']
             self.voice_rate = int(config.app['config']['voice_rate'])
             if config.app['config']['flight_following']:
                 self.FFEnabled = True
@@ -398,12 +398,6 @@ class TFM(threading.Thread):
                 self.groundspeedEnabled = False
             
 
-    def username(self):
-        dlg = wx.TextEntryDialog(None, "Please enter your Geonames user name in order to use flight following features.", "GeoNames username")
-        dlg.ShowModal()
-        config.app['config']['geonames_username'] = dlg.GetValue()
-        config.app.write()
-        self.geonames_username= config.app['config']['geonames_username']
         
 
     def manualFlight(self, dt, triggered = 0):
@@ -961,7 +955,7 @@ class TFM(threading.Thread):
         self.oldInstr = copy.deepcopy(self.instr)
 
     def readEngTemps(self, dt = 0):
-        if self.distance_units == '1':
+        if self.use_metric == False:
             Eng1Temp = round(9.0/5.0 * self.instr['Eng1ITT'] + 32)
             Eng2Temp = round(9.0/5.0 * self.instr['Eng2ITT'] + 32)
             Eng3Temp = round(9.0/5.0 * self.instr['Eng3ITT'] + 32)
@@ -1029,7 +1023,7 @@ class TFM(threading.Thread):
         msg = ""
         try:
             WPId = self.instr['NextWPId'].decode ('UTF-8')
-            if self.distance_units == '0':
+            if self.use_metric:
                 distance = self.instr['NextWPDistance'] / 1000
                 msg = F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers'
             else:
@@ -1146,7 +1140,7 @@ class TFM(threading.Thread):
             if len(data['geonames']) >= 1:
                 bearing = calcBearing (self.instr['Lat'], self.instr['Long'], float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
                 bearing = (degrees(bearing) +360) % 360
-                if self.distance_units == '1':
+                if self.use_metric == False:
                     distance = float(data["geonames"][0]["distance"]) / 1.609
                     units = 'miles'
                 else:
