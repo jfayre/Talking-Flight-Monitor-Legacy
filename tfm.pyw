@@ -272,6 +272,8 @@ class TFMFrame(wx.Frame):
         menu_bar.Append(app_menu, '&Application')
         menu_bar.Append(help_menu, '&Help')
         self.SetMenuBar(menu_bar)  # Adding the MenuBar to the Frame content.
+        # bind app close event
+        self.Bind(wx.EVT_CLOSE, self.onExit)
         # bind menu events
         self.Bind(wx.EVT_MENU, self.onSettings, app_settings)
         self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
@@ -280,8 +282,12 @@ class TFMFrame(wx.Frame):
         self.timer = wx.Timer(self)  
         self.Bind(wx.EVT_TIMER, self.update, self.timer)  
         self.timer.Start(50)
-        
-    
+    def onExit(self, event):
+        if self.timer.IsRunning():
+            log.debug ("stopping timer")
+            self.timer.Stop()
+        self.Destroy()
+
     # menu event handlers
     def onSettings(self, event):
         d = settings.settingsController()
@@ -357,6 +363,7 @@ if __name__ == '__main__':
     sapi_queue = queue.Queue()
     # start the main tfm class.
     tfm = flightsim.TFM(main_queue, sapi_queue)
+    tfm.daemon=True
     tfm.start()
     frame.Show()
     app.MainLoop()    
