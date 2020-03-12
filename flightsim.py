@@ -185,11 +185,14 @@ class TFM(threading.Thread):
         # Establish pyuipc connection
         while True:
             try:
+                log.debug("opening FSUIPC connection")
                 self.pyuipcConnection = pyuipc.open(0)
+                log.debug("preparing main offsets")
                 self.pyuipcOffsets = pyuipc.prepare_data(list(self.InstrOffsets.values()))
+                log.debug("preparing simconnect offsets")
                 self.pyuipcSIMC = pyuipc.prepare_data(list (self.SimCOffsets.values()))
+                log.debug("preparing attitude mode offsets")
                 self.pyuipcAttitude = pyuipc.prepare_data(list (self.AttitudeOffsets.values()))
-                # self.logger.info('FSUIPC connection established.')
                 break
             except NameError:
                 self.pyuipcConnection = None
@@ -331,25 +334,35 @@ class TFM(threading.Thread):
         self.oldInstr = copy.deepcopy(self.instr)
         # Start closest city loop if enabled.
         pub.subscribe(self.set_triggered, "triggered")
+        
         if self.FFEnabled:
+            log.debug("scheduling flight following function")
             pyglet.clock.schedule_interval(self.AnnounceInfo, self.FFInterval * 60)
         # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
         if self.InstrEnabled:
+            log.debug('scheduling instrumentation')
             pyglet.clock.schedule_interval(self.readInstruments, 0.5)
         # # start simConnect message reading loop
         if self.SimCEnabled:
+            log.debug("scheduling simconnect messages")
             pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
         if self.calloutsEnabled:
+            log.debug("scheduling GPWS callouts")
             pyglet.clock.schedule_interval (self.readCallouts, 0.2)
         # read engine temperatures while engine is starting. Does nothing before and after startup.
+        log.debug("scheduling engine temperature")
         pyglet.clock.schedule_interval(self.readEngTemps, 3)        
         # Infinite loop.
+        log.debug("starting infinite loop")
         while True:
-            # we need to tick the clock for pyglet scheduling functions to work
-            pyglet.clock.tick()
-            # dispatch any pending events so audio looping works
-            pyglet.app.platform_event_loop.dispatch_posted_events()
-            time.sleep(0.1)
+            try:
+                # we need to tick the clock for pyglet scheduling functions to work
+                pyglet.clock.tick()
+                # dispatch any pending events so audio looping works
+                pyglet.app.platform_event_loop.dispatch_posted_events()
+                time.sleep(0.1)
+            except Exception as e:
+                log.exception("error in main loop. This is bad!")
     def set_triggered(self, msg):
         if msg:
             self.triggered = True
@@ -357,12 +370,15 @@ class TFM(threading.Thread):
             self.triggered = False
     def output(self, msg):
         # put a speech message in the queue and output to the text control
+        log.debug("queuing: " + msg)
         pub.sendMessage("update", msg=msg)
         self.q.put(msg)
     def speak(self, msg):
         # only speak a message, don't update the text control
+        log.debug("queuing: " + msg)
         self.q.put(msg)
     def read_config(self):
+        try:
             self.geonames_username = config.app['config']['geonames_username']
             self.FFInterval = float(config.app['timing']['flight_following_interval'])
             self.ManualInterval = float(config.app['timing']['manual_interval'])
@@ -396,12 +412,12 @@ class TFM(threading.Thread):
                 self.groundspeedEnabled = True
             else:
                 self.groundspeedEnabled = False
-            
+        except Exception as e:
+            log.exception("error setting up configuration variables")
 
         
 
     def manualFlight(self, dt, triggered = 0):
-        log.debug("manual flight mode")
         try:
             pitch = round(self.attitude['Pitch'], 1)
             bank = round(self.attitude['Bank'])
