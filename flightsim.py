@@ -341,11 +341,13 @@ class TFM(threading.Thread):
         # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
         if self.InstrEnabled:
             log.debug('scheduling instrumentation')
-            pyglet.clock.schedule_interval(self.readInstruments, 0.5)
+            pyglet.clock.schedule_interval(self.readInstruments, 1)
+        else:
+            pyglet.clock.schedule_interval(self.getPyuipcData, 1)
         # # start simConnect message reading loop
         if self.SimCEnabled:
             log.debug("scheduling simconnect messages")
-            pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
+            pyglet.clock.schedule_interval(self.readSimConnectMessages, 1)
         if self.calloutsEnabled:
             log.debug("scheduling GPWS callouts")
             pyglet.clock.schedule_interval (self.readCallouts, 0.2)
@@ -404,14 +406,17 @@ class TFM(threading.Thread):
                 self.calloutsEnabled = True
             else:
                 self.calloutsEnabled = False
+                log.debug("callouts disabled")
             if config.app['config']['read_ils']:
                 self.readILSEnabled = True
             else:
                 self.readILSEnabled = False
+                log.debug("ILS messages disabled")
             if config.app['config']['read_groundspeed']:
                 self.groundspeedEnabled = True
             else:
                 self.groundspeedEnabled = False
+                log.debug ("ground speed announcements disabled")
         except Exception as e:
             log.exception("error setting up configuration variables")
 
@@ -566,9 +571,11 @@ class TFM(threading.Thread):
 
 
     def readAltitude(self):
+        self.getPyuipcData(1)
         self.output(F'{self.instr["Altitude"]} feet A S L')
         pub.sendMessage('reset', arg1=True)
     def readGroundAltitude(self):
+        self.getPyuipcData(1)
         AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
         self.output(F"{round(AGLAltitude)} feet A G L")
         pub.sendMessage('reset', arg1=True)
@@ -577,27 +584,35 @@ class TFM(threading.Thread):
         pub.sendMessage('reset', arg1=True)
         self.AnnounceInfo()
     def readHeading(self):
+        self.getPyuipcData(1)
         self.output(F'Heading: {round(self.headingCorrected)}')
         pub.sendMessage('reset', arg1=True)
     def readTAS(self):
+        self.getPyuipcData(1)
         self.output (F'{self.instr["AirspeedTrue"]} knots true')
         pub.sendMessage('reset', arg1=True)
     def readIAS(self):
+        self.getPyuipcData(1)
         self.output (F'{self.instr["AirspeedIndicated"]} knots indicated')
         pub.sendMessage('reset', arg1=True)
     def readMach(self):
+        self.getPyuipcData(1)
         self.output (F'Mach {self.instr["AirspeedMach"]:0.2f}')
         pub.sendMessage('reset', arg1=True)
     def readVSpeed(self):
+        self.getPyuipcData(1)
         self.output (F"{self.instr['VerticalSpeed']:.0f} feet per minute")
         pub.sendMessage('reset', arg1=True)
     def readDest(self):
+        self.getPyuipcData(1)
         self.output(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
         pub.sendMessage('reset', arg1=True)
     def readTemp(self):
+        self.getPyuipcData(1)
         self.output (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
         pub.sendMessage('reset', arg1=True)
     def readWind(self):
+        self.getPyuipcData(1)
         windSpeed = self.instr['WindSpeed']
         windDirection = round(self.instr['WindDirection'])
         windGust = self.instr['WindGust']
