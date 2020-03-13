@@ -15,7 +15,7 @@ from math import degrees, floor
 import pyglet
 import numpy as np
 from pubsub import pub
-import timer
+import application
 import logging
 from logger import logger
 log = logging.getLogger("tfm")
@@ -171,24 +171,28 @@ class TFM(threading.Thread):
 
     }
     ## Setup the tfm object.
-    def __init__(self,queue):
+    def __init__(self,queue, sapi_queue):
         global keyboard_handler
         threading.Thread.__init__(self)
         self.q = queue
+        self.sapi_q = sapi_queue
     def run(self):
         # Init log.
         # self.logger = VaLogger(os.path.join(self.rootDir,'voiceAtis','logs'))
         # First log message.
-        # self.logger.info('TFM started')
+        pub.sendMessage('update', msg=F'TFM {application.version} started')
         self.read_config()
         # Establish pyuipc connection
         while True:
             try:
+                log.debug("opening FSUIPC connection")
                 self.pyuipcConnection = pyuipc.open(0)
+                log.debug("preparing main offsets")
                 self.pyuipcOffsets = pyuipc.prepare_data(list(self.InstrOffsets.values()))
+                log.debug("preparing simconnect offsets")
                 self.pyuipcSIMC = pyuipc.prepare_data(list (self.SimCOffsets.values()))
+                log.debug("preparing attitude mode offsets")
                 self.pyuipcAttitude = pyuipc.prepare_data(list (self.AttitudeOffsets.values()))
-                # self.logger.info('FSUIPC connection established.')
                 break
             except NameError:
                 self.pyuipcConnection = None
@@ -201,8 +205,9 @@ class TFM(threading.Thread):
         self.oldTz = 'none' ## variable for storing timezone name
         self.airborne = False
         self.oldWP = None
-
+        self.triggered = False
         self.oldSimCChanged = None
+        self.oldSimCData = None
         self.oldGear = 16383
         self.oldRCMsg = None
         self.GSDetected = False
@@ -327,105 +332,94 @@ class TFM(threading.Thread):
         self.getPyuipcData()
         
         self.oldInstr = copy.deepcopy(self.instr)
-        # start timers
-        self.tmrCity = timer.Timer()
-        self.tmrInstruments = timer.Timer()
-        self.tmrSimc = timer.Timer()
-        self.tmrEng= timer.Timer()
-        self.tmrCallouts = timer.Timer()
+        # Start closest city loop if enabled.
+        pub.subscribe(self.set_triggered, "triggered")
         
-
-
-
-
-        
+        if self.FFEnabled:
+            log.debug("scheduling flight following function")
+            pyglet.clock.schedule_interval(self.AnnounceInfo, self.FFInterval * 60)
+        # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
+        if self.InstrEnabled:
+            log.debug('scheduling instrumentation')
+            pyglet.clock.schedule_interval(self.readInstruments, 1)
+        else:
+            pyglet.clock.schedule_interval(self.getPyuipcData, 1)
+        # # start simConnect message reading loop
+        if self.SimCEnabled:
+            log.debug("scheduling simconnect messages")
+            pyglet.clock.schedule_interval(self.readSimConnectMessages, 1)
+        if self.calloutsEnabled:
+            log.debug("scheduling GPWS callouts")
+            pyglet.clock.schedule_interval (self.readCallouts, 0.2)
+        # read engine temperatures while engine is starting. Does nothing before and after startup.
+        log.debug("scheduling engine temperature")
+        pyglet.clock.schedule_interval(self.readEngTemps, 3)        
         # Infinite loop.
+        log.debug("starting infinite loop")
         while True:
             try:
-                # Start closest city loop if enabled.
-                if self.FFEnabled:
-                    if self.tmrCity.elapsed > (self.FFInterval * 60 * 1000):
-                        self.AnnounceInfo()
-                        self.tmrCity.restart()
-
-                # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
-                if self.InstrEnabled:
-                    if self.tmrInstruments.elapsed > 500:
-                        self.readInstruments()
-                        self.tmrInstruments.restart()
-
-                # start simConnect message reading loop
-                if self.SimCEnabled:
-                    # pyglet.clock.schedule_interval(self.readSimConnectMessages, 0.5)
-                    if self.tmrSimc.elapsed > 1000:
-                        self.readSimConnectMessages()
-                        self.tmrSimc.restart()
-
-                if self.calloutsEnabled:
-                    # pyglet.clock.schedule_interval (self.readCallouts, 0.2)
-                    if self.tmrCallouts.elapsed > 200:
-                        self.readCallouts()
-                        self.tmrCallouts.restart()
-
-
-                # read engine temperatures while engine is starting. Does nothing before and after startup.
-                if self.tmrEng.elapsed > 3000:
-                    self.readEngTemps()
-                    self.tmrEng.restart()
-
-
-
-                    
-            except KeyboardInterrupt:
-                # Actions at Keyboard Interrupt.
-                pyuipc.close()
-                sys.exit()
+                # we need to tick the clock for pyglet scheduling functions to work
+                pyglet.clock.tick()
+                # dispatch any pending events so audio looping works
+                pyglet.app.platform_event_loop.dispatch_posted_events()
+                time.sleep(0.1)
             except Exception as e:
-                log.exception('Error during main loop:' + str(e))
-            time.sleep(1)
-
+                log.exception("error in main loop. This is bad!")
+    def set_triggered(self, msg):
+        if msg:
+            self.triggered = True
+        else:
+            self.triggered = False
+    def output(self, msg):
+        # put a speech message in the queue and output to the text control
+        log.debug("queuing: " + msg)
+        pub.sendMessage("update", msg=msg)
+        self.q.put(msg)
+    def speak(self, msg):
+        # only speak a message, don't update the text control
+        log.debug("queuing: " + msg)
+        self.q.put(msg)
     def read_config(self):
+        try:
             self.geonames_username = config.app['config']['geonames_username']
-            self.FFInterval = float(config.app['config']['flight_following_interval'])
-            self.ManualInterval = float(config.app['config']['manual_interval'])
-            self.ILSInterval = float(config.app['config']['ils_interval'])
-            self.distance_units = config.app['config']['distance_units']
+            self.FFInterval = float(config.app['timing']['flight_following_interval'])
+            self.ManualInterval = float(config.app['timing']['manual_interval'])
+            self.ILSInterval = float(config.app['timing']['ils_interval'])
+            self.use_metric = config.app['config']['use_metric']
             self.voice_rate = int(config.app['config']['voice_rate'])
             if config.app['config']['flight_following']:
                 self.FFEnabled = True
             else:
                 self.FFEnabled = False
-                self.q.put('Flight Following  announcements disabled.')
+                self.output('Flight Following  announcements disabled.')
             if config.app['config']['read_instrumentation']:
                 self.InstrEnabled = True
             else:
                 self.InstrEnabled = False
-                self.q.put('instrumentation disabled.')
+                self.output('instrumentation disabled.')
             if config.app['config']['read_simconnect']:
                 self.SimCEnabled = True
             else:
                 self.SimCEnabled = False
-                self.q.put("Sim Connect messages disabled.")
+                self.output("Sim Connect messages disabled.")
             if config.app['config']['read_gpws']:
                 self.calloutsEnabled = True
             else:
                 self.calloutsEnabled = False
+                log.debug("callouts disabled")
             if config.app['config']['read_ils']:
                 self.readILSEnabled = True
             else:
                 self.readILSEnabled = False
+                log.debug("ILS messages disabled")
             if config.app['config']['read_groundspeed']:
                 self.groundspeedEnabled = True
             else:
                 self.groundspeedEnabled = False
-            
+                log.debug ("ground speed announcements disabled")
+        except Exception as e:
+            log.exception("error setting up configuration variables")
 
-    def username(self):
-        dlg = wx.TextEntryDialog(None, "Please enter your Geonames user name in order to use flight following features.", "GeoNames username")
-        dlg.ShowModal()
-        config.app['config']['geonames_username'] = dlg.GetValue()
-        config.app.write()
-        self.geonames_username= config.app['config']['geonames_username']
         
 
     def manualFlight(self, dt, triggered = 0):
@@ -433,13 +427,13 @@ class TFM(threading.Thread):
             pitch = round(self.attitude['Pitch'], 1)
             bank = round(self.attitude['Bank'])
             if bank > 0:
-                self.q.put (F'Left {bank}')
+                self.speak (F'Left {bank}')
             elif bank < 0:
-                self.q.put (F'right {abs(bank)}')
+                self.speak (F'right {abs(bank)}')
             if pitch > 0:
-                self.q.put (F'down {pitch}')
+                self.speak (F'down {pitch}')
             elif pitch < 0:
-                self.q.put (F'Up {abs(pitch)}')
+                self.speak (F'Up {abs(pitch)}')
         except Exception as e:
             log.exception (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
     def set_speed(self, speed):
@@ -577,84 +571,94 @@ class TFM(threading.Thread):
 
 
     def readAltitude(self):
-        self.q.put(F'{self.instr["Altitude"]} feet A S L')
+        self.getPyuipcData(1)
+        self.output(F'{self.instr["Altitude"]} feet A S L')
         pub.sendMessage('reset', arg1=True)
     def readGroundAltitude(self):
+        self.getPyuipcData(1)
         AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
-        self.q.put(F"{round(AGLAltitude)} feet A G L")
+        self.output(F"{round(AGLAltitude)} feet A G L")
         pub.sendMessage('reset', arg1=True)
 
     def readFlightFollowing(self):
         pub.sendMessage('reset', arg1=True)
         self.AnnounceInfo()
     def readHeading(self):
-        self.q.put(F'Heading: {round(self.headingCorrected)}')
+        self.getPyuipcData(1)
+        self.output(F'Heading: {round(self.headingCorrected)}')
         pub.sendMessage('reset', arg1=True)
     def readTAS(self):
-        self.q.put (F'{self.instr["AirspeedTrue"]} knots true')
+        self.getPyuipcData(1)
+        self.output (F'{self.instr["AirspeedTrue"]} knots true')
         pub.sendMessage('reset', arg1=True)
     def readIAS(self):
-        self.q.put (F'{self.instr["AirspeedIndicated"]} knots indicated')
+        self.getPyuipcData(1)
+        self.output (F'{self.instr["AirspeedIndicated"]} knots indicated')
         pub.sendMessage('reset', arg1=True)
     def readMach(self):
-        self.q.put (F'Mach {self.instr["AirspeedMach"]:0.2f}')
+        self.getPyuipcData(1)
+        self.output (F'Mach {self.instr["AirspeedMach"]:0.2f}')
         pub.sendMessage('reset', arg1=True)
     def readVSpeed(self):
-        self.q.put (F"{self.instr['VerticalSpeed']:.0f} feet per minute")
+        self.getPyuipcData(1)
+        self.output (F"{self.instr['VerticalSpeed']:.0f} feet per minute")
         pub.sendMessage('reset', arg1=True)
     def readDest(self):
-        self.q.put(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
+        self.getPyuipcData(1)
+        self.output(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
         pub.sendMessage('reset', arg1=True)
     def readTemp(self):
-        self.q.put (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
+        self.getPyuipcData(1)
+        self.output (F'{self.tempC:.0f} degrees Celcius, {self.tempF} degrees Fahrenheit')
         pub.sendMessage('reset', arg1=True)
     def readWind(self):
+        self.getPyuipcData(1)
         windSpeed = self.instr['WindSpeed']
         windDirection = round(self.instr['WindDirection'])
         windGust = self.instr['WindGust']
-        self.q.put(F'Wind: {windDirection} at {windSpeed} knotts. Gusts at {windGust} knotts.')
+        self.output(F'Wind: {windDirection} at {windSpeed} knotts. Gusts at {windGust} knotts.')
         pub.sendMessage('reset', arg1=True)
 
     def toggleTrim(self):
         if self.trimEnabled:
-            self.q.put ('trim announcement disabled')
+            self.output ('trim announcement disabled')
             self.trimEnabled = False
         else:
             self.trimEnabled = True
-            self.q.put ('trim announcement enabled')
+            self.output ('trim announcement enabled')
         pub.sendMessage('reset', arg1=True)
 
     def toggleGPWS(self):
         if self.calloutsEnabled:
-            self.q.put ('GPWS callouts disabled')
+            self.output ('GPWS callouts disabled')
             self.calloutsEnabled = False
         else:
             self.calloutsEnabled = True
-            self.q.put ("GPWS callouts enabled")
+            self.output ("GPWS callouts enabled")
         pub.sendMessage('reset', arg1=True)
 
     def toggleMuteSimconnect(self):
         if self.MuteSimC:
-            self.q.put ('Sim Connect messages unmuted')
+            self.output ('Sim Connect messages unmuted')
             self.MuteSimC = False
         else:
             self.MuteSimC = True
-            self.q.put ('Sim Connect messages muted')
+            self.output ('Sim Connect messages muted')
         pub.sendMessage('reset', arg1=True)
     def toggleFlaps(self):
         if self.flapsEnabled:
-            self.q.put ("flaps disabled")
+            self.output ("flaps disabled")
             self.flapsEnabled = False
         else:
-            self.q.put ("Flaps enabled")
+            self.output ("Flaps enabled")
             self.flapsEnabled = True
         pub.sendMessage('reset', arg1=True)
     def toggleILS(self):
         if self.readILSEnabled:
-            self.q.put ('I L S info disabled')
+            self.output ('I L S info disabled')
             self.readILSEnabled = False
         else:
-            self.q.put ('I L S info enabled')
+            self.output ('I L S info enabled')
             self.readILSEnabled = True
         pub.sendMessage('reset', arg1=True)
     def toggleDirectorMode(self):
@@ -664,30 +668,30 @@ class TFM(threading.Thread):
             self.PitchUpPlayer.pause()
             self.PitchDownPlayer.pause()
             self.BankPlayer.pause ()
-            self.q.put ('flight director mode disabled.')
+            self.output ('flight director mode disabled.')
         else:
             pyglet.clock.schedule_interval(self.sonifyFlightDirector, 0.2)
             self.directorEnabled = True
-            self.q.put ('flight director mode enabled')
+            self.output ('flight director mode enabled')
         pub.sendMessage('reset', arg1=True)
 
     def toggleAutoPilot(self):
         if not self.APEnabled:
-            self.q.put (F'Autopilot control enabled')
+            self.output (F'Autopilot control enabled')
             self.APEnabled = True
         else:
-            self.q.put (F'autopilot control disabled')
+            self.output (F'autopilot control disabled')
             self.APEnabled = False
         pub.sendMessage('reset', arg1=True)
     def toggleManualMode(self):
         if self.manualEnabled:
             pyglet.clock.unschedule(self.manualFlight)
             self.manualEnabled = False
-            self.q.put ('manual flight  mode disabled.')
+            self.output ('manual flight  mode disabled.')
         else:
             pyglet.clock.schedule_interval(self.manualFlight, self.ManualInterval)
             self.manualEnabled = True
-            self.q.put ('manual flight mode enabled')
+            self.output ('manual flight mode enabled')
         pub.sendMessage('reset', arg1=True)
 
     def toggleAttitudeMode(self):
@@ -697,11 +701,11 @@ class TFM(threading.Thread):
             self.PitchDownPlayer.pause()
             self.BankPlayer.pause ()
             self.sonifyEnabled = False
-            self.q.put ('attitude mode disabled.')
+            self.output ('attitude mode disabled.')
         else:
             pyglet.clock.schedule_interval(self.sonifyPitch, 0.05)
             self.sonifyEnabled = True
-            self.q.put ('attitude mode enabled')
+            self.output ('attitude mode enabled')
         pub.sendMessage('reset', arg1=True)
 
 
@@ -734,16 +738,16 @@ class TFM(threading.Thread):
 
         # detect if aircraft is on ground or airborne.
         if not self.instr['OnGround'] and not self.airborne:
-            self.q.put ("Positive rate.")
+            self.output ("Positive rate.")
             pyglet.clock.unschedule(self.readGroundSpeed)
             self.groundSpeed = False
             self.airborne = True
         # landing gear
         if self.instr['Gear'] != self.oldInstr['Gear']:
             if self.instr['Gear'] == 0:
-                self.q.put ('Gear up.')
+                self.output ('Gear up.')
             elif self.instr['Gear'] == 16383:
-                self.q.put ('Gear down.')
+                self.output ('Gear down.')
             self.oldInstr['Gear'] = self.instr['Gear']
 
         # if flaps position has changed, flaps are in motion. We need to wait until they have stopped moving to read the value.
@@ -758,42 +762,42 @@ class TFM(threading.Thread):
                     else:
                         flapsTransit = False
                 
-                self.q.put (F'Flaps {self.instr["Flaps"]:.0f}')
+                self.output (F'Flaps {self.instr["Flaps"]:.0f}')
                 self.oldInstr['Flaps'] = self.instr['Flaps']
             # announce radio frequency changes
         if self.instr['Com1Freq'] != self.oldInstr['Com1Freq']:
-            self.q.put (F"com 1, {self.instr['Com1Freq']}")
+            self.output (F"com 1, {self.instr['Com1Freq']}")
         if self.instr['Com2Freq'] != self.oldInstr['Com2Freq']:
-            self.q.put (F"com 2, {self.instr['Com1Freq']}")
+            self.output (F"com 2, {self.instr['Com1Freq']}")
 
         # spoilers
         if self.oldInstr['Spoilers'] != self.instr['Spoilers']:
             if self.instr['Spoilers'] == 4800:
-                self.q.put ("spoilers armed.")
+                self.output ("spoilers armed.")
             elif self.instr['Spoilers'] == 16384:
-                self.q.put(f'Spoilers deployed')
+                self.output(f'Spoilers deployed')
             elif self.instr['Spoilers'] == 0:
                 if self.oldSpoilers == 4800:
-                    self.q.put(F'arm spoilers off')
+                    self.output(F'arm spoilers off')
                 else:
-                    self.q.put(F'Spoilers retracted')
+                    self.output(F'Spoilers retracted')
         if self.oldInstr['ApAltitude'] != self.instr['ApAltitude']:
-            self.q.put(F"Altitude set to {round(self.instr['ApAltitude'])}")
+            self.output(F"Altitude set to {round(self.instr['ApAltitude'])}")
         if self.APEnabled:
             if self.oldInstr['ApHeading'] != self.instr['ApHeading']:
-                self.q.put (F"{self.instr['ApHeading']} degrees")
+                self.output (F"{self.instr['ApHeading']} degrees")
             if self.oldInstr['ApAirspeed'] != self.instr['ApAirspeed']:
-                self.q.put (F"{self.instr['ApAirspeed']}")
+                self.output (F"{self.instr['ApAirspeed']}")
             if self.oldInstr['ApMach'] != self.instr['ApMach']:
-                self.q.put (F"mach {self.instr['ApMach']:.2f}")
+                self.output (F"mach {self.instr['ApMach']:.2f}")
             if self.oldInstr['ApVerticalSpeed'] != self.instr['ApVerticalSpeed']:
-                self.q.put (F"{self.instr['ApVerticalSpeed']} feet per minute")
+                self.output (F"{self.instr['ApVerticalSpeed']} feet per minute")
 
 
 
         # transponder
         if self.instr['Transponder'] != self.oldInstr['Transponder']:
-            self.q.put(F'Squawk {self.instr["Transponder"]:x}')
+            self.output(F'Squawk {self.instr["Transponder"]:x}')
         # next waypoint
         if self.instr['NextWPId'] != self.oldInstr['NextWPId']:
             time.sleep(3)
@@ -814,16 +818,16 @@ class TFM(threading.Thread):
                 brake = 'position 3'
             elif self.instr['AutoBrake'] == 5:
                 brake = 'maximum'
-            self.q.put (F'Auto brake {brake}')
+            self.output (F'Auto brake {brake}')
         if self.instr['ElevatorTrim'] != self.oldInstr['ElevatorTrim'] and self.instr['ApMaster'] != 1 and self.trimEnabled:
             if self.instr['ElevatorTrim'] < 0:
-                self.q.put (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
+                self.output (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
             else:
-                self.q.put (F"Trim up {round (self.instr['ElevatorTrim'], 2)}")
+                self.output (F"Trim up {round (self.instr['ElevatorTrim'], 2)}")
 
 
         if self.AltHPA != self.oldHPA:
-            self.q.put (F'Altimeter: {self.AltHPA}, {self.AltInches / 100} inches')
+            self.output (F'Altimeter: {self.AltHPA}, {self.AltInches / 100} inches')
             self.oldHPA = self.AltHPA
         # read nav1 ILS info if enabled
         if self.readILSEnabled:
@@ -903,19 +907,19 @@ class TFM(threading.Thread):
 
         # read APU status
         if self.instr['APUPercentage'] > 4 and self.APUStarting == False and self.APURunning == False and self.APUShutdown == False and self.APUOff == True:
-            self.q.put('A P U starting')
+            self.output('A P U starting')
             self.APUStarting = True
             self.APUOff = False
         if self.instr['APUPercentage'] < 100 and self.APURunning:
-            self.q.put ('Shutting down A P U')
+            self.output ('Shutting down A P U')
             self.APURunning = False
             self.APUShutdown = True
         if self.instr['APUPercentage'] == 100 and self.APUStarting:
             self.APUStarting = False
             self.APURunning = True
-            self.q.put("apu at 100 percent")
+            self.output("apu at 100 percent")
         if self.instr['APUPercentage'] == 0 and self.APUOff == False:
-            self.q.put('A P U shut down')
+            self.output('A P U shut down')
             self.APURunning = False
             self.APUStarting = False
             self.APUShutdown = False
@@ -923,7 +927,7 @@ class TFM(threading.Thread):
 
 
         if self.instr['APUGenerator'] and self.APUGenerator == False:
-            self.q.put (F"{round(self.instr['APUVoltage'])} volts")
+            self.output (F"{round(self.instr['APUVoltage'])} volts")
             self.APUGenerator = True
         if self.instr['APUGenerator'] == False:
             self.APUGenerator = False
@@ -931,40 +935,40 @@ class TFM(threading.Thread):
 
         # read engine status on startup.
         if self.instr['Eng1FuelFlow'] > 10 and self.instr['Eng1Starter'] and self.Eng1FuelFlow == False:
-            self.q.put ('Number 1 fuel flow')
+            self.output ('Number 1 fuel flow')
             self.Eng1FuelFlow = True
         if self.instr['Eng2FuelFlow'] > 10 and self.instr['Eng2Starter'] and self.Eng2FuelFlow == False:
-            self.q.put ('Number 2 fuel flow')
+            self.output ('Number 2 fuel flow')
             self.Eng2FuelFlow = True
         if self.instr['Eng3FuelFlow'] > 10 and self.instr['Eng3Starter'] and self.Eng3FuelFlow == False:
-            self.q.put ('Number 3 fuel flow')
+            self.output ('Number 3 fuel flow')
             self.Eng3FuelFlow = True
         if self.instr['Eng4FuelFlow'] > 10 and self.instr['Eng4Starter'] and self.Eng4FuelFlow == False:
-            self.q.put ('Number 4 fuel flow')
+            self.output ('Number 4 fuel flow')
             self.Eng4FuelFlow = True
         if self.instr['Eng1N2'] > 5 and self.Eng1N2 == False and self.instr['Eng1Starter']:
-            self.q.put ('number 1, 5 percent N2')
+            self.output ('number 1, 5 percent N2')
             self.Eng1N2 = True
         if self.instr['Eng1N1'] > 5 and self.Eng1N1 == False  and self.instr['Eng1Starter']:
-            self.q.put ('number 1, 5 percent N1')
+            self.output ('number 1, 5 percent N1')
             self.Eng1N1 = True
         if self.instr['Eng2N2'] > 5 and self.Eng2N2 == False  and self.instr['Eng2Starter']:
-            self.q.put ('number 2, 5 percent N2')
+            self.output ('number 2, 5 percent N2')
             self.Eng2N2 = True
         if self.instr['Eng2N1'] > 5 and self.Eng2N1 == False  and self.instr['Eng2Starter']:
-            self.q.put ('number 2, 5 percent N1')
+            self.output ('number 2, 5 percent N1')
             self.Eng2N1 = True
         if self.instr['Eng3N2'] > 5 and self.Eng3N2 == False  and self.instr['Eng3Starter']:
-            self.q.put ('number 3, 5 percent N2')
+            self.output ('number 3, 5 percent N2')
             self.Eng3N2 = True
         if self.instr['Eng3N1'] > 5 and self.Eng3N1 == False  and self.instr['Eng3Starter']:
-            self.q.put ('number 3, 5 percent N1')
+            self.output ('number 3, 5 percent N1')
             self.Eng3N1 = True
         if self.instr['Eng4N2'] > 5 and self.Eng4N2 == False  and self.instr['Eng4Starter']:
-            self.q.put ('number 4, 5 percent N2')
+            self.output ('number 4, 5 percent N2')
             self.Eng4N2 = True
         if self.instr['Eng4N1'] > 5 and self.Eng4N1 == False  and self.instr['Eng4Starter']:
-            self.q.put ('number 4, 5 percent N1')
+            self.output ('number 4, 5 percent N1')
             self.Eng4N1 = True
 
 
@@ -974,7 +978,7 @@ class TFM(threading.Thread):
         # read altitude every 1000 feet
         for i in range (1000, 65000, 1000):
             if self.instr['Altitude'] >= i - 10 and self.instr['Altitude'] <= i + 10 and self.altFlag[i] == False:
-                self.q.put (F"{i} feet")
+                self.speak (F"{i} feet")
                 self.altFlag[i] = True
             elif self.instr['Altitude'] >= i + 100:
                 self.altFlag[i] = False
@@ -982,7 +986,7 @@ class TFM(threading.Thread):
         self.oldInstr = copy.deepcopy(self.instr)
 
     def readEngTemps(self, dt = 0):
-        if self.distance_units == '1':
+        if self.use_metric == False:
             Eng1Temp = round(9.0/5.0 * self.instr['Eng1ITT'] + 32)
             Eng2Temp = round(9.0/5.0 * self.instr['Eng2ITT'] + 32)
             Eng3Temp = round(9.0/5.0 * self.instr['Eng3ITT'] + 32)
@@ -993,32 +997,32 @@ class TFM(threading.Thread):
             Eng3Temp = self.instr['Eng3ITT']
             Eng4Temp = self.instr['Eng4ITT']
         if self.instr['Eng1Starter'] and self.instr['Eng1Combustion']:
-            self.q.put (F"number 1 temp, {Eng1Temp}")
+            self.output (F"number 1 temp, {Eng1Temp}")
         elif self.instr['Eng2Starter'] and self.instr['Eng2Combustion']:
-            self.q.put (F"number 2 temp, {Eng2Temp}")
+            self.output (F"number 2 temp, {Eng2Temp}")
         elif self.instr['Eng3Starter'] and self.instr['Eng3Combustion']:
-            self.q.put (F"number 3 temp, {Eng3Temp}")
+            self.output (F"number 3 temp, {Eng3Temp}")
         elif self.instr['Eng4Starter'] and self.instr['Eng4Combustion']:
-            self.q.put (F"number 4 temp, {Eng4Temp}")
+            self.output (F"number 4 temp, {Eng4Temp}")
         
     def readGroundSpeed(self, dt=0):
-        self.sapi5.speak (F"{self.instr['GroundSpeed']} knotts")
+        self.sapi_q.put(F"{self.instr['GroundSpeed']} knotts")
 
     def readILS(self, dt=0):
         GSNeedle = self.instr['Nav1GSNeedle']
         LocNeedle = self.instr['Nav1LocNeedle']
         if GSNeedle > 0 and GSNeedle < 119:
             GSPercent = GSNeedle / 119 * 100.0
-            self.q.put (f'up {GSPercent:.0f} percent G S I')
+            self.speak (f'up {GSPercent:.0f} percent G S I')
         elif GSNeedle < 0 and GSNeedle > -119:
             GSPercent = abs(GSNeedle) / 119 * 100.0
-            self.q.put (f'down {GSPercent:.0f} percent G S I')
+            self.speak (f'down {GSPercent:.0f} percent G S I')
         if LocNeedle > 0 and LocNeedle < 127:
             LocPercent = GSNeedle / 127 * 100.0
-            self.q.put (F'{LocPercent:.0f} percent right')    
+            self.speak (F'{LocPercent:.0f} percent right')    
         elif LocNeedle < 0 and LocNeedle > -127:
             LocPercent = abs(GSNeedle) / 127 * 100.0
-            self.q.put (F'{LocPercent:.0f} percent left')    
+            self.speak (F'{LocPercent:.0f} percent left')    
 
 
 
@@ -1028,9 +1032,9 @@ class TFM(threading.Thread):
         try:
             if self.oldInstr[instrument] != self.instr[instrument]:
                 if self.instr[instrument]:
-                    self.q.put (F'{name} {onMessage}.')
+                    self.output (F'{name} {onMessage}.')
                 else:
-                    self.q.put (F'{name} {offMessage}')
+                    self.output (F'{name} {offMessage}')
                 self.oldInstr[instrument] = self.instr[instrument]
         except Exception as e:
             log.exception(F"error in instrument toggle. Instrument was {instrument}")
@@ -1047,21 +1051,28 @@ class TFM(threading.Thread):
         ("{0} second{1}, ".format(seconds, "s" if seconds!=1 else "") if seconds else "")
         return result
     def readWaypoint(self, triggered=False):
+        msg = ""
         try:
             WPId = self.instr['NextWPId'].decode ('UTF-8')
-            if self.distance_units == '0':
+            if self.use_metric:
                 distance = self.instr['NextWPDistance'] / 1000
-                self.q.put (F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers')    
+                msg = F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers'
             else:
                 distance = (self.instr['NextWPDistance'] / 1000)/ 1.609
-                self.q.put(F'Next waypoint: {WPId}, distance: {distance:.1f} miles')    
-            self.q.put (F'baring: {self.instr["NextWPBaring"]:.0f}')
+                msg = F'Next waypoint: {WPId}, distance: {distance:.1f} miles\n'
+            msg = msg + F'baring: {self.instr["NextWPBaring"]:.0f}\n'
             # read estimated time enroute to next waypoint
             strTime = self.secondsToText(self.instr['NextWPETE'])
-            self.q.put(strTime)
+            msg = msg + strTime
+            if self.triggered:
+                self.speak(msg)
+                self.triggered = False
+            else:
+                self.output(msg)
+
             # if we were triggered with a hotkey, read the ETA to the next waypoint.
-            if triggered:
-                self.q.put(F'ETA: {self.instr["NextWPETA"]}')
+            if self.triggered:
+                self.output(F'ETA: {self.instr["NextWPETA"]}')
                 pub.sendMessage('reset', arg1=True)
             pub.sendMessage('reset', arg1=True)
         except Exception as e:
@@ -1082,7 +1093,7 @@ class TFM(threading.Thread):
                 # If the change is due to an old message clearing, just return without doing anything.
                 if self.SimCData['SimCLength'] == 0:
                     return
-                if self.oldSimCChanged != self.SimCData['SimCChanged'] or triggered:
+                if self.oldSimCChanged != self.SimCData['SimCChanged'] or self.oldSimCData != self.SimCData['SimCData']:
                     # if this is an rc message, handle that.
                     if self.SimCData['SimCType'] == 768:
                         self.readRC4(triggered=triggered)
@@ -1091,11 +1102,13 @@ class TFM(threading.Thread):
                         SimCMessageRaw = self.SimCMessage[:self.SimCData['SimCLength']]
                         SimCMessage = SimCMessageRaw.split('\x00')
                         for index, message in enumerate(SimCMessage):
+                            if "cache" in message:
+                                continue
                             if index < 2 and message != "":
-                                self.q.put(f'{message}')
+                                self.output(f'{message}')
                                 self.CachedMessage[index] = message
                             elif message != "":
-                                self.q.put(f'{i}: {message}')
+                                self.output(f'{i}: {message}')
                                 self.CachedMessage[index] = f'{i}: {message}'
                                 i += 1
 
@@ -1103,6 +1116,8 @@ class TFM(threading.Thread):
                     if not RCMessage:
                         self.CachedMessage[index] = 'EOM'
                     self.oldSimCChanged = self.SimCData['SimCChanged']
+                    self.oldSimCData = self.SimCData['SimCData']
+                    
                 if triggered == 1:
                     pub.sendMessage('reset', arg1=True)
             # else:
@@ -1119,7 +1134,7 @@ class TFM(threading.Thread):
             if message == 'EOM':
                 break
             else:
-                self.q.put (message)
+                self.output (message)
         pub.sendMessage('reset', arg1=True)
     
     def readRC4(self, triggered = False):
@@ -1136,7 +1151,7 @@ class TFM(threading.Thread):
             if index == 0 or message == "" or '<' in message or '/' in message:
                 continue
             if message != "" and msgUpdated == True:
-                self.q.put (message.replace('\x00', ''))
+                self.output (message.replace('\x00', ''))
                 self.CachedMessage[index] = message
         self.CachedMessage[index] = 'EOM'
         self.oldRCMsg = msg[1]
@@ -1144,6 +1159,7 @@ class TFM(threading.Thread):
 
     ## Announce Talking Flight Monitor (TFM) info
     def AnnounceInfo(self, dt=0, triggered = 0):
+        msg = ""
         # Get data from simulator
         self.getPyuipcData()
         # Lookup nearest cities to aircraft position using the Geonames database.
@@ -1155,23 +1171,23 @@ class TFM(threading.Thread):
             if len(data['geonames']) >= 1:
                 bearing = calcBearing (self.instr['Lat'], self.instr['Long'], float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
                 bearing = (degrees(bearing) +360) % 360
-                if self.distance_units == '1':
+                if self.use_metric == False:
                     distance = float(data["geonames"][0]["distance"]) / 1.609
                     units = 'miles'
                 else:
                     distance = float(data["geonames"][0]["distance"])
                     units = 'kilometers'
-                self.q.put ('Closest city: {} {}. {:.1f} {}. Bearing: {:.0f}'.format(data["geonames"][0]["name"],data["geonames"][0]["adminName1"],distance,units,bearing))
+                msg = 'Closest city: {} {}. {:.1f} {}. Bearing: {:.0f}. \n'.format(data["geonames"][0]["name"],data["geonames"][0]["adminName1"],distance,units,bearing)
             else:
                 distance = 0
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             log.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
             log.exception('error getting nearest city: ' + str(e))
-            self.q.put ('cannot find nearest city. Geonames connection error. Check error log.')
+            self.output ('cannot find nearest city. Geonames connection error. Check error log.')
         except requests.exceptions.HTTPError as e:
             log.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
             log.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
-            self.q.put ('cannot find nearest city. Geonames may be busy. Check error log.')
+            self.output ('cannot find nearest city. Geonames may be busy. Check error log.')
             
         ## Check if we are flying over water.
         ## If so, announce body of water.
@@ -1180,7 +1196,7 @@ class TFM(threading.Thread):
             response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.instr['Lat'],self.instr['Long'], self.geonames_username))
             data = response.json()
             if 'ocean' in data and distance >= 1:
-                self.q.put ('currently over {}'.format(data['ocean']['name']))
+                msg = msg + 'currently over {}\n'.format(data['ocean']['name'])
                 self.oceanic = True
         except Exception as e:
             log.error('Error determining oceanic information: ' + str(e))
@@ -1195,12 +1211,16 @@ class TFM(threading.Thread):
                 tz = get_timezone(data['timezoneId'])
                 tzName = get_timezone_name(tz, locale=Locale.parse('en_US'))
                 if tzName != self.oldTz:
-                    self.q.put ('{}.'.format(tzName))
+                    msg = msg + '{}.\n'.format(tzName)
                     self.oldTz = tzName
         except Exception as e:
             log.error('Error determining timezone: ' + str(e))
             log.exception(str(e))
-
+        if self.triggered:
+            self.speak(msg)
+            self.triggered = False
+        else:
+            self.output(msg)
 
     
     ## Read data from the simulator

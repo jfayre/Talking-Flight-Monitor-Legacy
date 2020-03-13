@@ -2,10 +2,10 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Talking Flight Monitor"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.0-alpha7"
 #define MyAppPublisher "Jason Fayre"
 #define MyAppURL "http://www.bvipilots.net"
-#define MyAppExeName "ftfm.exe"
+#define MyAppExeName "tfm.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -24,7 +24,7 @@ LicenseFile=LICENSE.txt
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputDir=tfm
-OutputBaseFilename=tfm-install-{AppVersion}
+OutputBaseFilename=tfm-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

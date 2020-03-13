@@ -4,7 +4,7 @@ geonames_username = string(default="your_username")
 # voice rate for sapi output
 voice_rate = integer(default=5)
 # speech output: 0 - screen reader, 1 - sapi5
-speech_output = integer(default=0)
+use_sapi = boolean(default=False)
 # read closest city info. 
 flight_following = boolean(default=True)
 # automatically read aircraft instrumentation. if using ideal flight, you may want to turn this off.
@@ -15,14 +15,16 @@ read_simconnect = boolean(default=True)
 read_gpws = boolean(default=True)
 read_ils = boolean(default=True)
 read_groundspeed = boolean(default=False)
+# Use metric for measurement units
+use_metric = boolean(default=True)
+
+[timing]
 # time interval for reading of nearest city, in minutes
 flight_following_interval = integer(default=10)
 # time interval between manual flight announcements, in seconds
 manual_interval = integer(default=5)
 # interval between ils messages
 ils_interval = integer(default=5)
-# distance units: 0 - kilometers, 1 - miles
-distance_units = integer(default=0)
 
 [hotkeys]
 # command key: this key must be pressed before the other commands listed below
