@@ -777,7 +777,7 @@ class TFM(threading.Thread):
             elif self.instr['Spoilers'] == 16384:
                 self.output(f'Spoilers deployed')
             elif self.instr['Spoilers'] == 0:
-                if self.oldSpoilers == 4800:
+                if self.oldInstr['Spoilers'] == 4800:
                     self.output(F'arm spoilers off')
                 else:
                     self.output(F'Spoilers retracted')
