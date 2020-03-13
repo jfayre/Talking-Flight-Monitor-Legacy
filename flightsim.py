@@ -205,6 +205,7 @@ class TFM(threading.Thread):
         self.oldTz = 'none' ## variable for storing timezone name
         self.airborne = False
         self.oldWP = None
+        self.runway_guidance = False
         self.triggered = False
         self.oldSimCChanged = None
         self.oldSimCData = None
@@ -233,11 +234,6 @@ class TFM(threading.Thread):
         self.APURunning = False
         self.APUGenerator = False
         self.APUOff = True
-        
-        # grab a SAPI interface so we can use it periodically
-        # self.sapi5 = sapi5.SAPI5()
-
-
 
         # variables for GPWS announcements.
         self.calloutsHigh = [2500, 1000, 500, 400, 300, 200, 100]
@@ -568,6 +564,63 @@ class TFM(threading.Thread):
         except Exception as e:
             log.exception (F'Error in attitude. Pitch: {pitch}, Bank: {bank}' + str(e))
 
+    def runway_guidance_mode(self):
+        try:
+            if self.runway_guidance:
+                self.runway_guidance = False
+                pyglet.clock.unschedule(self.play_heading_tones)
+                self.output ("Runway guidance disabled")
+                pub.sendMessage('reset', arg1=True)
+                return
+            else:
+                self.runway_guidance = True
+                self.hdg = round(self.headingCorrected)
+                self.output("Runway guidance enabled")
+                self.output(F"{self.hdg} locked")
+                self.hdg_right = self.hdg + 45
+                self.hdg_left = self.hdg - 45
+                self.hdg_freqs = np.linspace(1, 4, 45)
+                self.hdg_left_tones = {}
+                self.hdg_right_tones = {}
+                count = 0
+                for i in np.arange (self.hdg, self.hdg_right, 1):
+                    if i > 360:
+                        i = i - 360
+                    self.hdg_right_tones[i] = self.hdg_freqs[count]
+                    count += 1
+                count = 0
+                for i in np.arange (self.hdg, self.hdg_left, -1):
+                    if i < 0:
+                        i = i + 360
+                    self.hdg_left_tones[i] = self.hdg_freqs[count]
+                    count += 1
+                pyglet.clock.schedule_interval(self.play_heading_tones, 0.2)
+                pub.sendMessage('reset', arg1=True)
+        except Exception as e:
+            log.exception("error calculating heading lock")
+
+
+    def play_heading_tones(self, dt=0):
+        try:
+            self.headingCorrected = round(self.headingCorrected)
+            if self.headingCorrected > self.hdg and  self.headingCorrected < self.hdg_right:
+                self.BankPlayer.position = (5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.hdg_right_tones[abs(self.headingCorrected)]
+            if self.headingCorrected < self.hdg and self.headingCorrected > self.hdg_left:
+                self.BankPlayer.position = (-5, 0, 0)
+                self.BankPlayer.play()
+                self.BankPlayer.pitch = self.hdg_left_tones[abs(self.headingCorrected)]
+
+            if self.hdg == self.headingCorrected:
+                self.BankPlayer.pause()
+        except Exception as e:
+            log.exception("error playing heading tones")
+
+
+
+            
+
 
 
     def readAltitude(self):
@@ -737,11 +790,16 @@ class TFM(threading.Thread):
         self.getPyuipcData()
 
         # detect if aircraft is on ground or airborne.
-        if not self.instr['OnGround'] and not self.airborne:
-            self.output ("Positive rate.")
-            pyglet.clock.unschedule(self.readGroundSpeed)
-            self.groundSpeed = False
-            self.airborne = True
+        if self.oldInstr['OnGround'] != self.instr['OnGround']:
+            if self.instr['OnGround'] == False:
+                self.output ("Positive rate.")
+                log.debug("unscheduling groundspeed")
+                pyglet.clock.unschedule(self.readGroundSpeed)
+                self.groundSpeed = False
+                self.airborne = True
+                log.debug("unscheduling heading lock")
+                pyglet.clock.unschedule(self.play_heading_tones)
+                self.runway_guidance = False
         # landing gear
         if self.instr['Gear'] != self.oldInstr['Gear']:
             if self.instr['Gear'] == 0:
@@ -777,7 +835,7 @@ class TFM(threading.Thread):
             elif self.instr['Spoilers'] == 16384:
                 self.output(f'Spoilers deployed')
             elif self.instr['Spoilers'] == 0:
-                if self.oldSpoilers == 4800:
+                if self.oldInstr['Spoilers'] == 4800:
                     self.output(F'arm spoilers off')
                 else:
                     self.output(F'Spoilers retracted')
@@ -832,20 +890,20 @@ class TFM(threading.Thread):
         # read nav1 ILS info if enabled
         if self.readILSEnabled:
             if self.instr['Nav1Signal'] == 256 and self.LocDetected == False and self.instr['Nav1Type']:
-                self.sapi5.speak (F'localiser is alive')
+                self.sapi_q.put (F'localiser is alive')
                 self.LocDetected = True
                 pyglet.clock.schedule_interval (self.readILS, self.ILSInterval)
             if self.instr['Nav1GS'] and self.GSDetected == False:
-                self.sapi5.speak (F'Glide slope is alive.')
+                self.sapi_q.put (F'Glide slope is alive.')
                 self.GSDetected = True
                 
             
             
             if self.instr['Nav1Type'] and self.HasLoc == False:
-                self.sapi5.speak (F'Nav 1 has localiser')
+                self.sapi_q.put (F'Nav 1 has localiser')
                 self.HasLoc = True
             if self.instr['Nav1GSAvailable'] and self.HasGS == False:
-                self.sapi5.speak (F'Nav 1 has glide slope')
+                self.sapi_q.put (F'Nav 1 has glide slope')
                 self.HasGS = True
         else:
             pyglet.clock.unschedule(self.readILS)
@@ -900,6 +958,7 @@ class TFM(threading.Thread):
 
         if self.groundspeedEnabled:
             if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
+                log.debug("moving on ground. Scheduling groundspeed callouts")
                 pyglet.clock.schedule_interval(self.readGroundSpeed, 3)
                 self.groundSpeed = True
             elif self.instr['GroundSpeed'] == 0 and self.groundSpeed:
@@ -1225,89 +1284,95 @@ class TFM(threading.Thread):
     
     ## Read data from the simulator
     def getPyuipcData(self, type=0, dt=0):
-    # read types: 0 - all, 1 - instrumentation, 2 - SimConnect, 3 - attitude    
-        if type == 0 or type == 1:
-            self.instr = dict(zip(self.InstrOffsets.keys(), pyuipc.read(self.pyuipcOffsets)))
-            # prepare instrumentation variables
-            hexCode = hex(self.instr['Com1Freq'])[2:]
-            self.instr['Com1Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
-            hexCode = hex(self.instr['Com2Freq'])[2:]
-            self.instr['Com2Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
-            # lat lon
-            self.instr['Lat'] = self.instr['Lat'] * (90.0/(10001750.0 * 65536.0 * 65536.0))
-            self.instr['Long'] = self.instr['Long'] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
-            self.instr['Flaps'] = self.instr['Flaps'] / 256
-            self.instr['OnGround'] = bool(self.instr['OnGround'])
-            self.instr['ParkingBrake'] = bool(self.instr['ParkingBrake'])
-            # self.ASLAltitude = round(results[8] * 3.28084)
-            self.instr['Altitude'] = round(self.instr['Altitude'])
-            self.instr['GroundAltitude'] = self.instr['GroundAltitude'] / 256 * 3.28084
-            self.instr['ApHeading'] = round(self.instr['ApHeading']/65536*360)
-            self.instr['ApAltitude'] = self.instr['ApAltitude'] / 65536 * 3.28084
-            self.instr['ApMach'] = self.instr['ApMach'] / 65536
-            # self.headingTrue = floor(((self.instr['Heading'] * 360) / (65536 * 65536)) + 0.5)
-            self.headingTrue = self.instr['Heading'] * 360 / (65536 * 65536)
-            self.headingCorrected = self.instr['CompassHeading']
-            self.instr['AirspeedTrue'] = round(self.instr['AirspeedTrue'] / 128)
-            self.instr['AirspeedIndicated'] = round(self.instr['AirspeedIndicated'] / 128)
-            self.instr['AirspeedMach'] = self.instr['AirspeedMach'] / 20480
-            self.instr['GroundSpeed'] = round((self.instr['GroundSpeed'] * 3600) / (65536 * 1852))
-            self.instr['NextWPETA'] = time.strftime('%H:%M', time.localtime(self.instr['NextWPETA']))
-            self.instr['NextWPBaring'] = degrees(self.instr['NextWPBaring'])
-            self.instr['DestETE'] =self.secondsToText(self.instr['DestETE'])
-            self.instr['DestETA'] = time.strftime('%H:%M', time.localtime(self.instr['DestETA']))
-            self.instr['ElevatorTrim'] = degrees(self.instr['ElevatorTrim'])
-            self.instr['VerticalSpeed'] = round ((self.instr['VerticalSpeed'] * 3.28084) * -1, 0)
-            self.tempC = round(self.instr['AirTemp'] / 256, 0)
-            self.tempF = round(9.0/5.0 * self.tempC + 32)
-            self.AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
-            self.RadioAltitude = self.instr['RadioAltimeter']  / 65536 * 3.28084
-            self.instr['APUPercentage'] = round(self.instr['APUPercentage'])
-            self.Nav1Bits = list(map(int, '{0:08b}'.format(self.instr['Nav1Flags'])))
-            self.instr['Nav1Type'] = self.Nav1Bits[0]
-            self.instr['Nav1GSAvailable'] = self.Nav1Bits[6]
-            self.DoorBits = list(map(int, '{0:08b}'.format(self.instr['Doors'])))
-            self.instr['Door1'] = self.DoorBits[7]
-            self.instr['Door2'] = self.DoorBits[6]
-            self.instr['Door3'] = self.DoorBits[5]
-            self.instr['Door4'] = self.DoorBits[4]
-            self.lights = list(map(int, '{0:08b}'.format(self.instr['Lights'])))
-            self.lights1 = list(map(int, '{0:08b}'.format(self.instr['Lights1'])))
-            # breakpoint()
-            self.instr['CabinLights'] = self.lights[0]
-            self.instr['LogoLights'] = self.lights[1]
-            self.instr['WingLights'] = self.lights1[0]
-            self.instr['RecognitionLights'] = self.lights1[1]
-            self.instr['InstrumentLights'] = self.lights1[2]
-            self.instr['StrobeLights'] = self.lights1[3]
-            self.instr['TaxiLights'] = self.lights1[4]
-            self.instr['LandingLights'] = self.lights1[5]
-            self.instr['BeaconLights'] = self.lights1[6]
-            self.instr['NavigationLights'] = self.lights1[7]
-            self.AltQNH = self.instr['Altimeter'] / 16
-            self.AltHPA = floor(self.AltQNH + 0.5)
-            self.AltInches = floor(((100 * self.AltQNH * 29.92) / 1013.2) + 0.5)
-            self.instr['Eng1ITT'] = round(self.instr['Eng1ITT'] / 16384)
-            self.instr['Eng2ITT'] = round(self.instr['Eng2ITT'] / 16384)
-            self.instr['Eng3ITT'] = round(self.instr['Eng3ITT'] / 16384)
-            self.instr['Eng4ITT'] = round(self.instr['Eng4ITT'] / 16384)
-            self.instr['WindDirection'] = self.instr['WindDirection'] *360/65536
+        try:
+            # read types: 0 - all, 1 - instrumentation, 2 - SimConnect, 3 - attitude    
+            if type == 0 or type == 1:
+                self.instr = dict(zip(self.InstrOffsets.keys(), pyuipc.read(self.pyuipcOffsets)))
+                # prepare instrumentation variables
+                hexCode = hex(self.instr['Com1Freq'])[2:]
+                self.instr['Com1Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
+                hexCode = hex(self.instr['Com2Freq'])[2:]
+                self.instr['Com2Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
+                # lat lon
+                self.instr['Lat'] = self.instr['Lat'] * (90.0/(10001750.0 * 65536.0 * 65536.0))
+                self.instr['Long'] = self.instr['Long'] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
+                self.instr['Flaps'] = self.instr['Flaps'] / 256
+                self.instr['OnGround'] = bool(self.instr['OnGround'])
+                self.instr['ParkingBrake'] = bool(self.instr['ParkingBrake'])
+                # self.ASLAltitude = round(results[8] * 3.28084)
+                self.instr['Altitude'] = round(self.instr['Altitude'])
+                self.instr['GroundAltitude'] = self.instr['GroundAltitude'] / 256 * 3.28084
+                self.instr['ApHeading'] = round(self.instr['ApHeading']/65536*360)
+                self.instr['ApAltitude'] = self.instr['ApAltitude'] / 65536 * 3.28084
+                self.instr['ApMach'] = self.instr['ApMach'] / 65536
+                # self.headingTrue = floor(((self.instr['Heading'] * 360) / (65536 * 65536)) + 0.5)
+                self.headingTrue = self.instr['Heading'] * 360 / (65536 * 65536)
+                self.headingCorrected = self.instr['CompassHeading']
+                self.instr['AirspeedTrue'] = round(self.instr['AirspeedTrue'] / 128)
+                self.instr['AirspeedIndicated'] = round(self.instr['AirspeedIndicated'] / 128)
+                self.instr['AirspeedMach'] = self.instr['AirspeedMach'] / 20480
+                self.instr['GroundSpeed'] = round((self.instr['GroundSpeed'] * 3600) / (65536 * 1852))
+                self.instr['NextWPETA'] = time.strftime('%H:%M', time.localtime(self.instr['NextWPETA']))
+                self.instr['NextWPBaring'] = degrees(self.instr['NextWPBaring'])
+                self.instr['DestETE'] =self.secondsToText(self.instr['DestETE'])
+                self.instr['DestETA'] = time.strftime('%H:%M', time.localtime(self.instr['DestETA']))
+                self.instr['ElevatorTrim'] = degrees(self.instr['ElevatorTrim'])
+                self.instr['VerticalSpeed'] = round ((self.instr['VerticalSpeed'] * 3.28084) * -1, 0)
+                self.tempC = round(self.instr['AirTemp'] / 256, 0)
+                self.tempF = round(9.0/5.0 * self.tempC + 32)
+                self.AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
+                self.RadioAltitude = self.instr['RadioAltimeter']  / 65536 * 3.28084
+                self.instr['APUPercentage'] = round(self.instr['APUPercentage'])
+                self.Nav1Bits = list(map(int, '{0:08b}'.format(self.instr['Nav1Flags'])))
+                self.instr['Nav1Type'] = self.Nav1Bits[0]
+                self.instr['Nav1GSAvailable'] = self.Nav1Bits[6]
+                self.DoorBits = list(map(int, '{0:08b}'.format(self.instr['Doors'])))
+                self.instr['Door1'] = self.DoorBits[7]
+                self.instr['Door2'] = self.DoorBits[6]
+                self.instr['Door3'] = self.DoorBits[5]
+                self.instr['Door4'] = self.DoorBits[4]
+                self.lights = list(map(int, '{0:08b}'.format(self.instr['Lights'])))
+                self.lights1 = list(map(int, '{0:08b}'.format(self.instr['Lights1'])))
+                # breakpoint()
+                self.instr['CabinLights'] = self.lights[0]
+                self.instr['LogoLights'] = self.lights[1]
+                self.instr['WingLights'] = self.lights1[0]
+                self.instr['RecognitionLights'] = self.lights1[1]
+                self.instr['InstrumentLights'] = self.lights1[2]
+                self.instr['StrobeLights'] = self.lights1[3]
+                self.instr['TaxiLights'] = self.lights1[4]
+                self.instr['LandingLights'] = self.lights1[5]
+                self.instr['BeaconLights'] = self.lights1[6]
+                self.instr['NavigationLights'] = self.lights1[7]
+                self.AltQNH = self.instr['Altimeter'] / 16
+                self.AltHPA = floor(self.AltQNH + 0.5)
+                self.AltInches = floor(((100 * self.AltQNH * 29.92) / 1013.2) + 0.5)
+                self.instr['Eng1ITT'] = round(self.instr['Eng1ITT'] / 16384)
+                self.instr['Eng2ITT'] = round(self.instr['Eng2ITT'] / 16384)
+                self.instr['Eng3ITT'] = round(self.instr['Eng3ITT'] / 16384)
+                self.instr['Eng4ITT'] = round(self.instr['Eng4ITT'] / 16384)
+                self.instr['WindDirection'] = self.instr['WindDirection'] *360/65536
 
 
 
 
 
 
-        if type == 0 or type == 2:
-            # prepare simConnect message data
-            try:
-                if self.SimCEnabled:
-                    self.SimCData = dict(zip(self.SimCOffsets.keys(), pyuipc.read(self.pyuipcSIMC)))
-                    self.SimCMessage = self.SimCData['SimCData'].decode ('UTF-8', 'ignore')
-            except Exception as e:
-                log.exception ('error reading simconnect message data')
-        if type == 0 or type == 3:
-            # Read attitude
-            self.attitude = dict(zip(self.AttitudeOffsets.keys(), pyuipc.read(self.pyuipcAttitude)))
-            self.attitude['Pitch'] = self.attitude['Pitch'] * 360 / (65536 * 65536)
-            self.attitude['Bank'] = self.attitude['Bank'] * 360 / (65536 * 65536)
+            if type == 0 or type == 2:
+                # prepare simConnect message data
+                try:
+                    if self.SimCEnabled:
+                        self.SimCData = dict(zip(self.SimCOffsets.keys(), pyuipc.read(self.pyuipcSIMC)))
+                        self.SimCMessage = self.SimCData['SimCData'].decode ('UTF-8', 'ignore')
+                except Exception as e:
+                    log.exception ('error reading simconnect message data')
+            if type == 0 or type == 3:
+                # Read attitude
+                self.attitude = dict(zip(self.AttitudeOffsets.keys(), pyuipc.read(self.pyuipcAttitude)))
+                self.attitude['Pitch'] = self.attitude['Pitch'] * 360 / (65536 * 65536)
+                self.attitude['Bank'] = self.attitude['Bank'] * 360 / (65536 * 65536)
+        except pyuipc.FSUIPCException as e:
+            log.exception("error reading from simulator. Exiting.")
+            sys.exit(1)
+
+

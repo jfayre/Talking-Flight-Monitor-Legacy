@@ -29,14 +29,14 @@ import warnings
 import config
 import winsound
 #redirect the original stdout and stderr
-stdout=sys.stdout
-stderr=sys.stderr
+stdout = sys.stdout
+stderr = sys.stderr
 sys.stdout = open(os.path.join(os.getenv("temp"), "stdout.log"), "w")
 sys.stderr = open(os.path.join(os.getenv("temp"), "stderr.log"), "w")
 import paths
 from logger import logger
-stdout_temp=sys.stdout
-stderr_temp=sys.stderr
+stdout_temp = sys.stdout
+stderr_temp = sys.stderr
 if hasattr(sys, 'frozen'):
     sys.stderr = open(os.path.join(paths.logs_path(), "stderr.log"), 'w')
     sys.stdout = open(os.path.join(paths.logs_path(), "stdout.log"), 'w')
@@ -131,13 +131,13 @@ def commandMode():
             config.app['hotkeys']['toggle_flaps_key']: tfm.toggleFlaps,
             config.app['hotkeys']['autopilot_key']: tfm.toggleAutoPilot,
             config.app['hotkeys']['wind_key']: tfm.readWind,
+            config.app['hotkeys']['runway_guidance_key']: tfm.runway_guidance_mode,
+
 
         }
         keyboard_handler.register_keys(keymap)
     except Exception as e:
         logging.exception ("error in command mode.")
-
-
 class Form(wx.Panel):
     ''' The Form class is a wx.Panel that creates a bunch of controls
         and handlers for callbacks. Doing the layout of the controls is 
@@ -184,6 +184,7 @@ class Form(wx.Panel):
             (self.com1_edit, wx.EVT_TEXT_ENTER, self.onCom1Entered)]:
                 control.Bind(event, handler)
         pub.subscribe(self.update_logger, "update")
+        
     def update_logger(self, msg):
         self.logger.AppendText(msg + '\n')
 
@@ -274,6 +275,7 @@ class TFMFrame(wx.Frame):
         self.SetMenuBar(menu_bar)  # Adding the MenuBar to the Frame content.
         # bind menu events
         self.Bind(wx.EVT_MENU, self.onSettings, app_settings)
+        self.Bind(wx.EVT_MENU, self.onExit, app_exit)
         self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
         self.Bind(wx.EVT_MENU, self.onAbout, help_about)
         self.Bind(wx.EVT_MENU, self.onIssue, help_issue)
@@ -287,6 +289,9 @@ class TFMFrame(wx.Frame):
         if d.response == widgetUtils.OK:
             d.save_configuration()
  
+    def onExit(self, event):
+        self.Close()
+
     def onAbout(self, event):
         info = wx.adv.AboutDialogInfo()
         info.SetName(application.name)
@@ -302,6 +307,7 @@ class TFMFrame(wx.Frame):
 
     def onIssue(self, event):
         webbrowser.open_new_tab(application.report_bugs_url)
+    
     # event handler for the timer
     def update(self, event):
         if not main_queue.empty():
