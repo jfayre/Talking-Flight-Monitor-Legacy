@@ -1,0 +1,5 @@
+* add runway heading lock mode
+* add 	nav 1 entry in GUI
+* read nautical mile on next waypoint distance
+
+
