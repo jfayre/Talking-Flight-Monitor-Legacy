@@ -282,6 +282,8 @@ class TFMFrame(wx.Frame):
         self.timer = wx.Timer(self)  
         self.Bind(wx.EVT_TIMER, self.update, self.timer)  
         self.timer.Start(50)
+        pub.subscribe(self.onSimClose, "exit")
+
 
     # menu event handlers
     def onSettings(self, event):
@@ -308,6 +310,9 @@ class TFMFrame(wx.Frame):
     def onIssue(self, event):
         webbrowser.open_new_tab(application.report_bugs_url)
     
+    def onSimClose(self, msg):
+        self.Close()
+
     # event handler for the timer
     def update(self, event):
         if not main_queue.empty():

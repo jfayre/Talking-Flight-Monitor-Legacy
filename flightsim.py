@@ -1372,7 +1372,7 @@ class TFM(threading.Thread):
                 self.attitude['Pitch'] = self.attitude['Pitch'] * 360 / (65536 * 65536)
                 self.attitude['Bank'] = self.attitude['Bank'] * 360 / (65536 * 65536)
         except pyuipc.FSUIPCException as e:
-            log.exception("error reading from simulator. Exiting.")
-            sys.exit(1)
+            log.debug("error reading from simulator. This could be normal. Exiting.")
+            pub.sendMessage("exit", msg="")
 
 
