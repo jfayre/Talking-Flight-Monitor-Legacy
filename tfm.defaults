@@ -51,4 +51,4 @@ toggle_ils_key = string(default="shift+i")
 toggle_flaps_key = string(default="shift+f")
 message_key = string(default="r")
 wind_key = string(default="i")
-
+runway_guidance_key = string(default = "control+h")

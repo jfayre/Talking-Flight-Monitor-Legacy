@@ -119,6 +119,9 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
     self.autopilot_key = wx.TextCtrl(self, -1)
     self.wind_label = wx.StaticText(self, wx.ID_ANY, "Wind information: ")
     self.wind_key = wx.TextCtrl(self, -1)
+    self.runway_guidance_label = wx.StaticText(self, wx.ID_ANY, "Runway guidance mode: ")
+    self.runway_guidance_key = wx.TextCtrl(self, -1)
+
 
     gridSizer = wx.FlexGridSizer(rows = 25, cols=2, vgap=10, hgap=10)
     # Prepare some reusable arguments for calling sizer.Add():
@@ -156,6 +159,9 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
                  (self.manual_key, expandOption),
                  (self.director_label, noOptions),
                  (self.director_key, expandOption),
+                 (self.runway_guidance_label, noOptions),
+                 (self.runway_guidance_key, expandOption),
+
                  (self.vspeed_label, noOptions),
                  (self.vspeed_key, expandOption),
                  (self.airtemp_label, noOptions),

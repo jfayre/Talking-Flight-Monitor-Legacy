@@ -64,6 +64,7 @@ class settingsController(object):
         self.dialog.set_value("hotkeys", "toggle_flaps_key", config.app['hotkeys']['toggle_flaps_key'])
         self.dialog.set_value("hotkeys", "autopilot_key", config.app['hotkeys']['autopilot_key'])
         self.dialog.set_value("hotkeys", "wind_key", config.app['hotkeys']['wind_key'])
+        self.dialog.set_value("hotkeys", "runway_guidance_key", config.app['hotkeys']['runway_guidance_key'])
         self.dialog.realize()
         self.response = self.dialog.get_response()
         
