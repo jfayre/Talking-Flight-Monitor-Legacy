@@ -566,6 +566,7 @@ class TFM(threading.Thread):
             if self.runway_guidance:
                 self.runway_guidance = False
                 pyglet.clock.unschedule(self.play_heading_tones)
+                self.BankPlayer.pause()
                 self.output ("Runway guidance disabled")
                 pub.sendMessage('reset', arg1=True)
                 return
@@ -573,7 +574,7 @@ class TFM(threading.Thread):
                 self.runway_guidance = True
                 self.hdg = round(self.headingCorrected)
                 self.output("Runway guidance enabled")
-                self.output(F"{self.hdg} locked")
+                self.output(F" current heading: {self.hdg} degrees")
                 self.hdg_right = self.hdg + 45
                 self.hdg_left = self.hdg - 45
                 self.hdg_freqs = np.linspace(1, 4, 45)
@@ -613,12 +614,6 @@ class TFM(threading.Thread):
                 self.BankPlayer.pause()
         except Exception as e:
             log.exception("error playing heading tones")
-
-
-
-            
-
-
 
     def readAltitude(self):
         self.getPyuipcData(1)
