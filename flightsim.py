@@ -347,9 +347,6 @@ class TFM(threading.Thread):
         if self.calloutsEnabled:
             log.debug("scheduling GPWS callouts")
             pyglet.clock.schedule_interval (self.readCallouts, 0.2)
-        # read engine temperatures while engine is starting. Does nothing before and after startup.
-        log.debug("scheduling engine temperature")
-        pyglet.clock.schedule_interval(self.readEngTemps, 3)        
         # Infinite loop.
         log.debug("starting infinite loop")
         while True:
