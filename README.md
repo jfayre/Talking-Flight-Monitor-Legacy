@@ -118,3 +118,8 @@ Disregard the warning about UPX not being present.
 ### Known limitations
 * The city given does not take into account the heading of your aircraft. So, the nearest city may be behind you.
 * Offline access is not implemented yet. It may be added in the future.
+
+
+## contributors and credits
+* Thanks to Tyler Rodick for his assistance with this project. This is my first major coding project, and it's helpful to have someone fixing my occasional oversight.
+* Thanks also to Manuel Cortez, who wrote the keyboard handling code that TFM uses.
