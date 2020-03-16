@@ -3,7 +3,7 @@ import datetime
 
 name = 'Talking Flight Monitor'
 short_name='TFM'
-version = "1.0"
+version = "1.01"
 authors = ["Jason Fayre"]
 authorEmail = "jfayre@gmail.com"
 copyright = "Copyright (C) 2019-2020, Jason Fayre."

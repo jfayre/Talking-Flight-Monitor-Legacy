@@ -193,6 +193,7 @@ class TFM(threading.Thread):
                 self.pyuipcSIMC = pyuipc.prepare_data(list (self.SimCOffsets.values()))
                 log.debug("preparing attitude mode offsets")
                 self.pyuipcAttitude = pyuipc.prepare_data(list (self.AttitudeOffsets.values()))
+                self.pyuipcRadioAlt = pyuipc.prepare_data ([(0x31e4, 'u')])
                 break
             except NameError:
                 self.pyuipcConnection = None
@@ -759,17 +760,19 @@ class TFM(threading.Thread):
 
     def readCallouts (self, dt=0):
         if self.calloutsEnabled:
+            result = pyuipc.read (self.pyuipcRadioAlt)
+            radio_alt = round(result[0] / 65536 * 3.28084)
             vspeed = self.instr['VerticalSpeed']
             callout = 0
             if vspeed < -50:
                 for i in self.calloutsHigh:
-                    if self.RadioAltitude <= i + 5 and self.RadioAltitude >= i - 5 and self.calloutState[i] == False:
+                    if radio_alt <= i + 5 and radio_alt >= i - 5 and self.calloutState[i] == False:
                         source = pyglet.media.load (F'sounds\\{str(i)}.wav')
                         source.play()
                         self.calloutState[i] = True
                         
                 for i in self.calloutsLow:
-                    if self.RadioAltitude <= i + 3 and self.RadioAltitude >= i - 3 and self.calloutState[i] == False:
+                    if radio_alt <= i + 3 and radio_alt >= i - 3 and self.calloutState[i] == False:
                         source = pyglet.media.load (F'sounds\\{str(i)}.wav')
                         source.play()
                         self.calloutState[i] = True
