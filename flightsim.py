@@ -106,6 +106,7 @@ class TFM(threading.Thread):
             'APUGeneratorActive': (0x0b52, 'b'), # apu generator active flag
             'APUPercentage': (0x0b54, 'F'), # APU rpm percentage
             'APUVoltage': (0x0b5c, 'F'), # apu generator voltage
+            'Eng1RPM': (0x2400, 'f'), # engine 1 rpm
             'Eng1Starter': (0x3b00, 'u'), # engine 1 starter
             'Eng2Starter': (0x3a40, 'u'), # engine 2 starter
             'Eng3Starter': (0x3980, 'u'), # engine 3 starter
@@ -141,6 +142,8 @@ class TFM(threading.Thread):
             'WindDirection': (0x0e92, 'H'), # Ambient wind direction (at aircraft), *360/65536 to get degrees True.
             'WindGust': (0x0e94, 'H'), # At aircraft altitude: wind gusting value: max speed in knots, or 0 if no gusts
             'RadioAltimeter': (0x31e4, 'u'), # Radio altitude in metres * 65536
+            'AircraftName': (0x3d00, -255), # aircraft name
+            'TextDisplay': (0x3380, -128), # FSUIPC text display
 
 
 
@@ -194,6 +197,7 @@ class TFM(threading.Thread):
                 log.debug("preparing attitude mode offsets")
                 self.pyuipcAttitude = pyuipc.prepare_data(list (self.AttitudeOffsets.values()))
                 self.pyuipcRadioAlt = pyuipc.prepare_data ([(0x31e4, 'u')])
+                
                 break
             except NameError:
                 self.pyuipcConnection = None
@@ -203,6 +207,7 @@ class TFM(threading.Thread):
                 time.sleep(20)
         
         # variables to track states of various aircraft instruments
+        self.oldAircraftName = None
         self.oldTz = 'none' ## variable for storing timezone name
         self.airborne = False
         self.oldWP = None
@@ -332,6 +337,15 @@ class TFM(threading.Thread):
         # Start closest city loop if enabled.
         pub.subscribe(self.set_triggered, "triggered")
         
+        if 'A2A Beechcraft' in self.instr['AircraftName'].decode():
+            log.debug("starting A2A Bonanza features")
+            pyglet.clock.schedule_interval(self.read_bonanza, 1)
+            self.get_a2a_data()
+            self.a2a['TipTankAvailable'] = self.read_var ('L:TipTanksPresent')
+            self.old_a2a = copy.deepcopy(self.a2a)
+            # pyglet.clock.schedule_once(self.test_var, 4)
+
+
         if self.FFEnabled:
             log.debug("scheduling flight following function")
             pyglet.clock.schedule_interval(self.AnnounceInfo, self.FFInterval * 60)
@@ -615,7 +629,50 @@ class TFM(threading.Thread):
                 self.BankPlayer.pause()
         except Exception as e:
             log.exception("error playing heading tones")
+    def a2a_fuel_quantity(self):
+        tank_left = round(self.read_var('FuelLeftWingTank'), 1)
+        tank_right = round(self.read_var('FuelRightWingTank'), 1)
+        tip_tank_left = round(self.read_var('FuelLeftTipTank'), 1)
+        tip_tank_right = round(self.read_var('FuelRightTipTank'), 1)
+        self.output (F'left: {tank_left} gallons')
+        self.output (F'right: {tank_right} gallons')
+        self.output (F'left tip: {tip_tank_left} gallons')
+        self.output (F'right tip: {tip_tank_right} gallons')
+        pub.sendMessage('reset', arg1=True)
 
+    def a2a_cht (self):
+        cht = round(self.read_var('Eng1_CHT'), 1)
+        self.output (F'CHT: {cht}')
+        pub.sendMessage('reset', arg1=True)
+    def a2a_egt (self):
+        egt = round(self.read_var('Eng1_EGTGauge'))
+        self.output (F'EGT: {egt}')
+        pub.sendMessage('reset', arg1=True)
+    def a2a_manifold (self):
+        manifold = round(self.read_var('Eng1_ManifoldPressure'), 1)
+        self.output (F'Manifold pressure: {manifold}')
+    def a2a_gph(self):
+        gph = round(self.read_var('Eng1_gph'), 1)
+        self.output (F'Fuel flow: {gph}')
+        pub.sendMessage('reset', arg1=True)
+    def a2a_oil_temp(self):
+        oil_temp  = round(self.read_var('Eng1_OilTemp'), 1)
+        self.output (F'oil temperature: {oil_temp}')
+        pub.sendMessage('reset', arg1=True)
+    def a2a_oil_pressure (self):
+        oil_pressure = round(self.read_var('Eng1_OilPressureGauge'), 1)
+        self.output (F'oil pressure: {oil_pressure}')
+        pub.sendMessage('reset', arg1=True)
+    def read_rpm(self):
+        rpm = round(self.instr['Eng1RPM'])
+        self.output (F'{rpm} RPM')
+        pub.sendMessage('reset', arg1=True)
+
+
+    def a2a_alt_arm(self):
+        self.write_var('ApAltArmSwitch', 1)
+        time.sleep(0.1)
+        self.write_var('ApAltArmSwitch', 0)
     def readAltitude(self):
         self.getPyuipcData(1)
         self.output(F'{self.instr["Altitude"]} feet A S L')
@@ -740,6 +797,58 @@ class TFM(threading.Thread):
             self.output ('manual flight mode enabled')
         pub.sendMessage('reset', arg1=True)
 
+    def read_var(self, var):
+        # read a l:var from the simulator
+        var_name = var
+        var = ":" + var
+        pyuipc.write([(0x0d6c, 'u', 0x066c0), (0x0d70, -40, var.encode())])
+        result = pyuipc.read([(0x66c0, 'f')])
+        self.a2a[var_name] = result[0]
+        return result[0]
+
+    def write_var(self, var, value):
+        var = "::" + var
+        pyuipc.write([(0x66c0, 'u', value)])
+        pyuipc.write([(0x0d6c, 'u', 0x366c0),
+            (0x0d70, -40, var.encode()),
+            
+        ])
+
+
+    def get_a2a_data(self):
+        self.a2a = {}
+        self.read_var("Battery1Switch")
+        self.read_var('FSelBonanzaState')
+        # time.sleep(1)
+        self.read_var('APaltArmSet')
+        # print(self.a2a['FSelBonanzaState'])
+
+
+
+
+    def read_bonanza (self, dt=0):
+        self.get_a2a_data()
+        self.read_a2a_toggle('Battery1Switch', 'Battery', 'active', 'off')
+        self.read_a2a_toggle('APaltArmSet', "Altitude arm", "active", "off")
+        # fuel selector
+        fsel_state = {
+            0: 'off',
+            1: 'left',
+            2: 'right'
+        }
+        if self.a2a['FSelBonanzaState'] != self.old_a2a['FSelBonanzaState']:
+            fsel = self.a2a['FSelBonanzaState']
+            self.output (F"fuel selector {fsel_state[fsel]}")
+        
+        self.old_a2a = copy.deepcopy(self.a2a)
+
+
+
+
+
+    def test_var(self, dt=0):
+        self.write_var('FSelBonanzaState', 0)
+
     def toggleAttitudeMode(self):
         if self.sonifyEnabled:
             pyglet.clock.unschedule(self.sonifyPitch)
@@ -784,6 +893,12 @@ class TFM(threading.Thread):
         # Get data from simulator
         self.getPyuipcData()
 
+        if self.instr['TextDisplay'] != self.oldInstr['TextDisplay']:
+            self.output (self.instr['TextDisplay'].decode())
+        # read aircraft name
+        if self.instr['AircraftName'] != self.oldAircraftName:
+            self.output (f"current aircraft: {self.instr['AircraftName'].decode('UTF-8')}")
+            self.oldAircraftName = self.instr['AircraftName']
         # detect if aircraft is on ground or airborne.
         if self.oldInstr['OnGround'] != self.instr['OnGround']:
             if self.instr['OnGround'] == False:
@@ -1079,6 +1194,19 @@ class TFM(threading.Thread):
             self.speak (F'{LocPercent:.0f} percent left')    
 
 
+    def read_a2a_toggle(self, instrument, name, onMessage, offMessage):
+        ## There are several aircraft functions that are simply on/off toggles. 
+        ## This function allows reading those without a bunch of duplicate code.
+        try:
+            if self.old_a2a[instrument] != self.a2a[instrument]:
+                if self.a2a[instrument]:
+                    self.output (F'{name} {onMessage}.')
+                else:
+                    self.output (F'{name} {offMessage}')
+                self.old_a2a[instrument] = self.a2a[instrument]
+        except Exception as e:
+            log.exception(F"error in A2A instrument toggle. Instrument was {instrument}")
+
 
     def readToggle(self, instrument, name, onMessage, offMessage):
         ## There are several aircraft functions that are simply on/off toggles. 
@@ -1195,6 +1323,8 @@ class TFM(threading.Thread):
         msgUpdated = False
         msgRaw = self.SimCMessage[:self.SimCData['SimCLength']]
         msg = msgRaw.splitlines()
+        if len(msg) == 1:
+            return
         # log.error(F'{msg}')
         # breakpoint()
         if self.oldRCMsg != msg[1] and msg[1][:3] != 'Rwy' and msg[1][:1] != '<':

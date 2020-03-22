@@ -132,6 +132,7 @@ def commandMode():
             config.app['hotkeys']['autopilot_key']: tfm.toggleAutoPilot,
             config.app['hotkeys']['wind_key']: tfm.readWind,
             config.app['hotkeys']['runway_guidance_key']: tfm.runway_guidance_mode,
+            'q': tfm.a2a_alt_arm,
 
 
         }
