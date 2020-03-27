@@ -136,7 +136,6 @@ class TFM(threading.Thread):
             'Eng2ITT': (0x0988, 'u'), # Engine 2 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
             'Eng3ITT': (0x0a20, 'u'), # Engine 3 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
             'Eng4ITT': (0x0ab8, 'u'), # Engine 4 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
-            'Eng1CHT': (0x08e8, 'f'), # Eng 1 CHT)
             'PitotHeat': (0x029c, 'b'), # pitot heat switch
             'Lights1': (0x0d0c, 'b'), # lights
             'Lights': (0x0d0d, 'b'), # lights
@@ -146,6 +145,13 @@ class TFM(threading.Thread):
             'RadioAltimeter': (0x31e4, 'u'), # Radio altitude in metres * 65536
             'AircraftName': (0x3d00, -255), # aircraft name
             'TextDisplay': (0x3380, -128), # FSUIPC text display
+            "BatterySwitch": (0x66c0, 'b'), # a2a battery switch
+            'TipTankLeftPump': (0x66c1, 'b'), # left tip tank pump
+            'TipTankRightPump': (0x66c2, 'b'), # right tip tank pump
+            'TipTanksAvailable': (0x66c4, 'b'), # tip tanks avaiable
+            'FuelSelector': (0x66c3, 'b'), # a2a fuel selector
+            'FuelPump': (0x3104, 'b'), # fuel pump
+
 
 
 
@@ -211,6 +217,11 @@ class TFM(threading.Thread):
         
         # variables to track states of various aircraft instruments
         self.oldAircraftName = None
+        self.old_a2a_bat = None
+        self.old_a2a_ttl = None
+        self.old_a2a_ttr = None
+        self.old_a2a_tt = None
+        self.old_a2a_fsel = None
         self.oldTz = 'none' ## variable for storing timezone name
         self.airborne = False
         self.oldWP = None
@@ -342,9 +353,6 @@ class TFM(threading.Thread):
         
         if 'A2A Beechcraft' in self.instr['AircraftName'].decode():
             log.debug("starting A2A Bonanza features")
-            self.a2a_instr = {}
-            self.get_a2a_data()
-            self.old_a2a_instr = copy.deepcopy(self.a2a_instr)
             pyglet.clock.schedule_interval(self.read_a2a_info, 1)
             # pyglet.clock.schedule_once(self.test_var, 4)
 
@@ -982,6 +990,7 @@ class TFM(threading.Thread):
         self.readToggle('InstrumentLights', 'Instrument lights', 'on', 'off')
         self.readToggle('APUGenerator', 'A P U Generator', 'active', 'off')
         self.readToggle('AvionicsMaster', 'Avionics master', 'active', 'off')
+        self.readToggle("FuelPump", "Fuel pump", "active", "off")
 
         if self.groundspeedEnabled:
             if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
@@ -1116,6 +1125,10 @@ class TFM(threading.Thread):
         ## There are several aircraft functions that are simply on/off toggles. 
         ## This function allows reading those without a bunch of duplicate code.
         try:
+            if instrument == "BatterySwitch":
+                self.output (F"battery {self.instr['BatterySwitch']}")
+
+            
             if self.oldInstr[instrument] != self.instr[instrument]:
                 if self.instr[instrument]:
                     self.output (F'{name} {onMessage}.')
@@ -1427,44 +1440,55 @@ class TFM(threading.Thread):
 
     def write_var(self, var, value):
         var = "::" + var
-        pyuipc.write([(0x66e0, 'b', value)])
-        pyuipc.write([(0x0d6c, 'u', 0x766e0),
+        pyuipc.write([(0x66f0, 'b', value)])
+        pyuipc.write([(0x0d6c, 'u', 0x766f0),
             (0x0d70, -40, var.encode()),
             
         ])
 
 
-    def get_a2a_data(self):
-        self.read_binary_var(0x66c0, 0x766c0, "Battery1Switch")
-        self.read_binary_var(0x66c2, 0x766c2, 'FSelBonanzaState')
-        self.read_binary_var(0x66c4, 0x766c4, 'TipTankLeftPumpSwitch')
-        self.read_binary_var(0x66c6, 0x766c6, 'TipTankRightPumpSwitch')
-        
-        # breakpoint()
-
-        # print(self.a2a['FSelBonanzaState'])
 
 
 
-
+    
     def read_a2a_info (self, dt=0):
-        self.get_a2a_data()
-        self.read_a2a_toggle('Battery1Switch', 'Battery', 'active', 'off')
-        self.read_a2a_toggle('APaltArmSet', "Altitude arm", "active", "off")
-        self.read_a2a_toggle('TipTankLeftPumpSwitch', 'left tip tank pump', 'active', 'off')
-        self.read_a2a_toggle('TipTankRightPumpSwitch', 'right tip tank pump', 'active', 'off')
+        if self.instr['BatterySwitch'] != self.old_a2a_bat:
+            if self.instr['BatterySwitch']:
+                self.output ("Battery on")
+            else:
+                self.output ("battery off")
+            self.old_a2a_bat = self.instr['BatterySwitch']
+        if self.instr['TipTankLeftPump'] != self.old_a2a_ttl:
+            if self.instr['TipTankLeftPump']:
+                self.output ("left tip tank pump on")
+            else:
+                self.output ("left tip tank pump off")
+            self.old_a2a_ttl = self.instr['TipTankLeftPump']
+        if self.instr['TipTankRightPump'] != self.old_a2a_ttr:
+            if self.instr['TipTankRightPump']:
+                self.output ("Right tip tank pump on")
+            else:
+                self.output ("Right tip tank pump off")
+            self.old_a2a_ttr = self.instr['TipTankRightPump']
 
+        if self.instr['TipTanksAvailable'] != self.old_a2a_tt:
+            if self.instr['TipTanksAvailable']:
+                self.output(F"tip tanks available")
+            else:
+                self.output ("Tip tanks not available")
+            self.old_a2a_tt = self.instr['TipTanksAvailable']
         # fuel selector
         fsel_state = {
             0: 'off',
             1: 'left',
             2: 'right'
         }
-        if self.a2a_instr['FSelBonanzaState'] != self.old_a2a_instr['FSelBonanzaState']:
-            fsel = self.a2a_instr['FSelBonanzaState']
+        if self.instr['FuelSelector'] != self.old_a2a_fsel:
+            fsel = self.instr['FuelSelector']
             self.output (F"fuel selector {fsel_state[fsel]}")
+            self.old_a2a_fsel = self.instr['FuelSelector']
         
-        self.old_a2a_instr = copy.deepcopy(self.a2a_instr)
+        # self.old_a2a_instr = copy.deepcopy(self.a2a_instr)
     def read_a2a_toggle(self, instrument, name, onMessage, offMessage):
         ## There are several aircraft functions that are simply on/off toggles. 
         ## This function allows reading those without a bunch of duplicate code.
@@ -1493,9 +1517,7 @@ class TFM(threading.Thread):
 
     def cht (self):
         cht = round(self.read_long_var(0x66e8, 'Eng1_CHT'))
-        self.output (F'var CHT: {cht}')
-        offset_cht = round(self.instr['Eng1CHT'])
-        self.output (F'offset CHT: {offset_cht}')
+        self.output (F'CHT: {cht}')
         pub.sendMessage('reset', arg1=True)
     def egt (self):
         egt = round(self.read_long_var(0x66d0, 'Eng1_EGTGauge'))
@@ -1517,6 +1539,10 @@ class TFM(threading.Thread):
         oil_pressure = round(self.read_long_var(0x66e0, 'Eng1_OilPressureGauge'), 1)
         self.output (F'oil pressure: {oil_pressure}')
         pub.sendMessage('reset', arg1=True)
+    def ammeter (self):
+        ammeter = round(self.read_long_var(0x66ec, 'Ammeter1'), 2)
+        self.output (F'Ammeter: {ammeter}')
+        pub.sendMessage('reset', arg1=True)
 
     def tip_tank_left_on (self):
         self.write_var('TipTankLeftPumpSwitch', 1)
@@ -1524,7 +1550,7 @@ class TFM(threading.Thread):
         self.write_var('TipTankLeftPumpSwitch', 0)
         
     def tip_tank_left_toggle (self):
-        if self.a2a_instr['TipTankLeftPumpSwitch'] == 1:
+        if self.instr['TipTankLeftPump'] == 1:
             self.tip_tank_left_off()
         else:
             self.tip_tank_left_on()
@@ -1536,7 +1562,7 @@ class TFM(threading.Thread):
     def tip_tank_right_off (self):
         self.write_var('TipTankRightPumpSwitch', 0)
     def tip_tank_right_toggle(self):
-        if self.a2a_instr['TipTankRightPumpSwitch'] == 1:
+        if self.instr['TipTankRightPump'] == 1:
             self.tip_tank_right_off()
         else:
             self.tip_tank_right_on()
