@@ -134,6 +134,12 @@ class TFM(threading.Thread):
             'Eng2ITT': (0x0988, 'u'), # Engine 2 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
             'Eng3ITT': (0x0a20, 'u'), # Engine 3 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
             'Eng4ITT': (0x0ab8, 'u'), # Engine 4 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
+            'Eng1FuelValve': (0x3590, 'u'), # engine 1 fuel valve
+            'Eng2FuelValve': (0x3594, 'u'), # engine 2 fuel valve
+            'Eng3FuelValve': (0x3598, 'u'), # engine 3 fuel valve
+            'Eng4FuelValve': (0x359c, 'u'), # engine 4 fuel valve
+
+
             'PitotHeat': (0x029c, 'b'), # pitot heat switch
             'Lights1': (0x0d0c, 'b'), # lights
             'Lights': (0x0d0d, 'b'), # lights
@@ -950,6 +956,11 @@ class TFM(threading.Thread):
         self.readToggle('InstrumentLights', 'Instrument lights', 'on', 'off')
         self.readToggle('APUGenerator', 'A P U Generator', 'active', 'off')
         self.readToggle('AvionicsMaster', 'Avionics master', 'active', 'off')
+        self.readToggle('Eng1FuelValve', 'number 1 fuel valve', 'open', 'closed')
+        self.readToggle('Eng2FuelValve', 'number 2 fuel valve', 'open', 'closed')
+        self.readToggle('Eng3FuelValve', 'number 3 fuel valve', 'open', 'closed')
+        self.readToggle('Eng4FuelValve', 'number 4 fuel valve', 'open', 'closed')
+        
 
         if self.groundspeedEnabled:
             if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
