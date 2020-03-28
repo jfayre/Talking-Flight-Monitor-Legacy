@@ -1108,12 +1108,8 @@ class TFM(threading.Thread):
         msg = ""
         try:
             WPId = self.instr['NextWPId'].decode ('UTF-8')
-            if self.use_metric:
-                distance = self.instr['NextWPDistance'] / 1000
-                msg = F'Next waypoint: {WPId}, distance: {distance:.1f} kilometers'
-            else:
-                distance = (self.instr['NextWPDistance'] / 1000)/ 1.609
-                msg = F'Next waypoint: {WPId}, distance: {distance:.1f} miles\n'
+            distance = self.instr['NextWPDistance'] * 0.00053995
+            msg = F'Next waypoint: {WPId}, distance: {distance:.1f} nautical miles'
             msg = msg + F'baring: {self.instr["NextWPBaring"]:.0f}\n'
             # read estimated time enroute to next waypoint
             strTime = self.secondsToText(self.instr['NextWPETE'])
@@ -1123,11 +1119,6 @@ class TFM(threading.Thread):
                 self.triggered = False
             else:
                 self.output(msg)
-
-            # if we were triggered with a hotkey, read the ETA to the next waypoint.
-            if self.triggered:
-                self.output(F'ETA: {self.instr["NextWPETA"]}')
-                pub.sendMessage('reset', arg1=True)
             pub.sendMessage('reset', arg1=True)
         except Exception as e:
             log.exception ("error reading waypoint info")
