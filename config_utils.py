@@ -15,7 +15,7 @@ def load_config(config_path, configspec_path=None, copy=True, *args, **kwargs):
  except ParseError:
   raise ConfigLoadError("Unable to load %r" % config_path)
  validator = Validator()
- validated = config.validate(validator, preserve_errors=False, copy=copy)
+ validated = config.validate(validator, preserve_errors=True, copy=copy)
  if validated == True:
   config.write()
   return config

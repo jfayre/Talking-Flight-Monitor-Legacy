@@ -59,6 +59,7 @@ import application
 from keyboard_handler.wx_handler import WXKeyboardHandler
 import queue
 import flightsim
+import a2a
 import settings
 # import pyglet
 import threading
@@ -95,7 +96,11 @@ except ImportError:
         debug = True
 def reset_hotkeys(arg1=None):
     keyboard_handler.unregister_all_keys()
-    keyboard_handler.register_keys({config.app['hotkeys']['command_key']: commandMode})    
+    keyboard_handler.register_keys({
+        config.app['hotkeys']['command_key']: commandMode,
+        config.app['hotkeys']['a2a_command_key']: a2a_command_mode
+        })    
+    
 
 ## Layered key support for reading various instrumentation
 def commandMode():
@@ -132,12 +137,41 @@ def commandMode():
             config.app['hotkeys']['autopilot_key']: tfm.toggleAutoPilot,
             config.app['hotkeys']['wind_key']: tfm.readWind,
             config.app['hotkeys']['runway_guidance_key']: tfm.runway_guidance_mode,
+            'q': tfm.tip_tank_left_toggle,
 
 
         }
         keyboard_handler.register_keys(keymap)
     except Exception as e:
         logging.exception ("error in command mode.")
+def a2a_command_mode():
+    try:
+        if 'Bonanza' in tfm.instr['AircraftName'].decode():
+            keyboard_handler.unregister_all_keys()
+            # send a message indicating that the next speech event has been triggered by a hotkey.
+            pub.sendMessage("triggered", msg=True)
+            if config.app['config']['use_sapi'] == False:
+                filename = 'sounds\\command.wav'
+                winsound.PlaySound(filename, winsound.SND_FILENAME|winsound.SND_ASYNC)
+            else:
+                output.speak('command?', interrupt=True)
+            keymap = {
+                config.app['hotkeys']['a2a_cht']: tfm.cht,
+                config.app['hotkeys']['a2a_egt']: tfm.egt,
+                config.app['hotkeys']['a2a_rpm']: tfm.read_rpm,
+                config.app['hotkeys']['a2a_oil_temp']: tfm.oil_temp,
+                config.app['hotkeys']['a2a_oil_pressure']: tfm.oil_pressure,
+                config.app['hotkeys']['a2a_manifold_pressure']: tfm.manifold,
+                config.app['hotkeys']['a2a_ammeter']: tfm.ammeter,
+                config.app['hotkeys']['a2a_fuel_flow']: tfm.gph,    
+                config.app['hotkeys']['a2a_fuel_quantity']: tfm.fuel_quantity,
+                config.app['hotkeys']['a2a_tip_tank_left']: tfm.tip_tank_left_toggle,
+                config.app['hotkeys']['a2a_tip_tank_right']: tfm.tip_tank_right_toggle}
+
+
+            keyboard_handler.register_keys(keymap)
+    except Exception as e:
+        log.exception("error in a2a command mode")
 class Form(wx.Panel):
     ''' The Form class is a wx.Panel that creates a bunch of controls
         and handlers for callbacks. Doing the layout of the controls is 
@@ -358,7 +392,10 @@ if __name__ == '__main__':
     
     keyboard_handler = WXKeyboardHandler(frame)
     # register the command key
-    keyboard_handler.register_keys({config.app['hotkeys']['command_key']: commandMode})    
+    keyboard_handler.register_keys({
+        config.app['hotkeys']['command_key']: commandMode,
+        config.app['hotkeys']['a2a_command_key']: a2a_command_mode
+        })    
     # register the listener for resetting hotkeys
     pub.subscribe(reset_hotkeys, "reset")
     # breakpoint()
@@ -369,6 +406,7 @@ if __name__ == '__main__':
     tfm = flightsim.TFM(main_queue, sapi_queue)
     tfm.daemon=True
     tfm.start()
+    a2a = a2a.a2a(main_queue, sapi_queue)
     frame.Show()
     app.MainLoop()    
 

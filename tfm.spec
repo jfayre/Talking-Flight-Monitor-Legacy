@@ -7,7 +7,7 @@ a = Analysis(['tfm.pyw'],
              pathex=['C:\\Users\\jfayr\\projects\\talking-flight-monitor'],
              binaries=[],
              hookspath=[],
-             datas=[('sounds/*.wav', 'sounds'), ('tfm.defaults', '.')],
+             datas=[('sounds/*.wav', 'sounds'), ('tfm.defaults', '.'), ('*.lua', '.'), ],
              hiddenimports=['babel.numbers'],
 
              runtime_hooks=[],
