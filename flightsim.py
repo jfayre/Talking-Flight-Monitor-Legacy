@@ -641,7 +641,7 @@ class TFM(threading.Thread):
         except Exception as e:
             log.exception("error playing heading tones")
     def read_rpm(self):
-        rpm = round(self.instr['Eng1RPM'])
+        rpm = round(self.read_long_var(0x66f1, "Eng1_RPM"))
         self.output (F'{rpm} RPM')
         pub.sendMessage('reset', arg1=True)
 
