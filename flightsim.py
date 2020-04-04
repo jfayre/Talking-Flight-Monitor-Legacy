@@ -996,15 +996,11 @@ class TFM(threading.Thread):
         self.readToggle('InstrumentLights', 'Instrument lights', 'on', 'off')
         self.readToggle('APUGenerator', 'A P U Generator', 'active', 'off')
         self.readToggle('AvionicsMaster', 'Avionics master', 'active', 'off')
-<<<<<<< HEAD
         self.readToggle('Eng1FuelValve', 'number 1 fuel valve', 'open', 'closed')
         self.readToggle('Eng2FuelValve', 'number 2 fuel valve', 'open', 'closed')
         self.readToggle('Eng3FuelValve', 'number 3 fuel valve', 'open', 'closed')
         self.readToggle('Eng4FuelValve', 'number 4 fuel valve', 'open', 'closed')
-        
-=======
         self.readToggle("FuelPump", "Fuel pump", "active", "off")
->>>>>>> a2a
 
         if self.groundspeedEnabled:
             if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
