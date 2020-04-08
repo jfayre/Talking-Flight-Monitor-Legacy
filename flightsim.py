@@ -1321,7 +1321,7 @@ class TFM(threading.Thread):
             log.error('Error determining timezone: ' + str(e))
             log.exception(str(e))
         if self.triggered:
-            self.speak(msg)
+            self.output(msg)
             self.triggered = False
         else:
             self.output(msg)
