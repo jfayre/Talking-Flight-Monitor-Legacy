@@ -511,6 +511,16 @@ class TFM(threading.Thread):
         freq = F"{freq}"
         data = [(offset, type, int(freq, 16))]
         pyuipc.write(data)
+    def set_com2(self, com2):
+        # set com 1 frequency
+        offset, type = self.InstrOffsets['Com2Freq']
+        freq = float(com2) * 100
+        freq = int(freq) - 10000
+        freq = F"{freq}"
+        data = [(offset, type, int(freq, 16))]
+        pyuipc.write(data)
+
+    
     def set_qnh(self, qnh):
         offset, type = self.InstrOffsets['Altimeter']
         qnh = int(qnh) * 16
@@ -867,7 +877,7 @@ class TFM(threading.Thread):
         if self.instr['Com1Freq'] != self.oldInstr['Com1Freq']:
             self.output (F"com 1, {self.instr['Com1Freq']}")
         if self.instr['Com2Freq'] != self.oldInstr['Com2Freq']:
-            self.output (F"com 2, {self.instr['Com1Freq']}")
+            self.output (F"com 2, {self.instr['Com2Freq']}")
 
         # spoilers
         if self.oldInstr['Spoilers'] != self.instr['Spoilers']:
@@ -1418,9 +1428,9 @@ class TFM(threading.Thread):
                 self.attitude['Bank'] = self.attitude['Bank'] * 360 / (65536 * 65536)
         except pyuipc.FSUIPCException as e:
             log.exception("error reading from simulator. This could be normal. Exiting.")
-            # pub.sendMessage("exit", msg="")
+            pub.sendMessage("exit", msg="")
     ## a2a functions
-    def read_binary_var(self, offset, param, var):
+def read_       binary_var(self, offset, param, var):
         # read a l:var from the simulator
         var_name = var
         var = ":" + var

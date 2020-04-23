@@ -204,6 +204,9 @@ class Form(wx.Panel):
         self.inches_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         self.com1_label = wx.StaticText(self, label='Com 1:')
         self.com1_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        self.com2_label = wx.StaticText(self, label='Com 2:')
+        self.com2_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
+        
         self.timer = wx.Timer(self)  
     def bindEvents(self):
         for control, event, handler in \
@@ -216,6 +219,7 @@ class Form(wx.Panel):
             (self.qnh_edit, wx.EVT_TEXT_ENTER, self.onQNHEntered),
             (self.inches_edit, wx.EVT_TEXT_ENTER, self.onInchesEntered),
             (self.com1_edit, wx.EVT_TEXT_ENTER, self.onCom1Entered)]:
+            (self.com2_edit, wx.EVT_TEXT_ENTER, self.onCom2Entered)]:
                 control.Bind(event, handler)
         pub.subscribe(self.update_logger, "update")
         
@@ -256,6 +260,9 @@ class Form(wx.Panel):
                  (self.inches_edit, expandOption),
                  (self.com1_label, noOptions),
                  (self.com1_edit, expandOption)]:
+                 (self.com2_label, noOptions),
+                 (self.com2_edit, expandOption)]:
+            gridS
             gridSizer.Add(control, **options)
 
         for control, options in \
@@ -288,6 +295,9 @@ class Form(wx.Panel):
         tfm.set_transponder(event.GetString())
     def onCom1Entered(self, event):
         tfm.set_com1(event.GetString())
+    def onCom2Entered(self, event):
+        tfm.set_com2(event.GetString())
+
 class TFMFrame(wx.Frame):
     def __init__(self, *args, **kwargs):
         super(TFMFrame, self).__init__(*args, **kwargs)
