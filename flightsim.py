@@ -157,6 +157,26 @@ class TFM(threading.Thread):
             'TipTanksAvailable': (0x66c4, 'b'), # tip tanks avaiable
             'FuelSelector': (0x66c3, 'b'), # a2a fuel selector
             'FuelPump': (0x3104, 'b'), # fuel pump
+            'lvl_center': (0x0b74, 'u'),
+            'cap_center': (0x0b78, 'u'),
+            'lvl_main_left': (0x0b7c, 'u'),
+            'cap_main_left': (0x0b80, 'u'),
+            'lvl_aux_left': (0x0b84, 'u'),
+            'cap_aux_left': (0x0b88, 'u'),
+            'lvl_tip_left': (0x0b8c, 'u'),
+            'cap_tip_left': (0x0b90, 'u'),
+            'lvl_main_right': (0x0b94, 'u'),
+            'cap_main_right': (0x0b98, 'u'),
+            'lvl_aux_right': (0x0b9c, 'u'),
+            'cap_aux_right': (0x0ba0, 'u'),
+            'lvl_tip_right': (0x0ba4, 'u'),
+            'cap_tip_right': (0x0ba8, 'u'),
+            'fuel_weight': (0x0af4, 'H'),
+            'eng1_fuel_flow': (0x0918, 'f'),
+            'eng2_fuel_flow': (0x09b0, 'f'),
+            'eng3_fuel_flow': (0x0a48, 'f'),
+            'eng4_fuel_flow': (0x0ae0, 'f'),
+
 
 
 
@@ -784,6 +804,127 @@ class TFM(threading.Thread):
             pyglet.clock.schedule_interval(self.manualFlight, self.ManualInterval)
             self.manualEnabled = True
             self.output ('manual flight mode enabled')
+        pub.sendMessage('reset', arg1=True)
+    def fuel_report(self):
+        total_fuel_weight = 0
+        total_fuel_quantity = 0
+        if self.instr['cap_center'] != 0:
+            lvl_center = self.instr['lvl_center'] / (128 * 65536)
+            weight_center = (self.instr['cap_center'] * lvl_center) * (self.instr['fuel_weight'] / 256)
+            quantity_center = self.instr['cap_center'] * lvl_center
+            total_fuel_quantity += quantity_center
+            total_fuel_weight += weight_center
+        if self.instr['cap_main_left'] != 0:
+            lvl_main_left = self.instr['lvl_main_left'] / (128 * 65536)
+            weight_main_left = (self.instr['cap_main_left'] * lvl_main_left) * (self.instr['fuel_weight'] / 256)
+            quantity_main_left = self.instr['cap_main_left'] * lvl_main_left
+            total_fuel_quantity += quantity_main_left
+            total_fuel_weight += weight_main_left
+        if self.instr['cap_main_right'] != 0:
+            lvl_main_right = self.instr['lvl_main_right'] / (128 * 65536)
+            weight_main_right = (self.instr['cap_main_right'] * lvl_main_right) * (self.instr['fuel_weight'] / 256)
+            quantity_main_right = self.instr['cap_main_right'] * lvl_main_right
+            total_fuel_quantity += quantity_main_right
+            total_fuel_weight += weight_main_right
+        if self.instr['cap_aux_left'] != 0:
+            lvl_aux_left = self.instr['lvl_aux_left'] / (128 * 65536)
+            weight_aux_left = (self.instr['cap_aux_left'] * lvl_aux_left) * (self.instr['fuel_weight'] / 256)
+            quantity_aux_left = self.instr['cap_aux_left'] * lvl_aux_left
+            total_fuel_quantity += quantity_aux_left
+            total_fuel_weight += weight_aux_left
+        if self.instr['cap_aux_right'] != 0:
+            lvl_aux_right = self.instr['lvl_aux_right'] / (128 * 65536)
+            weight_aux_right = (self.instr['cap_aux_right'] * lvl_aux_right) * (self.instr['fuel_weight'] / 256)
+            quantity_aux_right = self.instr['cap_aux_right'] * lvl_aux_right
+            total_fuel_quantity += quantity_aux_right
+            total_fuel_weight += weight_aux_right
+        if self.instr['cap_tip_left'] != 0:
+            lvl_tip_left = self.instr['lvl_tip_left'] / (128 * 65536)
+            weight_tip_left = (self.instr['cap_tip_left'] * lvl_tip_left) * (self.instr['fuel_weight'] / 256)
+            quantity_tip_left = self.instr['cap_tip_left'] * lvl_tip_left
+            total_fuel_quantity += quantity_tip_left
+            total_fuel_weight += weight_tip_left
+        if self.instr['cap_tip_right'] != 0:
+            lvl_tip_right = self.instr['lvl_tip_right'] / (128 * 65536)
+            weight_tip_right = (self.instr['cap_tip_right'] * lvl_tip_right) * (self.instr['fuel_weight'] / 256)
+            quantity_tip_right = self.instr['cap_tip_right'] * lvl_tip_right
+            total_fuel_quantity += quantity_tip_right
+            total_fuel_weight += weight_tip_right
+        self.output (F'total fuel: {round(total_fuel_weight)} pounds. ')
+        self.output (F'{round(total_fuel_quantity)} gallons. ')
+        total_fuel_flow = self.instr['eng1_fuel_flow'] + self.instr['eng2_fuel_flow'] + self.instr['eng3_fuel_flow'] + self.instr['eng4_fuel_flow']
+        self.output (F'Total fuel flow: {round(total_fuel_flow)} P P H')
+        pub.sendMessage('reset', arg1=True)
+
+    def fuel_center(self):
+        self.output ('Center tank: ')
+        if self.instr['cap_center'] != 0:
+            percentage = self.instr['lvl_center'] / (128 * 65536)
+            weight = round((self.instr['cap_center'] * percentage) * (self.instr['fuel_weight'] / 256))
+            quantity = round(self.instr['cap_center'] * percentage)
+            self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
+        else:
+            self.output ('not available')
+        pub.sendMessage('reset', arg1=True)
+    def fuel_main_left(self):
+        self.output ('left main tank: ')
+        if self.instr['cap_main_left'] != 0:
+            percentage = self.instr['lvl_main_left'] / (128 * 65536)
+            weight = round((self.instr['cap_main_left'] * percentage) * (self.instr['fuel_weight'] / 256))
+            quantity = round(self.instr['cap_main_left'] * percentage)
+            self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
+        else:
+            self.output ('not available')
+        pub.sendMessage('reset', arg1=True)
+    def fuel_main_right(self):
+        self.output ('right main tank: ')
+        if self.instr['cap_main_right'] != 0:
+            percentage = self.instr['lvl_main_right'] / (128 * 65536)
+            weight = round((self.instr['cap_main_right'] * percentage) * (self.instr['fuel_weight'] / 256))
+            quantity = round(self.instr['cap_main_right'] * percentage)
+            self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
+        else:
+            self.output ('not available')
+        pub.sendMessage('reset', arg1=True)
+    def fuel_aux_left(self):
+        self.output ('left auxiliary tank: ')
+        if self.instr['cap_aux_left'] != 0:
+            percentage = self.instr['lvl_aux_left'] / (128 * 65536)
+            weight = round((self.instr['cap_aux_left'] * percentage) * (self.instr['fuel_weight'] / 256))
+            quantity = round(self.instr['cap_aux_left'] * percentage)
+            self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
+        else:
+            self.output ('not available')
+        pub.sendMessage('reset', arg1=True)
+    def fuel_aux_right(self):
+        self.output ('right auxiliary tank: ')
+        if self.instr['cap_aux_right'] != 0:
+            percentage = self.instr['lvl_aux_right'] / (128 * 65536)
+            weight = round((self.instr['cap_aux_right'] * percentage) * (self.instr['fuel_weight'] / 256))
+            quantity = round(self.instr['cap_aux_right'] * percentage)
+            self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
+        else:
+            self.output ('not available')
+        pub.sendMessage('reset', arg1=True)
+    def fuel_tip_left(self):
+        self.output ('left tip tank: ')
+        if self.instr['cap_tip_left'] != 0:
+            percentage = self.instr['lvl_tip_left'] / (128 * 65536)
+            weight = round((self.instr['cap_tip_left'] * percentage) * (self.instr['fuel_weight'] / 256))
+            quantity = round(self.instr['cap_tip_left'] * percentage)
+            self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
+        else:
+            self.output ('not available')
+        pub.sendMessage('reset', arg1=True)
+    def fuel_tip_right(self):
+        self.output ('right tip tank: ')
+        if self.instr['cap_tip_right'] != 0:
+            percentage = self.instr['lvl_tip_right'] / (128 * 65536)
+            weight = round((self.instr['cap_tip_right'] * percentage) * (self.instr['fuel_weight'] / 256))
+            quantity = round(self.instr['cap_tip_right'] * percentage)
+            self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
+        else:
+            self.output ('not available')
         pub.sendMessage('reset', arg1=True)
 
 
@@ -1430,7 +1571,7 @@ class TFM(threading.Thread):
             log.exception("error reading from simulator. This could be normal. Exiting.")
             pub.sendMessage("exit", msg="")
     ## a2a functions
-def read_       binary_var(self, offset, param, var):
+    def read_binary_var(self, offset, param, var):
         # read a l:var from the simulator
         var_name = var
         var = ":" + var

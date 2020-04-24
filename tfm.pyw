@@ -137,7 +137,14 @@ def commandMode():
             config.app['hotkeys']['autopilot_key']: tfm.toggleAutoPilot,
             config.app['hotkeys']['wind_key']: tfm.readWind,
             config.app['hotkeys']['runway_guidance_key']: tfm.runway_guidance_mode,
-            'q': tfm.tip_tank_left_toggle,
+            config.app['hotkeys']['fuel_report']: tfm.fuel_report,
+            config.app['hotkeys']['center']: tfm.fuel_center,
+            config.app['hotkeys']['main_left']: tfm.fuel_main_left,
+            config.app['hotkeys']['main_right']: tfm.fuel_main_right,
+            config.app['hotkeys']['aux_left']: tfm.fuel_aux_left,
+            config.app['hotkeys']['aux_right']: tfm.fuel_aux_right,
+            config.app['hotkeys']['tip_left']: tfm.fuel_tip_left,
+            config.app['hotkeys']['tip_right']: tfm.fuel_tip_right,
 
 
         }
@@ -218,7 +225,7 @@ class Form(wx.Panel):
             (self.trans_edit, wx.EVT_TEXT_ENTER, self.OnTransponderEntered),
             (self.qnh_edit, wx.EVT_TEXT_ENTER, self.onQNHEntered),
             (self.inches_edit, wx.EVT_TEXT_ENTER, self.onInchesEntered),
-            (self.com1_edit, wx.EVT_TEXT_ENTER, self.onCom1Entered)]:
+            (self.com1_edit, wx.EVT_TEXT_ENTER, self.onCom1Entered),
             (self.com2_edit, wx.EVT_TEXT_ENTER, self.onCom2Entered)]:
                 control.Bind(event, handler)
         pub.subscribe(self.update_logger, "update")
@@ -259,10 +266,9 @@ class Form(wx.Panel):
                  (self.inches_label, noOptions),
                  (self.inches_edit, expandOption),
                  (self.com1_label, noOptions),
-                 (self.com1_edit, expandOption)]:
+                 (self.com1_edit, expandOption),
                  (self.com2_label, noOptions),
                  (self.com2_edit, expandOption)]:
-            gridS
             gridSizer.Add(control, **options)
 
         for control, options in \
