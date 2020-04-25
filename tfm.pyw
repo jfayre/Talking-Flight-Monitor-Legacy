@@ -137,14 +137,15 @@ def commandMode():
             config.app['hotkeys']['autopilot_key']: tfm.toggleAutoPilot,
             config.app['hotkeys']['wind_key']: tfm.readWind,
             config.app['hotkeys']['runway_guidance_key']: tfm.runway_guidance_mode,
-            config.app['hotkeys']['fuel_report']: tfm.fuel_report,
-            config.app['hotkeys']['center']: tfm.fuel_center,
-            config.app['hotkeys']['main_left']: tfm.fuel_main_left,
-            config.app['hotkeys']['main_right']: tfm.fuel_main_right,
-            config.app['hotkeys']['aux_left']: tfm.fuel_aux_left,
-            config.app['hotkeys']['aux_right']: tfm.fuel_aux_right,
-            config.app['hotkeys']['tip_left']: tfm.fuel_tip_left,
-            config.app['hotkeys']['tip_right']: tfm.fuel_tip_right,
+            config.app['hotkeys']['fuel_report_key']: tfm.fuel_report,
+            config.app['hotkeys']['fuel_flow_key']: tfm.fuel_flow_report,
+            config.app['hotkeys']['tank1_key']: tfm.fuel_center,
+            config.app['hotkeys']['tank2_key']: tfm.fuel_main_left,
+            config.app['hotkeys']['tank3_key']: tfm.fuel_main_right,
+            config.app['hotkeys']['tank4_key']: tfm.fuel_aux_left,
+            config.app['hotkeys']['tank5_key']: tfm.fuel_aux_right,
+            config.app['hotkeys']['tank6_key']: tfm.fuel_tip_left,
+            config.app['hotkeys']['tank7_key']: tfm.fuel_tip_right,
 
 
         }

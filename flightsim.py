@@ -159,6 +159,10 @@ class TFM(threading.Thread):
             'FuelPump': (0x3104, 'b'), # fuel pump
             'lvl_center': (0x0b74, 'u'),
             'cap_center': (0x0b78, 'u'),
+            'lvl_center2': (0x1244, 'u'),
+            'cap_center2': (0x1248, 'u'),
+            'lvl_center3': (0x124c, 'u'),
+            'cap_center3': (0x1250, 'u'),
             'lvl_main_left': (0x0b7c, 'u'),
             'cap_main_left': (0x0b80, 'u'),
             'lvl_aux_left': (0x0b84, 'u'),
@@ -172,6 +176,7 @@ class TFM(threading.Thread):
             'lvl_tip_right': (0x0ba4, 'u'),
             'cap_tip_right': (0x0ba8, 'u'),
             'fuel_weight': (0x0af4, 'H'),
+            'num_engines': (0x0aec, 'H'),
             'eng1_fuel_flow': (0x0918, 'f'),
             'eng2_fuel_flow': (0x09b0, 'f'),
             'eng3_fuel_flow': (0x0a48, 'f'),
@@ -814,6 +819,19 @@ class TFM(threading.Thread):
             quantity_center = self.instr['cap_center'] * lvl_center
             total_fuel_quantity += quantity_center
             total_fuel_weight += weight_center
+        if self.instr['cap_center2'] != 0:
+            lvl_center2 = self.instr['lvl_center2'] / (128 * 65536)
+            weight_center2 = (self.instr['cap_center2'] * lvl_center2) * (self.instr['fuel_weight'] / 256)
+            quantity_center2 = self.instr['cap_center'] * lvl_center
+            total_fuel_quantity += quantity_center2
+            total_fuel_weight += weight_center2
+        if self.instr['cap_center3'] != 0:
+            lvl_center3 = self.instr['lvl_center3'] / (128 * 65536)
+            weight_center3 = (self.instr['cap_center3'] * lvl_center3) * (self.instr['fuel_weight'] / 256)
+            quantity_center3 = self.instr['cap_center3'] * lvl_center3
+            total_fuel_quantity += quantity_center3
+            total_fuel_weight += weight_center3
+        
         if self.instr['cap_main_left'] != 0:
             lvl_main_left = self.instr['lvl_main_left'] / (128 * 65536)
             weight_main_left = (self.instr['cap_main_left'] * lvl_main_left) * (self.instr['fuel_weight'] / 256)
@@ -855,6 +873,18 @@ class TFM(threading.Thread):
         total_fuel_flow = self.instr['eng1_fuel_flow'] + self.instr['eng2_fuel_flow'] + self.instr['eng3_fuel_flow'] + self.instr['eng4_fuel_flow']
         self.output (F'Total fuel flow: {round(total_fuel_flow)} P P H')
         pub.sendMessage('reset', arg1=True)
+    def fuel_flow_report (self):
+        num_engines = self.instr['num_engines']
+        self.output ("Fuel flow: ")
+        self.output (F'Engine 1: {round(self.instr["eng1_fuel_flow"])}.')
+        if num_engines >= 2:
+            self.output (F'Engine 2: {round(self.instr["eng2_fuel_flow"])}.')
+        if num_engines >= 3:
+            self.output (F'Engine 3: {round(self.instr["eng3_fuel_flow"])}.')
+        if num_engines >= 4:
+            self.output (F'Engine 4: {round(self.instr["eng4_fuel_flow"])}.')
+        pub.sendMessage('reset', arg1=True)
+
 
     def fuel_center(self):
         self.output ('Center tank: ')
@@ -862,6 +892,16 @@ class TFM(threading.Thread):
             percentage = self.instr['lvl_center'] / (128 * 65536)
             weight = round((self.instr['cap_center'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_center'] * percentage)
+            self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
+        elif self.instr['cap_center2'] != 0:
+            percentage = self.instr['lvl_center2'] / (128 * 65536)
+            weight = round((self.instr['cap_center2'] * percentage) * (self.instr['fuel_weight'] / 256))
+            quantity = round(self.instr['cap_center2'] * percentage)
+            self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
+        elif self.instr['cap_center3'] != 0:
+            percentage = self.instr['lvl_center3'] / (128 * 65536)
+            weight = round((self.instr['cap_center3'] * percentage) * (self.instr['fuel_weight'] / 256))
+            quantity = round(self.instr['cap_center3'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         else:
             self.output ('not available')

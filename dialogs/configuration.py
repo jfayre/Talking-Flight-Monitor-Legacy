@@ -121,9 +121,27 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
     self.wind_key = wx.TextCtrl(self, -1)
     self.runway_guidance_label = wx.StaticText(self, wx.ID_ANY, "Runway guidance mode: ")
     self.runway_guidance_key = wx.TextCtrl(self, -1)
+    self.fuel_report_label = wx.StaticText(self, wx.ID_ANY, "Fuel Report: ")
+    self.fuel_report_key = wx.TextCtrl(self, -1)
+    self.fuel_flow_label = wx.StaticText(self, wx.ID_ANY, "Fuel Flow Report: ")
+    self.fuel_flow_key = wx.TextCtrl(self, -1)
+    self.tank1_label = wx.StaticText(self, wx.ID_ANY, "Fuel Tank 1: ")
+    self.tank1_key = wx.TextCtrl(self, -1)
+    self.tank2_label = wx.StaticText(self, wx.ID_ANY, "Tank 2: ")
+    self.tank2_key = wx.TextCtrl(self, -1)
+    self.tank3_label = wx.StaticText(self, wx.ID_ANY, "Tank 3: ")
+    self.tank3_key = wx.TextCtrl(self, -1)
+    self.tank4_label = wx.StaticText(self, wx.ID_ANY, "Tank 4: ")
+    self.tank4_key = wx.TextCtrl(self, -1)
+    self.tank5_label = wx.StaticText(self, wx.ID_ANY, "Tank 5: ")
+    self.tank5_key = wx.TextCtrl(self, -1)
+    self.tank6_label = wx.StaticText(self, wx.ID_ANY, "Tank 6: ")
+    self.tank6_key = wx.TextCtrl(self, -1)
+    self.tank7_label = wx.StaticText(self, wx.ID_ANY, "Tank 7: ")
+    self.tank7_key = wx.TextCtrl(self, -1)
 
 
-    gridSizer = wx.FlexGridSizer(rows = 25, cols=2, vgap=10, hgap=10)
+    gridSizer = wx.FlexGridSizer(rows = 25, cols=4, vgap=10, hgap=10)
     # Prepare some reusable arguments for calling sizer.Add():
     expandOption = dict(flag=wx.EXPAND)
     noOptions = dict()
@@ -179,7 +197,26 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
                  (self.autopilot_label, noOptions),
                  (self.autopilot_key, expandOption),
                  (self.wind_label, noOptions),
-                 (self.wind_key, expandOption)]:
+                 (self.wind_key, expandOption),
+                 
+                 (self.fuel_report_label, noOptions),
+                 (self.fuel_report_key, expandOption),
+                 (self.fuel_flow_label, noOptions),
+                 (self.fuel_flow_key, expandOption),
+                 (self.tank1_label, noOptions),
+                 (self.tank1_key, expandOption),
+                 (self.tank2_label, noOptions),
+                 (self.tank2_key, expandOption),
+                 (self.tank3_label, noOptions),
+                 (self.tank3_key, expandOption),
+                 (self.tank4_label, noOptions),
+                 (self.tank4_key, expandOption),
+                 (self.tank5_label, noOptions),
+                 (self.tank5_key, expandOption),
+                 (self.tank6_label, noOptions),
+                 (self.tank6_key, expandOption),
+                 (self.tank7_label, noOptions),
+                 (self.tank7_key, expandOption)]:
             gridSizer.Add(control, **options)
             self.SetSizerAndFit(gridSizer)
 
