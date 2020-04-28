@@ -59,7 +59,6 @@ import application
 from keyboard_handler.wx_handler import WXKeyboardHandler
 import queue
 import flightsim
-import a2a
 import settings
 # import pyglet
 import threading
@@ -423,7 +422,6 @@ if __name__ == '__main__':
     tfm = flightsim.TFM(main_queue, sapi_queue)
     tfm.daemon=True
     tfm.start()
-    a2a = a2a.a2a(main_queue, sapi_queue)
     frame.Show()
     app.MainLoop()    
 
