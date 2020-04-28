@@ -59,7 +59,6 @@ import application
 from keyboard_handler.wx_handler import WXKeyboardHandler
 import queue
 import flightsim
-import a2a
 import settings
 # import pyglet
 import threading
