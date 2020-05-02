@@ -2,6 +2,7 @@ venv
 build
 dist
 logs
+tfm
 *.pyc
 *.ini
 *.log
