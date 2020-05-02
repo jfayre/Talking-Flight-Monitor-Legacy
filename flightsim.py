@@ -1,25 +1,42 @@
-import sys
-import os
-import pyuipc
-import config
-import threading
-import queue
-import time
-import requests
 import copy
+import logging
+import os
+import queue
+import sys
+import threading
+import time
+from dataclasses import dataclass
+
+from math import degrees, floor
+
+import numpy as np
+import pyglet
+import requests
 import wx
 from aviationFormula.aviationFormula import calcBearing
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
-from math import degrees, floor
-import pyglet
-import numpy as np
 from pubsub import pub
+
 import application
-import logging
+import config
+import pyuipc
 from logger import logger
+
 log = logging.getLogger("tfm")
         
+## Data class for fuel tanks
+## We don't strictly need to use a dataclass here, it was a bit of an experiment
+@dataclass
+class tank:
+    present: bool = False
+    key: int = 0
+    name: str = ""
+    capacity: int = 0
+    percent: float = 0.0
+    weight: float = 0.0
+    quantity: float = 0.0
+
 
 ## Main Class of tfm.
 class TFM(threading.Thread):
@@ -214,7 +231,7 @@ class TFM(threading.Thread):
     }
     ## Setup the tfm object.
     def __init__(self,queue, sapi_queue):
-        global keyboard_handler
+        # global keyboard_handler
         threading.Thread.__init__(self)
         self.q = queue
         self.sapi_q = sapi_queue
@@ -810,6 +827,60 @@ class TFM(threading.Thread):
             self.manualEnabled = True
             self.output ('manual flight mode enabled')
         pub.sendMessage('reset', arg1=True)
+    
+    def setup_fuel_tanks(self):
+        log.debug('checking available fuel tanks')    
+        self.tanks = {}
+        key = 1
+        if self.instr['cap_center'] != 0:
+            log.debug ('found center tank')
+            self.tanks[key] = tank(name='center')
+            self.tanks[key].capacity = self.instr['cap_center']
+            key += 1
+        if self.instr['cap_center2'] != 0:
+            log.debug ("found center 2")
+            self.tanks[key] = tank(name='center2')
+            self.tanks[key].capacity = self.instr['cap_center2']
+            key += 1
+        if self.instr['cap_center3'] != 0:
+            log.debug ("found center 3")
+            self.tanks[key] = tank(name='center3')
+            self.tanks[key].capacity = self.instr['cap_center3']
+            key += 1
+        if self.instr['cap_main_left'] != 0:
+            log.debug ('found main left')
+            self.tanks[key] = tank(name='main left')
+            self.tanks[key].capacity = self.instr['cap_main_left']
+            key += 1
+        if self.instr['cap_main_right'] != 0:
+            log.debug ('found main right')
+            self.tanks[key] = tank(name='main right')
+            self.tanks[key].capacity = self.instr['cap_main_right']
+            key += 1
+        if self.instr['cap_aux_left'] != 0:
+            log.debug ("found aux left")
+            self.tanks[key] = tank(name='aux left')
+            self.tanks[key].capacity = self.instr['cap_aux_left']
+            key += 1
+        if self.instr['cap_aux_right'] != 0:
+            log.debug ('found aux right')
+            self.tanks[key] = tank(name='aux right')
+            self.tanks[key].capacity = self.instr['cap_aux_right']
+            key += 1
+        if self.instr['cap_tip_left'] != 0:
+            log.debug ('found left tip')
+            self.tanks[key] = tank(name='tip left')
+            self.tanks[key].capacity = self.instr['cap_center']
+            key += 1
+        if self.instr['cap_tip_right'] != 0:
+            log.debug ('found right tip')
+            self.tanks[key] = tank(name='tip right')
+            self.tanks[key].capacity = self.instr['cap_tip_right']
+            key += 1
+        # breakpoint()
+
+
+
     def fuel_report(self):
         total_fuel_weight = 0
         total_fuel_quantity = 0
@@ -884,87 +955,116 @@ class TFM(threading.Thread):
         if num_engines >= 4:
             self.output (F'Engine 4: {round(self.instr["eng4_fuel_flow"])}.')
         pub.sendMessage('reset', arg1=True)
-
-
-    def fuel_center(self):
-        self.output ('Center tank: ')
-        if self.instr['cap_center'] != 0:
+    def read_fuel_tank(self, key):
+        if self.tanks[key].name == 'center':
             percentage = self.instr['lvl_center'] / (128 * 65536)
             weight = round((self.instr['cap_center'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_center'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
-        elif self.instr['cap_center2'] != 0:
+        elif self.tanks[key].name == 'center2':
             percentage = self.instr['lvl_center2'] / (128 * 65536)
             weight = round((self.instr['cap_center2'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_center2'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
-        elif self.instr['cap_center3'] != 0:
+        elif self.tanks[key].name == 'center3':
             percentage = self.instr['lvl_center3'] / (128 * 65536)
             weight = round((self.instr['cap_center3'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_center3'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
-        else:
-            self.output ('not available')
-        pub.sendMessage('reset', arg1=True)
-    def fuel_main_left(self):
-        self.output ('left main tank: ')
-        if self.instr['cap_main_left'] != 0:
+        elif self.tanks[key].name == 'main left':
             percentage = self.instr['lvl_main_left'] / (128 * 65536)
             weight = round((self.instr['cap_main_left'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_main_left'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
-        else:
-            self.output ('not available')
-        pub.sendMessage('reset', arg1=True)
-    def fuel_main_right(self):
-        self.output ('right main tank: ')
-        if self.instr['cap_main_right'] != 0:
+        elif self.tanks[key].name == 'main right':
             percentage = self.instr['lvl_main_right'] / (128 * 65536)
             weight = round((self.instr['cap_main_right'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_main_right'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
-        else:
-            self.output ('not available')
-        pub.sendMessage('reset', arg1=True)
-    def fuel_aux_left(self):
-        self.output ('left auxiliary tank: ')
-        if self.instr['cap_aux_left'] != 0:
+        elif self.tanks[key].name == 'aux left':
             percentage = self.instr['lvl_aux_left'] / (128 * 65536)
             weight = round((self.instr['cap_aux_left'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_aux_left'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
-        else:
-            self.output ('not available')
-        pub.sendMessage('reset', arg1=True)
-    def fuel_aux_right(self):
-        self.output ('right auxiliary tank: ')
-        if self.instr['cap_aux_right'] != 0:
+        elif self.tanks[key].name == 'aux right':
             percentage = self.instr['lvl_aux_right'] / (128 * 65536)
             weight = round((self.instr['cap_aux_right'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_aux_right'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
-        else:
-            self.output ('not available')
-        pub.sendMessage('reset', arg1=True)
-    def fuel_tip_left(self):
-        self.output ('left tip tank: ')
-        if self.instr['cap_tip_left'] != 0:
+        elif self.tanks[key].name == 'tip left':
             percentage = self.instr['lvl_tip_left'] / (128 * 65536)
             weight = round((self.instr['cap_tip_left'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_tip_left'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
-        else:
-            self.output ('not available')
-        pub.sendMessage('reset', arg1=True)
-    def fuel_tip_right(self):
-        self.output ('right tip tank: ')
-        if self.instr['cap_tip_right'] != 0:
+        elif self.tanks[key].name == 'tip right':
             percentage = self.instr['lvl_tip_right'] / (128 * 65536)
             weight = round((self.instr['cap_tip_right'] * percentage) * (self.instr['fuel_weight'] / 256))
             quantity = round(self.instr['cap_tip_right'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
-        else:
-            self.output ('not available')
+        
+
+    def fuel_t1(self):
+        try:
+            self.output (F'{self.tanks[1].name}: ')
+            self.read_fuel_tank(1)
+        except KeyError:
+            self.output (F"not available. ")
+        pub.sendMessage('reset', arg1=True)
+    def fuel_t2(self):
+        try:
+            self.output (F'{self.tanks[2].name}: ')
+            self.read_fuel_tank(2)
+        except KeyError:
+            self.output (F"not available. ")
+        pub.sendMessage('reset', arg1=True)
+    def fuel_t3(self):
+        try:
+            self.output (F'{self.tanks[3].name}: ')
+            self.read_fuel_tank(3)
+        except KeyError:
+            self.output (F"not available. ")
+        pub.sendMessage('reset', arg1=True)
+    def fuel_t4(self):
+        try:
+            self.output (F'{self.tanks[4].name}: ')
+            self.read_fuel_tank(4)
+        except KeyError:
+            self.output (F"not available. ")
+        pub.sendMessage('reset', arg1=True)
+    def fuel_t5(self):
+        try:
+            self.output (F'{self.tanks[5].name}: ')
+            self.read_fuel_tank(5)
+        except KeyError:
+            self.output (F"not available. ")
+        pub.sendMessage('reset', arg1=True)
+    def fuel_t6(self):
+        try:
+            self.output (F'{self.tanks[6].name}: ')
+            self.read_fuel_tank(6)
+        except KeyError:
+            self.output (F"not available. ")
+        pub.sendMessage('reset', arg1=True)
+    def fuel_t7(self):
+        try:
+            self.output (F'{self.tanks[7].name}: ')
+            self.read_fuel_tank(7)
+        except KeyError:
+            self.output (F"not available. ")
+        pub.sendMessage('reset', arg1=True)
+    def fuel_t8(self):
+        try:
+            self.output (F'{self.tanks[8].name}: ')
+            self.read_fuel_tank(8)
+        except KeyError:
+            self.output (F"not available. ")
+        pub.sendMessage('reset', arg1=True)
+    def fuel_t9(self):
+        try:
+            self.output (F'{self.tanks[9].name}: ')
+            self.read_fuel_tank(9)
+        except KeyError:
+            self.output (F"not available. ")
         pub.sendMessage('reset', arg1=True)
 
 
@@ -1017,10 +1117,11 @@ class TFM(threading.Thread):
 
         if self.instr['TextDisplay'] != self.oldInstr['TextDisplay']:
             self.output (self.instr['TextDisplay'].decode())
-        # read aircraft name
+        # read aircraft name and set up fuel tank info
         if self.instr['AircraftName'] != self.oldAircraftName:
             self.output (f"current aircraft: {self.instr['AircraftName'].decode('UTF-8')}")
             self.oldAircraftName = self.instr['AircraftName']
+            self.setup_fuel_tanks()
         # detect if aircraft is on ground or airborne.
         if self.oldInstr['OnGround'] != self.instr['OnGround']:
             if self.instr['OnGround'] == False:
@@ -1763,6 +1864,4 @@ class TFM(threading.Thread):
         pub.sendMessage('reset', arg1=True)
 
 # cabbin heat
-
-
 
