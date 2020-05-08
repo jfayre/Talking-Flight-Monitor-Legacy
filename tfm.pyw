@@ -147,6 +147,7 @@ def commandMode():
             config.app['hotkeys']['tank7_key']: tfm.fuel_t7,
             config.app['hotkeys']['tank8_key']: tfm.fuel_t8,
             config.app['hotkeys']['tank9_key']: tfm.fuel_t9,
+            config.app['hotkeys']['tank10_key']: tfm.fuel_t10,
 
 
         }

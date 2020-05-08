@@ -74,6 +74,9 @@ class settingsController(object):
         self.dialog.set_value("hotkeys", "tank5_key", config.app['hotkeys']['tank5_key'])
         self.dialog.set_value("hotkeys", "tank6_key", config.app['hotkeys']['tank6_key'])
         self.dialog.set_value("hotkeys", "tank7_key", config.app['hotkeys']['tank7_key'])
+        self.dialog.set_value("hotkeys", "tank8_key", config.app['hotkeys']['tank8_key'])
+        self.dialog.set_value("hotkeys", "tank9_key", config.app['hotkeys']['tank9_key'])
+        self.dialog.set_value("hotkeys", "tank10_key", config.app['hotkeys']['tank10_key'])
         self.dialog.realize()
         self.response = self.dialog.get_response()
         
@@ -86,6 +89,9 @@ class settingsController(object):
         for key in config.app['timing'].keys():
             config.app['timing'][key] = self.dialog.get_value("timing", key)
         for key in config.app['hotkeys'].keys():
-            config.app['hotkeys'][key] = self.dialog.get_value("hotkeys", key)
+            if "a2a" in key:
+                continue
+            else:
+                config.app['hotkeys'][key] = self.dialog.get_value("hotkeys", key)
         
         config.app.write()

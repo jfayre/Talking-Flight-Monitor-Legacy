@@ -1067,6 +1067,14 @@ class TFM(threading.Thread):
             self.output (F"not available. ")
         pub.sendMessage('reset', arg1=True)
 
+    def fuel_t10(self):
+        try:
+            self.output (F'{self.tanks[10].name}: ')
+            self.read_fuel_tank(10)
+        except KeyError:
+            self.output (F"not available. ")
+        pub.sendMessage('reset', arg1=True)
+
 
     def test_var(self, dt=0):
         self.write_var('FSelBonanzaState', 0)

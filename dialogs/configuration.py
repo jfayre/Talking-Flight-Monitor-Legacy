@@ -139,6 +139,15 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
     self.tank6_key = wx.TextCtrl(self, -1)
     self.tank7_label = wx.StaticText(self, wx.ID_ANY, "Tank 7: ")
     self.tank7_key = wx.TextCtrl(self, -1)
+    self.tank8_label = wx.StaticText(self, wx.ID_ANY, "Tank 8: ")
+    self.tank8_key = wx.TextCtrl(self, -1)
+    self.tank9_label = wx.StaticText(self, wx.ID_ANY, "Tank 9: ")
+    self.tank9_key = wx.TextCtrl(self, -1)
+    self.tank10_label = wx.StaticText(self, wx.ID_ANY, "Tank 10: ")
+    self.tank10_key = wx.TextCtrl(self, -1)
+
+
+
 
 
     gridSizer = wx.FlexGridSizer(rows = 25, cols=4, vgap=10, hgap=10)
@@ -216,7 +225,17 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
                  (self.tank6_label, noOptions),
                  (self.tank6_key, expandOption),
                  (self.tank7_label, noOptions),
-                 (self.tank7_key, expandOption)]:
+                 (self.tank7_key, expandOption),
+                 (self.tank8_label, noOptions),
+                 (self.tank8_key, expandOption),
+                 (self.tank9_label, noOptions),
+                 (self.tank9_key, expandOption),
+                 (self.tank10_label, noOptions),
+                 (self.tank10_key, expandOption)
+                 
+                 
+                 
+                 ]:
             gridSizer.Add(control, **options)
             self.SetSizerAndFit(gridSizer)
 
