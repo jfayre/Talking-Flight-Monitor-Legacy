@@ -48,10 +48,13 @@ There are several hotkeys for use when Flight Following is running. The keys are
 The keys use a layered aproach. First press the command key, which is Right Square Bracket by default. Then press the desired command. 
 The currently available keys are:
 * ]: enters command mode (use before all other keys)
+* numbers 1 through 0: read info for individual fuel tanks
 * a: read altitude above sea level (ASL).
 * shift+a: toggle GPWS (ground proximity warning system) announcements
+* b: fuel burn rate (in pounds per hour)
 * c: read nearest city
 * d: read distance and time to destination
+* f: fuel report
 * Shift+f: toggle announcement of flap angle
 * Ctrl+F: audible flight director (see below)
 * g: read  altitude above ground (AGL)
@@ -106,14 +109,14 @@ pip install pyinstaller
 ```
 Once PyInstaller is installed, execute the following from the root of the checkout:
 ```
-pyinstaller flightFollowing.spec
+pyinstaller tfm.spec
 ```
 Disregard the warning about UPX not being present.
 
 
 ## Bugs and issues
 * Please report bugs via the github issues tab.
-    * It is useful to attach the error.log file to any issues.
+* It is useful to attach the error.log file to any issues.
     
 ### Known limitations
 * The city given does not take into account the heading of your aircraft. So, the nearest city may be behind you.
