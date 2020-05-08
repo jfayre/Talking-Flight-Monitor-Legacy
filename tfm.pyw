@@ -153,7 +153,7 @@ def commandMode():
         }
         keyboard_handler.register_keys(keymap)
     except Exception as e:
-        logging.exception ("error in command mode.")
+        log.exception ("error in command mode.")
 def a2a_command_mode():
     try:
         if 'Bonanza' in tfm.instr['AircraftName'].decode():
@@ -196,6 +196,8 @@ class Form(wx.Panel):
 
     def createControls(self):
         self.logger = wx.TextCtrl(self, style=wx.TE_MULTILINE|wx.TE_READONLY)
+        sys.stdout = self.logger
+        sys.stderr = self.logger
         self.hdg_label = wx.StaticText(self, label='heading:')
         self.hdg_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         self.alt_label = wx.StaticText(self, label='Altitude:')

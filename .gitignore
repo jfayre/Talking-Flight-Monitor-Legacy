@@ -8,3 +8,4 @@ tfm
 *.log
 *.zip
 a2a.py
+.vscode
