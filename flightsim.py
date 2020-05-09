@@ -198,6 +198,7 @@ class TFM(threading.Thread):
             'eng2_fuel_flow': (0x09b0, 'f'),
             'eng3_fuel_flow': (0x0a48, 'f'),
             'eng4_fuel_flow': (0x0ae0, 'f'),
+            'EngineSelectFlags': (0x0888, 'b'), # engine select flags
 
 
 
@@ -1301,6 +1302,10 @@ class TFM(threading.Thread):
         self.readToggle('Eng3FuelValve', 'number 3 fuel valve', 'open', 'closed')
         self.readToggle('Eng4FuelValve', 'number 4 fuel valve', 'open', 'closed')
         self.readToggle("FuelPump", "Fuel pump", "active", "off")
+        self.readToggle("Eng1Select", "number 1", 'selected', 'unselected')
+        self.readToggle("Eng2Select", "number 2", 'selected', 'unselected')
+        self.readToggle("Eng3Select", "number 3", 'selected', 'unselected')
+        self.readToggle("Eng4Select", "number 4", 'selected', 'unselected')
 
         if self.groundspeedEnabled:
             if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
@@ -1668,6 +1673,11 @@ class TFM(threading.Thread):
                 self.AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
                 self.RadioAltitude = self.instr['RadioAltimeter']  / 65536 * 3.28084
                 self.instr['APUPercentage'] = round(self.instr['APUPercentage'])
+                self.EngSelect = list(map(int, '{0:08b}'.format(self.instr['EngineSelectFlags'])))
+                self.instr['Eng1Select'] = self.EngSelect[7]
+                self.instr['Eng2Select'] = self.EngSelect[6]
+                self.instr['Eng3Select'] = self.EngSelect[5]
+                self.instr['Eng4Select'] = self.EngSelect[4]
                 self.Nav1Bits = list(map(int, '{0:08b}'.format(self.instr['Nav1Flags'])))
                 self.instr['Nav1Type'] = self.Nav1Bits[0]
                 self.instr['Nav1GSAvailable'] = self.Nav1Bits[6]

@@ -88,8 +88,8 @@ In Manual Flight mode, the pitch and bank angle are read every few seconds. The 
 ### runway guidance mode
 Runway guidance mode is designed to help you hold a constant heading on takeoff or landing. When you turn on runway guidance, the current heading of your aircraft is recorded. You will then hear tones in the left or right stereo channel to let you know if you are going off course.
 
-## controling autopilot
-The Talking Flight Monitor window contains several edit fields that allow you to control the aircraft's autopilot directly. To change a setting, just type the value you want into the edit box and press Enter.
+## controling autopilot and radios
+The Talking Flight Monitor window contains several edit fields that allow you to control the aircraft's autopilot and com radios directly. To change a setting, just type the value you want into the edit box and press Enter.
 
 ## Running from Source
 * Get the latest python 3.7 ([Python releases](https://www.python.org/downloads/))
