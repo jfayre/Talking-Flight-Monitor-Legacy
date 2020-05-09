@@ -72,7 +72,7 @@ The currently available keys are:
 * w: read next waypoint
 * [ (left bracket): audible aircraft attitude indication (see below)
 * shift+p: Toggle announcements of autopilot parameters
-* w: read wind information
+* i: read wind information
 * control+h: toggle runway guidance mode
 
 
