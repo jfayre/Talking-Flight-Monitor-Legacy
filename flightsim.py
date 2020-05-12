@@ -1317,6 +1317,7 @@ class TFM(threading.Thread):
                 self.groundSpeed = True
             elif self.instr['GroundSpeed'] == 0 and self.groundSpeed:
                 pyglet.clock.unschedule(self.readGroundSpeed)
+                self.groundSpeed = False
 
         # read APU status
         if self.instr['APUPercentage'] > 4 and self.APUStarting == False and self.APURunning == False and self.APUShutdown == False and self.APUOff == True:
