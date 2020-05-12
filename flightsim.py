@@ -1303,11 +1303,11 @@ class TFM(threading.Thread):
         self.readToggle('Eng4FuelValve', 'number 4 fuel valve', 'open', 'closed')
         self.readToggle("FuelPump", "Fuel pump", "active", "off")
         self.readToggle("Eng1Select", "number 1", 'selected', 'unselected')
-        if self.num_engines >= 2:
+        if self.instr['num_engines'] >= 2:
             self.readToggle("Eng2Select", "number 2", 'selected', 'unselected')
-        if self.num_engines >= 3:
+        if self.instr['num_engines'] >= 3:
             self.readToggle("Eng3Select", "number 3", 'selected', 'unselected')
-        if self.num_engines >= 4:
+        if self.instr['num_engines'] >= 4:
             self.readToggle("Eng4Select", "number 4", 'selected', 'unselected')
 
         if self.groundspeedEnabled:
