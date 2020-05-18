@@ -91,6 +91,42 @@ Runway guidance mode is designed to help you hold a constant heading on takeoff 
 ## controling autopilot and radios
 The Talking Flight Monitor window contains several edit fields that allow you to control the aircraft's autopilot and com radios directly. To change a setting, just type the value you want into the edit box and press Enter.
 
+## experimental A2A aircraft support
+TFM now contains experimental support for the payware aircraft from A2A Simulations. Initially, the Beachcraft Bonanza is supported, with plans to add support for the C182 Skylane and the Piper Cherokee in the future.
+You are able to check various aircraft instruments, as well as control a few aircraft systems.
+### enabling A2A support
+The A2A aircraft support requires a registered version of FSUIPC. 
+To install the A2A support:
+1. In your TFM install folder, there is a folder called "scripts". Copy the tfm_bonanza.lua file from  this folder into your FSUIPC folder. This should be C:\program files\Lockheed Martin\Prepar3D v4\Modules
+2. Add the following to the end of your FSUIPC5.ini file, which is in the same folder where you placed the lua file. Note that the file is called fsuipc6.ini if you are using fSUIPC 6:
+```
+[Auto.Bonanza]
+1=Lua tfm_bonanza
+```
+### hotkeys
+When TFM detects you are running a supported A2A aircraft, the following hotkeys will be enabled. These also follow a similar layered command mode as the rest of TFM. The command key is the left square bracket. 
+Note that these keys are not part of the TFM settings dialog yet. The dialog will be updated once the A2A support is finalized. For now, the keys can be changed by editing the tfm.ini file.
+* [: command key
+* 1: engine cylinder head temperature
+* 2: engine exhaust gas temperature
+* 3: engine RPM
+* 4: oil temperature
+* 5: oil pressure
+* 6: manifold pressure
+* 7: Ammeter
+* 8: volt meter
+* a: toggle cabin air circulation fan
+* d: check or increase windshield defroster setting (keep pressing d to adjust by 10 percent increments, press left bracket again when done)
+* shift+d: check or decrease windshield defroster setting (keep pressing d to adjust by 10 percent increments, press left bracket again when done)
+* f: fuel tank levels
+* shift+f: fuel flow
+* h: check or increase cabin heat setting (keep pressing h to adjust by 10 percent increments, press left bracket again when done)
+* shift+h: check or decrease cabin heat setting (keep pressing shift+h to adjust by 10 percent increments, press left bracket again when done)
+* l: toggle left tip tank fuel pump
+* r: toggle right tip tank fuel pump
+* t: read cabin temperature
+* w: open and close cabin window
+
 ## Running from Source
 * Get the latest python 3.7 ([Python releases](https://www.python.org/downloads/))
 * Install the latest pywin32 release ([pywin32 releases](https://github.com/mhammond/pywin32/releases))

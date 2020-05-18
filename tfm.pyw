@@ -94,6 +94,8 @@ except ImportError:
         pyuipcImported = False
         debug = True
 def reset_hotkeys(arg1=None):
+    tfm.adjust_defrost = False
+    tfm.adjust_heat = False
     keyboard_handler.unregister_all_keys()
     keyboard_handler.register_keys({
         config.app['hotkeys']['command_key']: commandMode,
@@ -191,6 +193,8 @@ def a2a_command_mode():
 
 
             keyboard_handler.register_keys(keymap)
+        else:
+            output.speak ("not available")
     except Exception as e:
         log.exception("error in a2a command mode")
 class Form(wx.Panel):

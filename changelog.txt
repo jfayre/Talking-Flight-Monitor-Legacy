@@ -1,0 +1,5 @@
+TFM change log
+Version 1.2: 
+* updated support for the A2A Bonanza aircraft. Adds control of aircraft heating, defroster and circulation fan.
+version 1.1:
+* adds support for reading aircraft fuel tanks
