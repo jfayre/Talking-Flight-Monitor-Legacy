@@ -173,10 +173,21 @@ def a2a_command_mode():
                 config.app['hotkeys']['a2a_oil_pressure']: tfm.oil_pressure,
                 config.app['hotkeys']['a2a_manifold_pressure']: tfm.manifold,
                 config.app['hotkeys']['a2a_ammeter']: tfm.ammeter,
+                config.app['hotkeys']['a2a_voltmeter']: tfm.voltmeter,
                 config.app['hotkeys']['a2a_fuel_flow']: tfm.gph,    
                 config.app['hotkeys']['a2a_fuel_quantity']: tfm.fuel_quantity,
                 config.app['hotkeys']['a2a_tip_tank_left']: tfm.tip_tank_left_toggle,
-                config.app['hotkeys']['a2a_tip_tank_right']: tfm.tip_tank_right_toggle}
+                config.app['hotkeys']['a2a_tip_tank_right']: tfm.tip_tank_right_toggle,
+                config.app['hotkeys']['a2a_window']: tfm.window_toggle,
+                config.app['hotkeys']['a2a_fan']: tfm.fan_toggle,
+                config.app['hotkeys']['a2a_cabin_temp']: tfm.cabin_temp,
+                config.app['hotkeys']['a2a_cabin_heat_inc']: tfm.cabin_heat_inc,
+                config.app['hotkeys']['a2a_cabin_heat_dec']: tfm.cabin_heat_dec,
+                config.app['hotkeys']['a2a_defrost_inc']: tfm.defrost_inc,
+                config.app['hotkeys']['a2a_defrost_dec']: tfm.defrost_dec,
+                config.app['hotkeys']['a2a_command_key']: tfm.exit_command_mode,
+
+                }
 
 
             keyboard_handler.register_keys(keymap)

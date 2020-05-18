@@ -173,6 +173,8 @@ class TFM(threading.Thread):
             'TipTankRightPump': (0x66c2, 'b'), # right tip tank pump
             'TipTanksAvailable': (0x66c4, 'b'), # tip tanks avaiable
             'FuelSelector': (0x66c3, 'b'), # a2a fuel selector
+            'window': (0x66c5, 'b'), # a2a windows
+            'fan': (0x66c6, 'b'), # a2a cabin fan
             'FuelPump': (0x3104, 'b'), # fuel pump
             'lvl_center': (0x0b74, 'u'),
             'cap_center': (0x0b78, 'u'),
@@ -199,6 +201,7 @@ class TFM(threading.Thread):
             'eng3_fuel_flow': (0x0a48, 'f'),
             'eng4_fuel_flow': (0x0ae0, 'f'),
             'EngineSelectFlags': (0x0888, 'b'), # engine select flags
+            'a2a_cabin_heat': (0x66c7, 'b'),
 
 
 
@@ -271,6 +274,13 @@ class TFM(threading.Thread):
         self.old_a2a_ttr = None
         self.old_a2a_tt = None
         self.old_a2a_fsel = None
+        self.old_a2a_window = None
+        self.old_a2a_fan = None
+        self.tfh = None
+        self.adjust_heat = False
+        self.defrost_level = None
+        self.adjust_defrost = False
+
         self.oldTz = 'none' ## variable for storing timezone name
         self.airborne = False
         self.oldWP = None
@@ -402,7 +412,7 @@ class TFM(threading.Thread):
         
         if 'A2A Beechcraft' in self.instr['AircraftName'].decode():
             log.debug("starting A2A Bonanza features")
-            pyglet.clock.schedule_interval(self.read_a2a_info, 1)
+            # pyglet.clock.schedule_interval(self.read_a2a_info, 1)
             # pyglet.clock.schedule_once(self.test_var, 4)
 
 
@@ -1124,6 +1134,7 @@ class TFM(threading.Thread):
         # Get data from simulator
         self.getPyuipcData()
 
+        # self.output (self.instr['test'].decode())
         if self.instr['TextDisplay'] != self.oldInstr['TextDisplay']:
             self.output (self.instr['TextDisplay'].decode())
         # read aircraft name and set up fuel tank info
@@ -1396,7 +1407,14 @@ class TFM(threading.Thread):
                 self.altFlag[i] = True
             elif self.instr['Altitude'] >= i + 100:
                 self.altFlag[i] = False
-        # maintain state of instruments so we can check on the next run.
+        # read Bonanza instruments
+        if 'Bonanza' in self.instr['AircraftName'].decode():
+            self.readToggle('BatterySwitch', "battery", "active", "off")
+            self.readToggle('TipTankLeftPump', 'left tip tank pump', 'active', 'off')
+            self.readToggle('TipTankRightPump', 'right tip tank pump', 'active', 'off')
+            self.readToggle('window', 'window', 'open', 'closed')
+            self.readToggle('fan', 'fan', 'active', 'off')
+            # maintain state of instruments so we can check on the next run.
         self.oldInstr = copy.deepcopy(self.instr)
 
     def readEngTemps(self, dt = 0):
@@ -1444,10 +1462,6 @@ class TFM(threading.Thread):
         ## There are several aircraft functions that are simply on/off toggles. 
         ## This function allows reading those without a bunch of duplicate code.
         try:
-            if instrument == "BatterySwitch":
-                self.output (F"battery {self.instr['BatterySwitch']}")
-
-            
             if self.oldInstr[instrument] != self.instr[instrument]:
                 if self.instr[instrument]:
                     self.output (F'{name} {onMessage}.')
@@ -1804,8 +1818,13 @@ class TFM(threading.Thread):
             fsel = self.instr['FuelSelector']
             self.output (F"fuel selector {fsel_state[fsel]}")
             self.old_a2a_fsel = self.instr['FuelSelector']
-        
-        # self.old_a2a_instr = copy.deepcopy(self.a2a_instr)
+        if self.instr['window'] != self.old_a2a_window:
+            if self.instr['window'] == 1:
+                self.output ("window open")
+            else:
+                self.output ("window closed")
+            self.old_a2a_window = self.instr['window']
+
     def read_a2a_toggle(self, instrument, name, onMessage, offMessage):
         ## There are several aircraft functions that are simply on/off toggles. 
         ## This function allows reading those without a bunch of duplicate code.
@@ -1860,7 +1879,14 @@ class TFM(threading.Thread):
         ammeter = round(self.read_long_var(0x66ec, 'Ammeter1'), 2)
         self.output (F'Ammeter: {ammeter}')
         pub.sendMessage('reset', arg1=True)
-
+    def voltmeter(self):
+        voltmeter = round(self.read_long_var(0x66ec, 'Voltmeter') * 100) / 100
+        self.output (F'Volt meter: {voltmeter}')
+        pub.sendMessage('reset', arg1=True)
+    def cabin_temp(self):
+     temp = round(self.read_long_var(0x66ec, 'CabinTemp'))
+     self.output (F'cabin temperature: {temp}')
+     pub.sendMessage('reset', arg1=True)
     def tip_tank_left_on (self):
         self.write_var('TipTankLeftPumpSwitch', 1)
     def tip_tank_left_off (self):
@@ -1885,5 +1911,86 @@ class TFM(threading.Thread):
             self.tip_tank_right_on()
         pub.sendMessage('reset', arg1=True)
 
-# cabbin heat
+# cabbin heat and ventilation
+    def window_open(self):
+        self.write_var('WindowLeft', 1)
+    def window_close(self):
+        self.write_var('WindowLeft', 0)
+    def window_toggle(self):
+        if self.instr['window']:
+            self.window_close()
+        else:
+            self.window_open()
+        pub.sendMessage('reset', arg1=True)
+    def fan_on(self):
+        self.write_var('VentCabinFanSwitch', 1)
+    def fan_off(self):
+        self.write_var('VentCabinFanSwitch', 0)
 
+        
+    def fan_toggle(self):
+        if self.instr['fan']:
+            self.fan_off()
+        else:
+            self.fan_on()
+        pub.sendMessage('reset', arg1=True)
+    def cabin_heat_inc(self):
+        step = 10
+        if self.adjust_heat == False:
+            result = pyuipc.read([(0x66c7, 'b')])
+            self.tfh = result[0]
+            self.output (F'cabin heat: {self.tfh} percent')
+            self.adjust_heat = True
+            return
+        self.tfh = self.tfh + step
+        if self.tfh > 100:
+            self.tfh = 100
+        self.write_var('CabinTempControl', self.tfh)
+        
+
+    def cabin_heat_dec(self):
+        step = 10
+        if self.adjust_heat == False:
+            result = pyuipc.read([(0x66c7, 'b')])
+            self.tfh = result[0]
+            self.output (F'cabin heat: {self.tfh} percent')
+            self.adjust_heat = True
+            return
+        self.tfh = self.tfh - step
+        if self.tfh < 0:
+            self.tfh = 0
+        self.write_var('CabinTempControl', self.tfh)
+    def defrost_inc(self):
+        step = 10
+        if self.adjust_defrost == False:
+            result = pyuipc.read([(0x66c8, 'b')])
+            self.defrost_level = result[0]
+            self.output (F'windshield defrost: {self.defrost_level} percent')
+            self.adjust_defrost = True
+            return
+        self.defrost_level = self.defrost_level + step
+        if self.defrost_level > 100:
+            self.defrost_level = 100
+        self.write_var('WindowDefrosterControlKnob', self.tfh)
+        
+
+    def defrost_dec(self):
+        step = 10
+        if self.adjust_defrost == False:
+            result = pyuipc.read([(0x66c8, 'b')])
+            self.defrost_level = result[0]
+            self.output (F'windshield defrost: {self.defrost_level} percent')
+            self.adjust_defrost = True
+            return
+        self.defrost_level = self.defrost_level - step
+        if self.defrost_level < 0:
+            self.defrost_level = 0
+        self.write_var('WindowDefrosterControlKnob', self.tfh)
+        
+    
+    def exit_command_mode(self):
+        self.adjust_heat = False
+        self.adjust_defrost = False
+        self.output ("done")
+        pub.sendMessage('reset', arg1=True)
+        
