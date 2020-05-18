@@ -1,0 +1,157 @@
+<h1 id="talking-flight-monitor-tfm">Talking Flight Monitor (TFM)</h1>
+<p>An accessibility layer for Microsoft FSX and Lockhede Martin Prepar3d.</p>
+<h2 id="downloading">downloading</h2>
+<ul>
+<li><a href="https://www.bvipilots.net/files/addons/tfm-setup.exe">download the latest version</a></li>
+</ul>
+<h2 id="features">features</h2>
+<ul>
+<li>reads closest city to the aircraft based on simulator GPS position</li>
+<li>reads many aircraft instruments and switches automatically</li>
+<li>sonification of key aircraft parameters, such as pitch and bank.</li>
+<li>Sonification of flight director to aide in manual flight</li>
+<li>Reads SimConnect message windows, such as the ones displayed by GSX and Pro ATC/x</li>
+<li>reads Radar Contact ATC menus</li>
+<li>allows control of the aircraft autopilot through a simple interface</li>
+<li>provides many hotkeys for querying aircraft instruments on demand</li>
+<li>experimental support for aircraft from A2A Simulations</li>
+</ul>
+<h2 id="requirements">Requirements</h2>
+<p>In order to use this software, you will need either <a href="https://store.steampowered.com/app/314160/Microsoft_Flight_Simulator_X_Steam_Edition/">Microsoft Flight Simulator X</a>, or <a href="https://www.prepar3d.com/">Lockheed Martin Prepar3d</a>.</p>
+<p>In order to read the nearest city to your aircraft, you will need a free <a href="http://www.geonames.org">GeoNames</a> account. Once you create the account, enable web access under your profile.</p>
+<p>You will need the latest version of Pete Dowson’s <a href="http://www.fsuipc.com">FSUIPC module</a>. If you are using Microsoft FSX, you need version 4. Prepar3d requires version 5. You do not need to purchase a registration for Talking Flight Monitor to work.</p>
+<h2 id="quick-start">Quick Start</h2>
+<ul>
+<li>Install Talking Flight Monitor by running the installer you downloaded.</li>
+<li>Start your simulator and start a flight.</li>
+<li>Start Talking Flight Monitor from your desktop.</li>
+<li>The first time it is run, you will be prompted for your Geonames username.</li>
+<li>You should now hear the name of the closest city to your aircraft location.</li>
+</ul>
+<h2 id="configuring-the-program">configuring the program</h2>
+<p>Under the Application pull-down menu, select Settings to bring up the settings dialog. You can configure all aspects of Talking Flight Monitor through this dialog. Here is a brief description of each setting.</p>
+<h3 id="general-tab">General tab</h3>
+<ul>
+<li>Geonames username: This is where you can change your Geonames username</li>
+<li>Use SAPI for speech output: Choose to use either SAPI or your screen reader voice</li>
+<li>SAPI speech rate: adjust the rate of SAPI speech. ange is from 1 to 10.</li>
+<li>Enable flight following: enable reading of closest city to your aircraft</li>
+<li>Enable reading of instrumentation: automatically reads various aircraft instruments.</li>
+<li>Read SimConnect messages: automatically reads in-simulator pop-up messages from various add-ons such as gSX, Pro ATC/X, etc.</li>
+<li>Enable GPWS callouts: Ground proximity warning system. provides audible indication of key altitudes when landing.</li>
+<li>Enable ILS: Reads information related to ILS when landing, such as glide slope and localiser.</li>
+<li>Announce groundspeed while on ground: reads groundspeed while taxiing and before takeoff.</li>
+<li>Use metric measurements: Announce distances in Kilometers. Altitudes will always be in feet.</li>
+</ul>
+<h3 id="timing-tab">Timing tab</h3>
+<p>Adjusts various timing intervals. Options are self-explanitory.</p>
+<h3 id="hotkeys">Hotkeys</h3>
+<p>There are several hotkeys for use when Flight Following is running. The keys are set up as global, so you don’t need to be in the Flight Following window to use them. All hotkeys can be changed from this tab.</p>
+<p>The keys use a layered aproach. First press the command key, which is Right Square Bracket by default. Then press the desired command. The currently available keys are:</p>
+<ul>
+<li>]: enters command mode (use before all other keys)</li>
+<li>numbers 1 through 0: read info for individual fuel tanks</li>
+<li>a: read altitude above sea level (ASL).</li>
+<li>shift+a: toggle GPWS (ground proximity warning system) announcements</li>
+<li>b: fuel burn rate (in pounds per hour)</li>
+<li>c: read nearest city</li>
+<li>d: read distance and time to destination</li>
+<li>f: fuel report</li>
+<li>Shift+f: toggle announcement of flap angle</li>
+<li>Ctrl+F: audible flight director (see below)</li>
+<li>g: read altitude above ground (AGL)</li>
+<li>h: read heading</li>
+<li>Shift+i: toggle reading of ILS info such as localiser and glideslope</li>
+<li>m: mach speed</li>
+<li>Ctrl+m: read pitch and bank angle periodically</li>
+<li>o: read outside ambient temperature</li>
+<li>r: read the last SimConnect message displayed.</li>
+<li>shift+r: mute simconnect messages</li>
+<li>s: read indicated airspeed</li>
+<li>t: read true airspeed</li>
+<li>shift+t: toggle announcement of aircraft trim</li>
+<li>v: vertical speed</li>
+<li>w: read next waypoint</li>
+<li>[ (left bracket): audible aircraft attitude indication (see below)</li>
+<li>shift+p: Toggle announcements of autopilot parameters</li>
+<li>i: read wind information</li>
+<li>control+h: toggle runway guidance mode</li>
+</ul>
+<h2 id="audible-attitude-indications">audible attitude indications</h2>
+<p>Flight Following contains four modes that allow you to hear the pitch and bank of your aircraft.</p>
+<h3 id="attitude-mode">attitude mode</h3>
+<p>In “Attitude mode”, you will hear a constant tone in the center channel to indicate pitch. Pitch down and pitch up are represented by slightly different sounding tones. The higher the tone, the higher your aircraft pitch. Bank is represented by a beeping tone in either the right or left stereo channel to indicate the direction of bank. The higher the tone, the higher your bank angle.</p>
+<h3 id="flight-director-mode">flight director mode</h3>
+<p>In Flight Director mode, the tones are identical to attitude mode, but the tones indicate the direction you need to turn to follow the flight director.</p>
+<h3 id="manual-flight-mode">manual flight mode</h3>
+<p>In Manual Flight mode, the pitch and bank angle are read every few seconds. The interval is adjustable in the settings dialog.</p>
+<h3 id="runway-guidance-mode">runway guidance mode</h3>
+<p>Runway guidance mode is designed to help you hold a constant heading on takeoff or landing. When you turn on runway guidance, the current heading of your aircraft is recorded. You will then hear tones in the left or right stereo channel to let you know if you are going off course.</p>
+<h2 id="controling-autopilot-and-radios">controling autopilot and radios</h2>
+<p>The Talking Flight Monitor window contains several edit fields that allow you to control the aircraft’s autopilot and com radios directly. To change a setting, just type the value you want into the edit box and press Enter.</p>
+<h2 id="experimental-a2a-aircraft-support">experimental A2A aircraft support</h2>
+<p>TFM now contains experimental support for the payware aircraft from A2A Simulations. Initially, the Beachcraft Bonanza is supported, with plans to add support for the C182 Skylane and the Piper Cherokee in the future. You are able to check various aircraft instruments, as well as control a few aircraft systems.</p>
+<h3 id="enabling-a2a-support">enabling A2A support</h3>
+<p>The A2A aircraft support requires a registered version of FSUIPC. To install the A2A support:</p>
+<ol type="1">
+<li>In your TFM install folder, there is a folder called “scripts”. Copy the tfm_bonanza.lua file from this folder into your FSUIPC folder. This should be C:filesMartin3D v4</li>
+<li>Add the following to the end of your FSUIPC5.ini file, which is in the same folder where you placed the lua file. Note that the file is called fsuipc6.ini if you are using fSUIPC 6:</li>
+</ol>
+<pre><code>[Auto.Bonanza]
+1=Lua tfm_bonanza</code></pre>
+<h3 id="hotkeys-1">hotkeys</h3>
+<p>When TFM detects you are running a supported A2A aircraft, the following hotkeys will be enabled. These also follow a similar layered command mode as the rest of TFM. The command key is the left square bracket. Note that these keys are not part of the TFM settings dialog yet. The dialog will be updated once the A2A support is finalized. For now, the keys can be changed by editing the tfm.ini file.</p>
+<ul>
+<li>[: command key</li>
+<li>1: engine cylinder head temperature</li>
+<li>2: engine exhaust gas temperature</li>
+<li>3: engine RPM</li>
+<li>4: oil temperature</li>
+<li>5: oil pressure</li>
+<li>6: manifold pressure</li>
+<li>7: Ammeter</li>
+<li>8: volt meter</li>
+<li>a: toggle cabin air circulation fan</li>
+<li>d: check or increase windshield defroster setting (keep pressing d to adjust by 10 percent increments, press left bracket again when done)</li>
+<li>shift+d: check or decrease windshield defroster setting (keep pressing d to adjust by 10 percent increments, press left bracket again when done)</li>
+<li>f: fuel tank levels</li>
+<li>shift+f: fuel flow</li>
+<li>h: check or increase cabin heat setting (keep pressing h to adjust by 10 percent increments, press left bracket again when done)</li>
+<li>shift+h: check or decrease cabin heat setting (keep pressing shift+h to adjust by 10 percent increments, press left bracket again when done)</li>
+<li>l: toggle left tip tank fuel pump</li>
+<li>r: toggle right tip tank fuel pump</li>
+<li>t: read cabin temperature</li>
+<li>w: open and close cabin window</li>
+</ul>
+<h2 id="running-from-source">Running from Source</h2>
+<ul>
+<li>Get the latest python 3.7 (<a href="https://www.python.org/downloads/">Python releases</a>)</li>
+<li>Install the latest pywin32 release (<a href="https://github.com/mhammond/pywin32/releases">pywin32 releases</a>)
+<ul>
+<li>filename: <code>pywin32-xxx.win32-py3.7.exe</code></li>
+<li>Install with the installer, not using pip!</li>
+</ul></li>
+<li>Run the following in the root of the source directory:</li>
+</ul>
+<pre><code>pip install -r requirements.txt</code></pre>
+<h2 id="building-a-binary-version">Building a Binary Version</h2>
+<p>This requires PyInstaller to be installed. Install it like so:</p>
+<pre><code>pip install pyinstaller</code></pre>
+<p>Once PyInstaller is installed, execute the following from the root of the checkout:</p>
+<pre><code>pyinstaller tfm.spec</code></pre>
+<p>Disregard the warning about UPX not being present.</p>
+<h2 id="bugs-and-issues">Bugs and issues</h2>
+<ul>
+<li>Please report bugs via the github issues tab.</li>
+<li>It is useful to attach the error.log file to any issues.</li>
+</ul>
+<h3 id="known-limitations">Known limitations</h3>
+<ul>
+<li>The city given does not take into account the heading of your aircraft. So, the nearest city may be behind you.</li>
+<li>Offline access is not implemented yet. It may be added in the future.</li>
+</ul>
+<h2 id="contributors-and-credits">contributors and credits</h2>
+<ul>
+<li>Thanks to Tyler Rodick for his assistance with this project. This is my first major coding project, and it’s helpful to have someone fixing my occasional oversight.</li>
+<li>Thanks also to Manuel Cortez, who wrote the keyboard handling code that TFM uses.</li>
+</ul>

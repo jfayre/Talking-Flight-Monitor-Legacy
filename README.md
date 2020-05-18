@@ -3,6 +3,7 @@ An accessibility layer for Microsoft FSX and Lockhede Martin Prepar3d.
 
 ## downloading
 * [download the latest version](https://www.bvipilots.net/files/addons/tfm-setup.exe)
+
 ## features
 * reads closest city to the aircraft based on simulator GPS position
 * reads many  aircraft instruments and switches automatically
@@ -10,8 +11,9 @@ An accessibility layer for Microsoft FSX and Lockhede Martin Prepar3d.
 * Sonification of flight director to aide in manual flight
 * Reads SimConnect message windows, such as the ones displayed by GSX and Pro ATC/x
 * reads Radar Contact ATC menus
-* allows control of the aircraft autopilot through a simple interace
+* allows control of the aircraft autopilot through a simple interface
 * provides many hotkeys for querying aircraft instruments on demand
+* experimental support for aircraft from A2A Simulations
 
 ## Requirements
 In order to use this software, you will need either [Microsoft Flight Simulator X](https://store.steampowered.com/app/314160/Microsoft_Flight_Simulator_X_Steam_Edition/), or [Lockheed Martin Prepar3d](https://www.prepar3d.com/).
@@ -20,14 +22,17 @@ In order to read the nearest city to your aircraft, you will need a free [GeoNam
 
 You will need the latest version of Pete Dowson's [FSUIPC module](http://www.fsuipc.com). If you are using Microsoft FSX, you need version 4. 
 Prepar3d requires version 5. You do not need to purchase a registration for Talking Flight Monitor to work. 
+
 ## Quick Start
 * Install Talking Flight Monitor by running the installer you downloaded.
 * Start your simulator  and start a flight.
 * Start Talking Flight Monitor from your desktop.
 * The first time it is run, you will be prompted for your Geonames username.
 * You should now hear the name of the closest city to your aircraft location.
+
 ## configuring the program
 Under the Application pull-down menu, select Settings to bring up the settings dialog. You can configure all aspects of Talking Flight Monitor through this dialog. Here is a brief description of each setting.
+
 ### General tab
 * Geonames username: This is where you can change your Geonames username
 * Use SAPI for speech output: Choose to use either SAPI or your screen reader voice
@@ -39,6 +44,7 @@ Under the Application pull-down menu, select Settings to bring up the settings d
 * Enable ILS: Reads information related to ILS when landing, such as glide slope and localiser.
 * Announce groundspeed while on ground: reads groundspeed while taxiing and before takeoff.
 * Use metric measurements: Announce distances in Kilometers. Altitudes will always be in feet.
+
 ### Timing tab
 Adjusts various timing intervals. Options are self-explanitory.
 
@@ -47,6 +53,7 @@ There are several hotkeys for use when Flight Following is running. The keys are
 
 The keys use a layered aproach. First press the command key, which is Right Square Bracket by default. Then press the desired command. 
 The currently available keys are:
+
 * ]: enters command mode (use before all other keys)
 * numbers 1 through 0: read info for individual fuel tanks
 * a: read altitude above sea level (ASL).
@@ -78,13 +85,17 @@ The currently available keys are:
 
 ## audible attitude indications
 Flight Following contains four modes that allow you to hear the pitch and bank of your aircraft.
+
 ### attitude mode
 In "Attitude mode", you will hear a constant tone in the center channel to indicate pitch. Pitch down and pitch up are represented by slightly different sounding tones. The higher the tone, the higher your aircraft pitch.
 Bank is represented by a beeping tone in either the right or left stereo channel to indicate the direction of bank. The higher the tone, the higher your bank angle.
+
 ### flight director mode
 In Flight Director mode, the tones are identical to attitude mode, but the tones indicate the direction you need to turn to follow the flight director.
+
 ### manual flight mode
 In Manual Flight mode, the pitch and bank angle are read every few seconds. The interval is adjustable in the settings dialog.
+
 ### runway guidance mode
 Runway guidance mode is designed to help you hold a constant heading on takeoff or landing. When you turn on runway guidance, the current heading of your aircraft is recorded. You will then hear tones in the left or right stereo channel to let you know if you are going off course.
 
@@ -94,18 +105,22 @@ The Talking Flight Monitor window contains several edit fields that allow you to
 ## experimental A2A aircraft support
 TFM now contains experimental support for the payware aircraft from A2A Simulations. Initially, the Beachcraft Bonanza is supported, with plans to add support for the C182 Skylane and the Piper Cherokee in the future.
 You are able to check various aircraft instruments, as well as control a few aircraft systems.
+
 ### enabling A2A support
 The A2A aircraft support requires a registered version of FSUIPC. 
 To install the A2A support:
+
 1. In your TFM install folder, there is a folder called "scripts". Copy the tfm_bonanza.lua file from  this folder into your FSUIPC folder. This should be C:\program files\Lockheed Martin\Prepar3D v4\Modules
 2. Add the following to the end of your FSUIPC5.ini file, which is in the same folder where you placed the lua file. Note that the file is called fsuipc6.ini if you are using fSUIPC 6:
 ```
 [Auto.Bonanza]
 1=Lua tfm_bonanza
 ```
+
 ### hotkeys
 When TFM detects you are running a supported A2A aircraft, the following hotkeys will be enabled. These also follow a similar layered command mode as the rest of TFM. The command key is the left square bracket. 
 Note that these keys are not part of the TFM settings dialog yet. The dialog will be updated once the A2A support is finalized. For now, the keys can be changed by editing the tfm.ini file.
+
 * [: command key
 * 1: engine cylinder head temperature
 * 2: engine exhaust gas temperature
