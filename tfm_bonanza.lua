@@ -26,6 +26,7 @@ function heat(varname, value)
 end
 function defrost (varname, value)
     ipc.writeUB(0x66c8, value)
+end
 event.Lvar("Battery1Switch",1000,"battery")
 event.Lvar("TipTankLeftPumpSwitch", 1000, "tt_left_pump")
 event.Lvar("TipTankRightPumpSwitch", 1000, "tt_right_pump")

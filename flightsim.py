@@ -1971,7 +1971,7 @@ class TFM(threading.Thread):
         self.defrost_level = self.defrost_level + step
         if self.defrost_level > 100:
             self.defrost_level = 100
-        self.write_var('WindowDefrosterControlKnob', self.tfh)
+        self.write_var('WindowDefrosterControlKnob', self.defrost_level)
         
 
     def defrost_dec(self):
@@ -1985,7 +1985,7 @@ class TFM(threading.Thread):
         self.defrost_level = self.defrost_level - step
         if self.defrost_level < 0:
             self.defrost_level = 0
-        self.write_var('WindowDefrosterControlKnob', self.tfh)
+        self.write_var('WindowDefrosterControlKnob', self.defrost_level)
         
     
     def exit_command_mode(self):
