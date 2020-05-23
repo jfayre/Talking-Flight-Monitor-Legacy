@@ -60,6 +60,8 @@ from keyboard_handler.wx_handler import WXKeyboardHandler
 import queue
 import flightsim
 import settings
+import a2a_fuel
+
 # import pyglet
 import threading
 from accessible_output2.outputs import sapi5
@@ -182,6 +184,7 @@ def a2a_command_mode():
                 config.app['hotkeys']['a2a_tip_tank_right']: tfm.tip_tank_right_toggle,
                 config.app['hotkeys']['a2a_window']: tfm.window_toggle,
                 config.app['hotkeys']['a2a_fan']: tfm.fan_toggle,
+                config.app['hotkeys']['a2a_fan_speed']: tfm.fan_speed,
                 config.app['hotkeys']['a2a_cabin_temp']: tfm.cabin_temp,
                 config.app['hotkeys']['a2a_cabin_heat_inc']: tfm.cabin_heat_inc,
                 config.app['hotkeys']['a2a_cabin_heat_dec']: tfm.cabin_heat_dec,
@@ -197,6 +200,7 @@ def a2a_command_mode():
             output.speak ("not available")
     except Exception as e:
         log.exception("error in a2a command mode")
+
 class Form(wx.Panel):
     ''' The Form class is a wx.Panel that creates a bunch of controls
         and handlers for callbacks. Doing the layout of the controls is 
@@ -211,8 +215,8 @@ class Form(wx.Panel):
 
     def createControls(self):
         self.logger = wx.TextCtrl(self, style=wx.TE_MULTILINE|wx.TE_READONLY)
-        sys.stdout = self.logger
-        sys.stderr = self.logger
+        #sys.stdout = self.logger
+        #sys.stderr = self.logger
         self.hdg_label = wx.StaticText(self, label='heading:')
         self.hdg_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         self.alt_label = wx.StaticText(self, label='Altitude:')
@@ -333,6 +337,9 @@ class TFMFrame(wx.Frame):
         app_menu = wx.Menu()
         app_settings = app_menu.Append(wx.ID_ANY, "&Settings")
         app_exit = app_menu.Append (wx.ID_EXIT,"E&xit"," Terminate the program")
+        # aircraft menu
+        aircraft_menu = wx.Menu()
+        aircraft_fuel = aircraft_menu.Append(wx.ID_ANY, "A2A &fuel manager")
         # help menu
         help_menu = wx.Menu()
         help_website = help_menu.Append(wx.ID_ANY, "visit &website")
@@ -341,11 +348,13 @@ class TFMFrame(wx.Frame):
         # set up the menu bar
         menu_bar = wx.MenuBar()
         menu_bar.Append(app_menu, '&Application')
+        menu_bar.Append(aircraft_menu, 'A&ircraft')
         menu_bar.Append(help_menu, '&Help')
         self.SetMenuBar(menu_bar)  # Adding the MenuBar to the Frame content.
         # bind menu events
         self.Bind(wx.EVT_MENU, self.onSettings, app_settings)
         self.Bind(wx.EVT_MENU, self.onExit, app_exit)
+        self.Bind(wx.EVT_MENU, self.onFuel, aircraft_fuel)
         self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
         self.Bind(wx.EVT_MENU, self.onAbout, help_about)
         self.Bind(wx.EVT_MENU, self.onIssue, help_issue)
@@ -363,6 +372,22 @@ class TFMFrame(wx.Frame):
  
     def onExit(self, event):
         self.Close()
+    def onFuel(self, event):
+        if 'Bonanza' in tfm.instr['AircraftName'].decode():
+            dlg = a2a_fuel.fuelControllerBonanza()
+            wl = dlg.dialog.get_value("fuel", "wing_left")
+            wr = dlg.dialog.get_value("fuel", "wing_right")
+            tl = dlg.dialog.get_value("fuel", "tip_left")
+            tr = dlg.dialog.get_value("fuel", "tip_right")
+            if dlg.response == widgetUtils.OK:
+                if wl != "":
+                    tfm.write_var("FuelLeftWingTank", int(wl))
+                if wr != "":
+                    tfm.write_var("FuelRightWingTank", int(wr))
+                if tl != "":
+                    tfm.write_var("FuelLeftTipTank", int(tl))
+                if tr != "":
+                    tfm.write_var("FuelRightTipTank", int(tr))
 
     def onAbout(self, event):
         info = wx.adv.AboutDialogInfo()
@@ -401,8 +426,8 @@ def setup_speech():
     sapi_output.set_rate(voice_rate)
 
     if config.app['config']['use_sapi']:
-        output = sapi5.SAPI5()
         output.set_rate(config.app['config']['voice_rate'])
+        output = sapi5.SAPI5()
     else:
         output = auto.Auto()
     geonames_username = config.app['config']['geonames_username']

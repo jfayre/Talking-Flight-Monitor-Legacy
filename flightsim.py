@@ -1748,15 +1748,15 @@ class TFM(threading.Thread):
             log.exception("error reading from simulator. This could be normal. Exiting.")
             pub.sendMessage("exit", msg="")
     ## a2a functions
-    def read_binary_var(self, offset, param, var):
+    def read_binary_var(self, offset, var):
         # read a l:var from the simulator
+        param = hex(offset + 0x70000)
+        
         var_name = var
         var = ":" + var
-        pyuipc.write([(0x0d6c, 'u', param), (0x0d70, -40, var.encode())])
-        result = pyuipc.read([(offset, 'b')])
-        self.a2a_instr[var_name] = result[0]
+        pyuipc.write([(0x0d6c, 'u', offset + 0x70000), (0x0d70, -40, var.encode())])
+        result = pyuipc.read([(offset, 'F')])
         return result[0]
-
 
     def read_long_var(self, offset, var):
         # read a l:var from the simulator
@@ -1924,6 +1924,9 @@ class TFM(threading.Thread):
         pub.sendMessage('reset', arg1=True)
     def fan_on(self):
         self.write_var('VentCabinFanSwitch', 1)
+        time.sleep(3)
+        self.write_var("FluidClick", 1)
+
     def fan_off(self):
         self.write_var('VentCabinFanSwitch', 0)
 
@@ -1934,6 +1937,15 @@ class TFM(threading.Thread):
         else:
             self.fan_on()
         pub.sendMessage('reset', arg1=True)
+    def fan_speed(self):
+        spd = self.read_long_var(0x66c8, "VentCabinOverheadFreshAirControl")
+        spd += 1
+        if spd > 4:
+            spd = 0
+        spd = int(spd)
+        self.write_var("VentCabinOverheadFreshAirControl", spd)
+
+
     def cabin_heat_inc(self):
         step = 10
         if self.adjust_heat == False:

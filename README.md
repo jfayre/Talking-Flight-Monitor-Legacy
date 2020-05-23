@@ -49,7 +49,7 @@ Under the Application pull-down menu, select Settings to bring up the settings d
 Adjusts various timing intervals. Options are self-explanitory.
 
 ### Hotkeys
-There are several hotkeys for use when Flight Following is running. The keys are set up as global, so you don't need to be in the Flight Following window to use them. All hotkeys can be changed from this tab.
+There are several hotkeys for use when Talking Flight Monitor is running. The keys are set up as global, so you don't need to be in the program window to use them. All hotkeys can be changed from this tab.
 
 The keys use a layered aproach. First press the command key, which is Right Square Bracket by default. Then press the desired command. 
 The currently available keys are:
