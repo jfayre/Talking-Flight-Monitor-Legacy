@@ -1219,6 +1219,7 @@ class TFM(threading.Thread):
             self.readToggle('BatterySwitch', "battery", "active", "off")
             self.readToggle('TipTankLeftPump', 'left tip tank pump', 'active', 'off')
             self.readToggle('TipTankRightPump', 'right tip tank pump', 'active', 'off')
+            self.readToggle('TipTanksAvailable', 'tip tanks', 'installed', 'not installed')
             self.readToggle('window', 'window', 'open', 'closed')
             self.readToggle('fan', 'fan', 'active', 'off')
             # fuel selector
@@ -1589,8 +1590,8 @@ class TFM(threading.Thread):
 
     def write_var(self, var, value):
         var = "::" + var
-        pyuipc.write([(0x66f0, 'b', value)])
-        pyuipc.write([(0x0d6c, 'u', 0x766f0),
+        pyuipc.write([(0x66f0, 'F', value)])
+        pyuipc.write([(0x0d6c, 'u', 0x166f0),
             (0x0d70, -40, var.encode()),
             
         ])
@@ -1601,7 +1602,6 @@ class TFM(threading.Thread):
 
     def macro(self, macro):
         # execute an FSUIPC macro 
-        print (macro)
         pyuipc.write([(0x0d70, -40, macro.encode())])
 
     def read_a2a_info (self, dt=0):
@@ -1673,6 +1673,10 @@ class TFM(threading.Thread):
         self.output (F'right tip: {tip_tank_right} gallons')
         pub.sendMessage('reset', arg1=True)
 
+    def oil_quantity(self):
+        oil = round(self.read_long_var(0x66e4, 'Eng1_OilQuantity'), 1)
+        self.output (F'Oil quantity: {oil} gallons, {oil * 4} quarts. ')
+        pub.sendMessage('reset', arg1=True)
     def cht (self):
         cht = round(self.read_long_var(0x66e8, 'Eng1_CHT'))
         self.output (F'CHT: {cht}')
@@ -1709,6 +1713,14 @@ class TFM(threading.Thread):
      temp = round(self.read_long_var(0x66ec, 'CabinTemp'))
      self.output (F'cabin temperature: {temp}')
      pub.sendMessage('reset', arg1=True)
+    def toggle_tip_tank(self):
+        # install or remove tip tanks on bonanza aircraft
+        if fsdata.instr['TipTanksAvailable']:
+            self.write_var("TipTank", 0.0)
+        else:
+            self.write_var("TipTank", 1.0)
+        self.write_var("EquipmentChangeClickSound", 1.0)
+        pub.sendMessage('reset', arg1=True)
     def tip_tank_left_on (self):
         self.write_var('TipTankLeftPumpSwitch', 1)
     def tip_tank_left_off (self):
@@ -1732,7 +1744,9 @@ class TFM(threading.Thread):
         else:
             self.tip_tank_right_on()
         pub.sendMessage('reset', arg1=True)
-
+    def fuel_selector(self):
+        self.macro("bonanza:L:FSelBonanzaState")
+        pub.sendMessage('reset', arg1=True)
 # cabbin heat and ventilation
     def window_open(self):
         self.write_var('WindowLeft', 1)

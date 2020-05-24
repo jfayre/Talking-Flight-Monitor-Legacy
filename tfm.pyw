@@ -180,6 +180,7 @@ def a2a_command_mode():
                 config.app['hotkeys']['a2a_voltmeter']: tfm.voltmeter,
                 config.app['hotkeys']['a2a_fuel_flow']: tfm.gph,    
                 config.app['hotkeys']['a2a_fuel_quantity']: tfm.fuel_quantity,
+                config.app['hotkeys']['a2a_oil_quantity']: tfm.oil_quantity,
                 config.app['hotkeys']['a2a_tip_tank_left']: tfm.tip_tank_left_toggle,
                 config.app['hotkeys']['a2a_tip_tank_right']: tfm.tip_tank_right_toggle,
                 config.app['hotkeys']['a2a_window']: tfm.window_toggle,
@@ -191,6 +192,8 @@ def a2a_command_mode():
                 config.app['hotkeys']['a2a_defrost_inc']: tfm.defrost_inc,
                 config.app['hotkeys']['a2a_defrost_dec']: tfm.defrost_dec,
                 config.app['hotkeys']['a2a_command_key']: tfm.exit_command_mode,
+                config.app['hotkeys']['a2a_fsel']: tfm.fuel_selector,
+                config.app['hotkeys']['a2a_tip_tank']: tfm.toggle_tip_tank,
 
                 }
 
@@ -377,17 +380,23 @@ class TFMFrame(wx.Frame):
             dlg = a2a_fuel.fuelControllerBonanza()
             wl = dlg.dialog.get_value("fuel", "wing_left")
             wr = dlg.dialog.get_value("fuel", "wing_right")
-            tl = dlg.dialog.get_value("fuel", "tip_left")
-            tr = dlg.dialog.get_value("fuel", "tip_right")
+            oil = dlg.dialog.get_value("fuel", "oil_quantity")
             if dlg.response == widgetUtils.OK:
                 if wl != "":
-                    tfm.write_var("FuelLeftWingTank", int(wl))
+                    tfm.write_var("FuelLeftWingTank", float(wl))
                 if wr != "":
-                    tfm.write_var("FuelRightWingTank", int(wr))
-                if tl != "":
-                    tfm.write_var("FuelLeftTipTank", int(tl))
-                if tr != "":
-                    tfm.write_var("FuelRightTipTank", int(tr))
+                    tfm.write_var("FuelRightWingTank", float(wr))
+                if fsdata.instr['TipTanksAvailable']:
+                    tl = dlg.dialog.get_value("fuel", "tip_left")
+                    tr = dlg.dialog.get_value("fuel", "tip_right")
+                    if tl != "":
+                        tfm.write_var("FuelLeftTipTank", float(tl))
+                    if tr != "":
+                        tfm.write_var("FuelRightTipTank", float(tr))
+                if oil != "":
+                    tfm.write_var("Eng1_OilQuantity", float(oil))
+                    tfm.write_var("SystemCondSelectFSX", 46.0)
+                    tfm.write_var("SystemCondValueFSX", float(oil))
 
     def onAbout(self, event):
         info = wx.adv.AboutDialogInfo()
