@@ -17,7 +17,7 @@ from aviationFormula.aviationFormula import calcBearing
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
 from pubsub import pub
-
+import fsdata
 import application
 import config
 import pyuipc
@@ -40,199 +40,6 @@ class tank:
 
 ## Main Class of tfm.
 class TFM(threading.Thread):
-#  - b: a 1-byte unsigned value, to be converted into a Python int
-#  - c: a 1-byte signed value, to be converted into a Python int
-#  - h: a 2-byte signed value, to be converted into a Python int
-#  - H: a 2-byte unsigned value, to be converted into a Python int
-#  - d: a 4-byte signed value, to be converted into a Python int
-#  - u: a 4-byte unsigned value, to be converted into a Python long
-#  - l: an 8-byte signed value, to be converted into a Python long
-#  - L: an 8-byte unsigned value, to be converted into a Python long
-#  - f: an 8-byte floating point value, to be converted into a Python double
-# main offsets for reading instrumentation.
-    InstrOffsets = {'Com1Freq': (0x034E,'H'),	# com1freq
-            'Com2Freq': (0x3118,'H'),	# com2freq
-            'RadioActive': (0x3122,'b'),	# radioActive
-            'Lat': (0x0560,'l'),	# ac Latitude
-            'Long': (0x0568,'l'),	# ac Longitude
-            'Flaps': (0x30f0,'h'),	# flaps angle
-            'OnGround': (0x0366,'h'),	# on ground flag: 0 = airborne
-            'ParkingBrake': (0x0bc8,'h'),	# parking Brake: 0 off, 32767 on
-            'Gear': (0x0be8, 'u'), # Gear control: 0=Up, 16383=Down
-            'Altitude': (0x3324,'d'),	#altitude in feet or meters
-            'GroundAltitude': (0x0020,'u'),	# ground altitude x 256
-            'SpoilersArm': (0x0bcc,'u'),	# spoilers armed: 0 - off, 1 - armed
-            'Spoilers': (0x0bd0, 'u'), # Spoilers control, 0 off, 4800 arm, then 5620 (7%) to 16383 (100% fully deployed).
-            'AvionicsMaster': (0x2e80, 'u'), # Avionics master switch
-            'ApMaster': (0x07bc,'u'), # AP master switch
-            'ApNavLock': (0x07c4,'u'), # AP Nav1 lock
-            'ApHeadingLock': (0x07c8,'u'), # AP heading lock
-            'ApHeading': (0x07cc,'H'), # Autopilot heading value, as degrees*65536/360
-            'ApAltitudeLock': (0x07d0,'u'), # AP Altitude lock
-            'ApAltitude': (0x07d4,'u'), # Autopilot altitude value, as metres*65536
-            'ApSpeedHold': (0x07dc,'u'), # AP airspeed hold
-            'ApMachHold': (0x07e4, 'u'), # autopilot mach hold
-            'ApAirspeed': (0x07e2,'h'), # AP airspeed in knots
-            'ApMach': (0x07e8, 'u'), # Autopilot mach value, as Mach*65536
-            'ApVerticalSpeedHold': (0x07ec, 'u'), # autopilot vertical speed hold
-            'ApVerticalSpeed': (0x07f2, 'h'), # autopilot vertical speed
-            'ApNavGPS': (0x132c,'u'), # nav gps switch: 0 - nav, 1 - GPS
-            'ApApproachHold': (0x0800, 'u'), # autopilot approach hold
-            'ApFlightDirector': (0x2ee0,'u'), # Flight director: 0 - off, 1 - on
-            'ApFlightDirectorPitch': (0x2ee8, 'f'), # flight director pitch
-            'ApFlightDirectorBank': (0x2ef0, 'f'), # flight director bank value in degrees. Right negative, left positive
-            'ApAttitudeHold': (0x07d8,'u'), # auto-pilot attitude hold switch
-            'ApWingLeveler': (0x07c0, 'u'), # auto-pilot wing leveler switch
-            'PropSync': (0x243c, 'u'), # propeller sync
-            'ApAutoRudder': (0x0278, 'h'), # auto-rudder switch
-            'BatteryMaster': (0x281c, 'u'), # battery master swtich
-            'Heading': (0x0580,'u'), # Heading, *360/(65536*65536) for degrees TRUE.[Can be set in slew or pause states]
-            'MagneticVariation': (0x02a0,'h'), # Magnetic variation (signed, –ve = West). For degrees *360/65536. Convert True headings to Magnetic by subtracting this value, Magnetic headings to True by adding this value.
-            'Transponder': (0x0354,'H'), # transponder in BCD format
-            'CompassHeading': (0x2b00, 'f'), # Gyro compass heading (magnetic), including any drift. 
-            'NextWPDistance': (0x6048,'f'), # distance to next waypoint
-            'NextWPId': (0x60a4,-6), # next waypoint string
-            'NextWPETE': (0x60e4,'u'), # time enroute to next waypoint in seconds
-            'AutoBrake': (0x2f80,'b'), # Panel autobrake switch: 0=RTO, 1=Off, 2=brake1, 3=brake2, 4=brake3, 5=max
-            'AirspeedTrue': (0x02b8,'u'), # TAS: True Air Speed, as knots * 128
-            'AirspeedIndicated': (0x02bc,'u'), # IAS: Indicated Air Speed, as knots * 128
-            'GroundSpeed': (0x02b4, 'u'), # GS: Ground Speed, as 65536*metres/sec. Not updated in Slew mode!
-            'ApYawDamper': (0x0808,'u'), # Yaw damper
-            'Toga': (0x080c,'u'), # autothrottle TOGA
-            'AutoThrottleArm': (0x0810,'u'), # Auto throttle arm
-            'AutoFeather': (0x2438, 'u'), # Auto Feather switch
-            'AirspeedMach': (0x11c6,'h'), # Mach speed *20480
-            'NextWPETA': (0x60e8,'u'), # next waypoint ETA in seconds (localtime)
-            'NextWPBaring': (0x6050,'f'), # magnetic baring to next waypoint in radions
-            'DestAirportId': (0x6137,-5), # destination airport ID string
-            'DestETE': (0x6198,'u'), # time enroute to destination in seconds
-            'DestETA': (0x619c,'u'), # Destination ETA in seconds (localtime)
-            'RouteDistance': (0x61a0,'f'), # route total distance in meters
-            'FuelBurn': (0x61a8,'f'), # estimated fuel burn in gallons
-            'FuelQuantity': (0x126c, 'u'), # Fuel: total quantity weight in pounds (32-bit integer)
-            'ElevatorTrim': (0x2ea0, 'f'), # elevator trim deflection in radions
-            'VerticalSpeed': (0x0842, 'h'), # 2 byte Vertical speed in metres per minute, but with –ve for UP, +ve for DOWN. Multiply by 3.28084 and reverse the sign for the normal fpm measure.
-            'AirTemp': (0x0e8c, 'h'), # Outside air temp Outside Air Temperature (OAT), degrees C * 256 (“Ambient Temperature
-            'Nav1GS': (0x0c4c, 'b'), # nav 1 GS alive flag
-            'Nav1Flags': (0x0c4d, 'b'), # nav 1 code flags
-            'Nav1Signal': (0x0c52, 'u'), # Nav 1 signal strength
-            'Nav1LocNeedle': (0x0c48, 'c'), # nav 1 localiser needle: -127 left to 127 right
-            'Nav1GSNeedle': (0x0c49, 'c'), # Nav1 glideslope needle: -119 up to 119 down
-            'Altimeter': (0x0330, 'H'), # Altimeter pressure setting (“Kollsman” window). As millibars (hectoPascals) * 16
-            'Doors': (0x3367, 'b'), # byte indicating open exits. One bit per door.
-            'APUGenerator': (0x0b51, 'b'), # apu generator switch
-            'APUGeneratorActive': (0x0b52, 'b'), # apu generator active flag
-            'APUPercentage': (0x0b54, 'F'), # APU rpm percentage
-            'APUVoltage': (0x0b5c, 'F'), # apu generator voltage
-            'Eng1RPM': (0x2400, 'f'), # engine 1 rpm
-            'Eng1Starter': (0x3b00, 'u'), # engine 1 starter
-            'Eng2Starter': (0x3a40, 'u'), # engine 2 starter
-            'Eng3Starter': (0x3980, 'u'), # engine 3 starter
-            'Eng4Starter': (0x38c0, 'u'), # engine 4 starter
-            'Eng1FuelFlow': (0x2060, 'f'), # Engine 1 fuel flow in pounds per hour
-            'Eng2FuelFlow': (0x2160, 'f'), # Engine 2 fuel flow in pounds per hour
-            'Eng3FuelFlow': (0x2260, 'f'), # Engine 3 fuel flow in pounds per hour
-            'Eng4FuelFlow': (0x2360, 'f'), # Engine 1 fuel flow in pounds per hour
-            'Eng1N1': (0x2010, 'f'), # Engine 1 n1 value
-            'Eng4Generator': (0x393c, 'u'), # Engine 4 generator
-            'Eng3Generator': (0x39fc, 'u'),  # Engine 3 generator
-            'Eng2Generator': (0x3abc, 'u'), # Engine 2 Generator
-            'Eng1Generator': (0x3b7c, 'u'),  # Engine 1 generator
-            'Eng1N2': (0x2018, 'f'), # Engine 1 N2 value
-            'Eng2N1': (0x2110, 'f'), # Engine 2 N1 value
-            'Eng2N2': (0x2118, 'f'), # Engine 2 N2 value
-            'Eng3N1': (0x2210, 'f'), # Engine 3 N1 value
-            'Eng3N2': (0x2218, 'f'), # Engine 3 N2 value
-            'Eng4N1': (0x2310, 'f'), # Engine 4 N1 value
-            'Eng4N2': (0x2318, 'f'), # Engine 4 N2 value
-            'Eng1Combustion': (0x0894, 'H'), # Engine 1 ignition flag
-            'Eng2Combustion': (0x092c, 'H'), # Engine 2 ignition flag
-            'Eng3Combustion': (0x09c4, 'H'), # Engine 3 ignition flag
-            'Eng4Combustion': (0x0a5c, 'H'), # Engine 4 ignition flag
-            'Eng1ITT': (0x08f0, 'u'), # Engine 1 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
-            'Eng2ITT': (0x0988, 'u'), # Engine 2 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
-            'Eng3ITT': (0x0a20, 'u'), # Engine 3 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
-            'Eng4ITT': (0x0ab8, 'u'), # Engine 4 Turbine temperature: degree C *16384 (Helos?) (Turbine engine ITT)
-            'Eng1FuelValve': (0x3590, 'u'), # engine 1 fuel valve
-            'Eng2FuelValve': (0x3594, 'u'), # engine 2 fuel valve
-            'Eng3FuelValve': (0x3598, 'u'), # engine 3 fuel valve
-            'Eng4FuelValve': (0x359c, 'u'), # engine 4 fuel valve
-
-
-            'PitotHeat': (0x029c, 'b'), # pitot heat switch
-            'Lights1': (0x0d0c, 'b'), # lights
-            'Lights': (0x0d0d, 'b'), # lights
-            'WindSpeed': (0x0e90, 'H'), # Ambient wind speed in knots
-            'WindDirection': (0x0e92, 'H'), # Ambient wind direction (at aircraft), *360/65536 to get degrees True.
-            'WindGust': (0x0e94, 'H'), # At aircraft altitude: wind gusting value: max speed in knots, or 0 if no gusts
-            'RadioAltimeter': (0x31e4, 'u'), # Radio altitude in metres * 65536
-            'AircraftName': (0x3d00, -255), # aircraft name
-            'TextDisplay': (0x3380, -128), # FSUIPC text display
-            "BatterySwitch": (0x66c0, 'b'), # a2a battery switch
-            'TipTankLeftPump': (0x66c1, 'b'), # left tip tank pump
-            'TipTankRightPump': (0x66c2, 'b'), # right tip tank pump
-            'TipTanksAvailable': (0x66c4, 'b'), # tip tanks avaiable
-            'FuelSelector': (0x66c3, 'b'), # a2a fuel selector
-            'window': (0x66c5, 'b'), # a2a windows
-            'fan': (0x66c6, 'b'), # a2a cabin fan
-            'FuelPump': (0x3104, 'b'), # fuel pump
-            'lvl_center': (0x0b74, 'u'),
-            'cap_center': (0x0b78, 'u'),
-            'lvl_center2': (0x1244, 'u'),
-            'cap_center2': (0x1248, 'u'),
-            'lvl_center3': (0x124c, 'u'),
-            'cap_center3': (0x1250, 'u'),
-            'lvl_main_left': (0x0b7c, 'u'),
-            'cap_main_left': (0x0b80, 'u'),
-            'lvl_aux_left': (0x0b84, 'u'),
-            'cap_aux_left': (0x0b88, 'u'),
-            'lvl_tip_left': (0x0b8c, 'u'),
-            'cap_tip_left': (0x0b90, 'u'),
-            'lvl_main_right': (0x0b94, 'u'),
-            'cap_main_right': (0x0b98, 'u'),
-            'lvl_aux_right': (0x0b9c, 'u'),
-            'cap_aux_right': (0x0ba0, 'u'),
-            'lvl_tip_right': (0x0ba4, 'u'),
-            'cap_tip_right': (0x0ba8, 'u'),
-            'fuel_weight': (0x0af4, 'H'),
-            'num_engines': (0x0aec, 'H'),
-            'eng1_fuel_flow': (0x0918, 'f'),
-            'eng2_fuel_flow': (0x09b0, 'f'),
-            'eng3_fuel_flow': (0x0a48, 'f'),
-            'eng4_fuel_flow': (0x0ae0, 'f'),
-            'EngineSelectFlags': (0x0888, 'b'), # engine select flags
-            'a2a_cabin_heat': (0x66c7, 'b'),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    }
-
-# Offsets for SimConnect messages.
-    SimCOffsets = {'SimCChanged': (0xb000,'u'), # changed indicator (4 bytes)
-        'SimCType': (0xb004,'u'), # type value (4 bytes)
-        'SimCDuration': (0xb008,'u'), # display duration in secs (4 bytes)
-        'SimCEvent': (0xb00c,'u'), # SimConnect event ID (4 bytes)
-        'SimCLength': (0xb010,'u'), # length of data received (4 bytes)
-        'SimCData': (0xb014,2028), # text data (<= 2028 bytes)
-    }
-    # attitude indication offsets, since we need fast access to these
-    AttitudeOffsets = {'Pitch': (0x0578,'d'), # Pitch, *360/(65536*65536) for degrees. 0=level, –ve=pitch up, +ve=pitch down[Can be set in slew or pause states]
-        'Bank': (0x057c,'d'), # Bank, *360/(65536*65536) for degrees. 0=level, –ve=bank right, +ve=bank left[Can be set in slew or pause states]
-
-
-    }
     ## Setup the tfm object.
     def __init__(self,queue, sapi_queue):
         # global keyboard_handler
@@ -252,11 +59,11 @@ class TFM(threading.Thread):
                 log.debug("opening FSUIPC connection")
                 self.pyuipcConnection = pyuipc.open(0)
                 log.debug("preparing main offsets")
-                self.pyuipcOffsets = pyuipc.prepare_data(list(self.InstrOffsets.values()))
+                self.pyuipcOffsets = pyuipc.prepare_data(list(fsdata.InstrOffsets.values()))
                 log.debug("preparing simconnect offsets")
-                self.pyuipcSIMC = pyuipc.prepare_data(list (self.SimCOffsets.values()))
+                self.pyuipcSIMC = pyuipc.prepare_data(list (fsdata.SimCOffsets.values()))
                 log.debug("preparing attitude mode offsets")
-                self.pyuipcAttitude = pyuipc.prepare_data(list (self.AttitudeOffsets.values()))
+                self.pyuipcAttitude = pyuipc.prepare_data(list (fsdata.AttitudeOffsets.values()))
                 self.pyuipcRadioAlt = pyuipc.prepare_data ([(0x31e4, 'u')])
                 
                 break
@@ -406,11 +213,11 @@ class TFM(threading.Thread):
         # initially read simulator data so we can populate instrument dictionaries
         self.getPyuipcData()
         
-        self.oldInstr = copy.deepcopy(self.instr)
+        self.oldInstr = copy.deepcopy(fsdata.instr)
         # Start closest city loop if enabled.
         pub.subscribe(self.set_triggered, "triggered")
-        
-        if 'A2A Beechcraft' in self.instr['AircraftName'].decode():
+        pub.subscribe (self.tip_tank_left_toggle, "ttl")
+        if 'A2A Beechcraft' in fsdata.instr['AircraftName'].decode():
             log.debug("starting A2A Bonanza features")
             # pyglet.clock.schedule_interval(self.read_a2a_info, 1)
             # pyglet.clock.schedule_once(self.test_var, 4)
@@ -420,7 +227,7 @@ class TFM(threading.Thread):
             log.debug("scheduling flight following function")
             pyglet.clock.schedule_interval(self.AnnounceInfo, self.FFInterval * 60)
         # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
-        if self.InstrEnabled:
+        if fsdata.instrEnabled:
             log.debug('scheduling instrumentation')
             pyglet.clock.schedule_interval(self.readInstruments, 1)
         else:
@@ -471,9 +278,9 @@ class TFM(threading.Thread):
                 self.FFEnabled = False
                 self.output('Flight Following  announcements disabled.')
             if config.app['config']['read_instrumentation']:
-                self.InstrEnabled = True
+                fsdata.instrEnabled = True
             else:
-                self.InstrEnabled = False
+                fsdata.instrEnabled = False
                 self.output('instrumentation disabled.')
             if config.app['config']['read_simconnect']:
                 self.SimCEnabled = True
@@ -516,19 +323,19 @@ class TFM(threading.Thread):
             log.exception (F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
     def set_speed(self, speed):
         # set the autopilot airspeed
-        offset, type = self.InstrOffsets['ApAirspeed']
+        offset, type = fsdata.instrOffsets['ApAirspeed']
         data = [(offset, type, int(speed))]
         pyuipc.write(data)
     def set_heading(self, heading):
         # set the auto pilot heading
-        offset, type = self.InstrOffsets['ApHeading']
+        offset, type = fsdata.instrOffsets['ApHeading']
         # convert the supplied heading into the proper FSUIPC format (degrees*65536/360)
         heading = int(heading)
         heading = int(heading * 65536 / 360)
         data = [(offset, type, heading)]
         pyuipc.write(data)
     def set_altitude(self, altitude):
-        offset, type = self.InstrOffsets['ApAltitude']
+        offset, type = fsdata.instrOffsets['ApAltitude']
         # convert the supplied altitude into the proper FSUIPC format.
         #  FSUIPC needs the altitude as metres*65536
         altitude =int(altitude)
@@ -537,7 +344,7 @@ class TFM(threading.Thread):
         pyuipc.write(data)
     def set_mach(self, mach):
         # set mach speed
-        offset, type = self.InstrOffsets['ApMach']
+        offset, type = fsdata.instrOffsets['ApMach']
         # convert the supplied mach value into the proper FSUIPC format.
         #  FSUIPC needs the mach multiplied by 65536
         mach = float(mach) * 65536
@@ -547,18 +354,18 @@ class TFM(threading.Thread):
         pyuipc.write(data)
     def set_vspeed(self, vspeed):
         # set the autopilot vertical speed
-        offset, type = self.InstrOffsets['ApVerticalSpeed']
+        offset, type = fsdata.instrOffsets['ApVerticalSpeed']
         data = [(offset, type, int(vspeed))]
         pyuipc.write(data)
 
     def set_transponder(self, transponder):
         # set the transponder
-        offset, type = self.InstrOffsets['Transponder']
+        offset, type = fsdata.instrOffsets['Transponder']
         data = [(offset, type, int(transponder, 16))]
         pyuipc.write(data)
     def set_com1(self, com1):
         # set com 1 frequency
-        offset, type = self.InstrOffsets['Com1Freq']
+        offset, type = fsdata.instrOffsets['Com1Freq']
         freq = float(com1) * 100
         freq = int(freq) - 10000
         freq = F"{freq}"
@@ -566,7 +373,7 @@ class TFM(threading.Thread):
         pyuipc.write(data)
     def set_com2(self, com2):
         # set com 1 frequency
-        offset, type = self.InstrOffsets['Com2Freq']
+        offset, type = fsdata.instrOffsets['Com2Freq']
         freq = float(com2) * 100
         freq = int(freq) - 10000
         freq = F"{freq}"
@@ -575,13 +382,13 @@ class TFM(threading.Thread):
 
     
     def set_qnh(self, qnh):
-        offset, type = self.InstrOffsets['Altimeter']
+        offset, type = fsdata.instrOffsets['Altimeter']
         qnh = int(qnh) * 16
         data = [(offset, type, qnh)]
         pyuipc.write(data)
     def set_inches(self, inches):
         # we need to convert altimeter value to qnh, since that is what the fsuipc expects
-        offset, type = self.InstrOffsets['Altimeter']
+        offset, type = fsdata.instrOffsets['Altimeter']
         qnh = float(inches) * 33.864
         qnh = round(qnh, 1) * 16
         qnh = int(qnh)
@@ -592,8 +399,8 @@ class TFM(threading.Thread):
 
     def sonifyFlightDirector(self, dt):
         try:
-            pitch = round(self.instr['ApFlightDirectorPitch'], 1)
-            bank = round(self.instr['ApFlightDirectorBank'], 0)
+            pitch = round(fsdata.instr['ApFlightDirectorPitch'], 1)
+            bank = round(fsdata.instr['ApFlightDirectorBank'], 0)
             if pitch > 0 and pitch < 20:
                 self.PitchUpPlayer.pause ()
                 self.PitchDownPlayer.play()
@@ -717,11 +524,11 @@ class TFM(threading.Thread):
 
     def readAltitude(self):
         self.getPyuipcData(1)
-        self.output(F'{self.instr["Altitude"]} feet A S L')
+        self.output(F'{fsdata.instr["Altitude"]} feet A S L')
         pub.sendMessage('reset', arg1=True)
     def readGroundAltitude(self):
         self.getPyuipcData(1)
-        AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
+        AGLAltitude = fsdata.instr['Altitude'] - fsdata.instr['GroundAltitude']
         self.output(F"{round(AGLAltitude)} feet A G L")
         pub.sendMessage('reset', arg1=True)
 
@@ -734,23 +541,23 @@ class TFM(threading.Thread):
         pub.sendMessage('reset', arg1=True)
     def readTAS(self):
         self.getPyuipcData(1)
-        self.output (F'{self.instr["AirspeedTrue"]} knots true')
+        self.output (F'{fsdata.instr["AirspeedTrue"]} knots true')
         pub.sendMessage('reset', arg1=True)
     def readIAS(self):
         self.getPyuipcData(1)
-        self.output (F'{self.instr["AirspeedIndicated"]} knots indicated')
+        self.output (F'{fsdata.instr["AirspeedIndicated"]} knots indicated')
         pub.sendMessage('reset', arg1=True)
     def readMach(self):
         self.getPyuipcData(1)
-        self.output (F'Mach {self.instr["AirspeedMach"]:0.2f}')
+        self.output (F'Mach {fsdata.instr["AirspeedMach"]:0.2f}')
         pub.sendMessage('reset', arg1=True)
     def readVSpeed(self):
         self.getPyuipcData(1)
-        self.output (F"{self.instr['VerticalSpeed']:.0f} feet per minute")
+        self.output (F"{fsdata.instr['VerticalSpeed']:.0f} feet per minute")
         pub.sendMessage('reset', arg1=True)
     def readDest(self):
         self.getPyuipcData(1)
-        self.output(F'Time enroute {self.instr["DestETE"]}. {self.instr["DestETA"]}')
+        self.output(F'Time enroute {fsdata.instr["DestETE"]}. {fsdata.instr["DestETA"]}')
         pub.sendMessage('reset', arg1=True)
     def readTemp(self):
         self.getPyuipcData(1)
@@ -758,9 +565,9 @@ class TFM(threading.Thread):
         pub.sendMessage('reset', arg1=True)
     def readWind(self):
         self.getPyuipcData(1)
-        windSpeed = self.instr['WindSpeed']
-        windDirection = round(self.instr['WindDirection'])
-        windGust = self.instr['WindGust']
+        windSpeed = fsdata.instr['WindSpeed']
+        windDirection = round(fsdata.instr['WindDirection'])
+        windGust = fsdata.instr['WindGust']
         self.output(F'Wind: {windDirection} at {windSpeed} knotts. Gusts at {windGust} knotts.')
         pub.sendMessage('reset', arg1=True)
 
@@ -843,50 +650,50 @@ class TFM(threading.Thread):
         log.debug('checking available fuel tanks')    
         self.tanks = {}
         key = 1
-        if self.instr['cap_center'] != 0:
+        if fsdata.instr['cap_center'] != 0:
             log.debug ('found center tank')
             self.tanks[key] = tank(name='center')
-            self.tanks[key].capacity = self.instr['cap_center']
+            self.tanks[key].capacity = fsdata.instr['cap_center']
             key += 1
-        if self.instr['cap_center2'] != 0:
+        if fsdata.instr['cap_center2'] != 0:
             log.debug ("found center 2")
             self.tanks[key] = tank(name='center2')
-            self.tanks[key].capacity = self.instr['cap_center2']
+            self.tanks[key].capacity = fsdata.instr['cap_center2']
             key += 1
-        if self.instr['cap_center3'] != 0:
+        if fsdata.instr['cap_center3'] != 0:
             log.debug ("found center 3")
             self.tanks[key] = tank(name='center3')
-            self.tanks[key].capacity = self.instr['cap_center3']
+            self.tanks[key].capacity = fsdata.instr['cap_center3']
             key += 1
-        if self.instr['cap_main_left'] != 0:
+        if fsdata.instr['cap_main_left'] != 0:
             log.debug ('found main left')
             self.tanks[key] = tank(name='main left')
-            self.tanks[key].capacity = self.instr['cap_main_left']
+            self.tanks[key].capacity = fsdata.instr['cap_main_left']
             key += 1
-        if self.instr['cap_main_right'] != 0:
+        if fsdata.instr['cap_main_right'] != 0:
             log.debug ('found main right')
             self.tanks[key] = tank(name='main right')
-            self.tanks[key].capacity = self.instr['cap_main_right']
+            self.tanks[key].capacity = fsdata.instr['cap_main_right']
             key += 1
-        if self.instr['cap_aux_left'] != 0:
+        if fsdata.instr['cap_aux_left'] != 0:
             log.debug ("found aux left")
             self.tanks[key] = tank(name='aux left')
-            self.tanks[key].capacity = self.instr['cap_aux_left']
+            self.tanks[key].capacity = fsdata.instr['cap_aux_left']
             key += 1
-        if self.instr['cap_aux_right'] != 0:
+        if fsdata.instr['cap_aux_right'] != 0:
             log.debug ('found aux right')
             self.tanks[key] = tank(name='aux right')
-            self.tanks[key].capacity = self.instr['cap_aux_right']
+            self.tanks[key].capacity = fsdata.instr['cap_aux_right']
             key += 1
-        if self.instr['cap_tip_left'] != 0:
+        if fsdata.instr['cap_tip_left'] != 0:
             log.debug ('found left tip')
             self.tanks[key] = tank(name='tip left')
-            self.tanks[key].capacity = self.instr['cap_center']
+            self.tanks[key].capacity = fsdata.instr['cap_center']
             key += 1
-        if self.instr['cap_tip_right'] != 0:
+        if fsdata.instr['cap_tip_right'] != 0:
             log.debug ('found right tip')
             self.tanks[key] = tank(name='tip right')
-            self.tanks[key].capacity = self.instr['cap_tip_right']
+            self.tanks[key].capacity = fsdata.instr['cap_tip_right']
             key += 1
         # breakpoint()
 
@@ -895,122 +702,122 @@ class TFM(threading.Thread):
     def fuel_report(self):
         total_fuel_weight = 0
         total_fuel_quantity = 0
-        if self.instr['cap_center'] != 0:
-            lvl_center = self.instr['lvl_center'] / (128 * 65536)
-            weight_center = (self.instr['cap_center'] * lvl_center) * (self.instr['fuel_weight'] / 256)
-            quantity_center = self.instr['cap_center'] * lvl_center
+        if fsdata.instr['cap_center'] != 0:
+            lvl_center = fsdata.instr['lvl_center'] / (128 * 65536)
+            weight_center = (fsdata.instr['cap_center'] * lvl_center) * (fsdata.instr['fuel_weight'] / 256)
+            quantity_center = fsdata.instr['cap_center'] * lvl_center
             total_fuel_quantity += quantity_center
             total_fuel_weight += weight_center
-        if self.instr['cap_center2'] != 0:
-            lvl_center2 = self.instr['lvl_center2'] / (128 * 65536)
-            weight_center2 = (self.instr['cap_center2'] * lvl_center2) * (self.instr['fuel_weight'] / 256)
-            quantity_center2 = self.instr['cap_center'] * lvl_center
+        if fsdata.instr['cap_center2'] != 0:
+            lvl_center2 = fsdata.instr['lvl_center2'] / (128 * 65536)
+            weight_center2 = (fsdata.instr['cap_center2'] * lvl_center2) * (fsdata.instr['fuel_weight'] / 256)
+            quantity_center2 = fsdata.instr['cap_center'] * lvl_center
             total_fuel_quantity += quantity_center2
             total_fuel_weight += weight_center2
-        if self.instr['cap_center3'] != 0:
-            lvl_center3 = self.instr['lvl_center3'] / (128 * 65536)
-            weight_center3 = (self.instr['cap_center3'] * lvl_center3) * (self.instr['fuel_weight'] / 256)
-            quantity_center3 = self.instr['cap_center3'] * lvl_center3
+        if fsdata.instr['cap_center3'] != 0:
+            lvl_center3 = fsdata.instr['lvl_center3'] / (128 * 65536)
+            weight_center3 = (fsdata.instr['cap_center3'] * lvl_center3) * (fsdata.instr['fuel_weight'] / 256)
+            quantity_center3 = fsdata.instr['cap_center3'] * lvl_center3
             total_fuel_quantity += quantity_center3
             total_fuel_weight += weight_center3
         
-        if self.instr['cap_main_left'] != 0:
-            lvl_main_left = self.instr['lvl_main_left'] / (128 * 65536)
-            weight_main_left = (self.instr['cap_main_left'] * lvl_main_left) * (self.instr['fuel_weight'] / 256)
-            quantity_main_left = self.instr['cap_main_left'] * lvl_main_left
+        if fsdata.instr['cap_main_left'] != 0:
+            lvl_main_left = fsdata.instr['lvl_main_left'] / (128 * 65536)
+            weight_main_left = (fsdata.instr['cap_main_left'] * lvl_main_left) * (fsdata.instr['fuel_weight'] / 256)
+            quantity_main_left = fsdata.instr['cap_main_left'] * lvl_main_left
             total_fuel_quantity += quantity_main_left
             total_fuel_weight += weight_main_left
-        if self.instr['cap_main_right'] != 0:
-            lvl_main_right = self.instr['lvl_main_right'] / (128 * 65536)
-            weight_main_right = (self.instr['cap_main_right'] * lvl_main_right) * (self.instr['fuel_weight'] / 256)
-            quantity_main_right = self.instr['cap_main_right'] * lvl_main_right
+        if fsdata.instr['cap_main_right'] != 0:
+            lvl_main_right = fsdata.instr['lvl_main_right'] / (128 * 65536)
+            weight_main_right = (fsdata.instr['cap_main_right'] * lvl_main_right) * (fsdata.instr['fuel_weight'] / 256)
+            quantity_main_right = fsdata.instr['cap_main_right'] * lvl_main_right
             total_fuel_quantity += quantity_main_right
             total_fuel_weight += weight_main_right
-        if self.instr['cap_aux_left'] != 0:
-            lvl_aux_left = self.instr['lvl_aux_left'] / (128 * 65536)
-            weight_aux_left = (self.instr['cap_aux_left'] * lvl_aux_left) * (self.instr['fuel_weight'] / 256)
-            quantity_aux_left = self.instr['cap_aux_left'] * lvl_aux_left
+        if fsdata.instr['cap_aux_left'] != 0:
+            lvl_aux_left = fsdata.instr['lvl_aux_left'] / (128 * 65536)
+            weight_aux_left = (fsdata.instr['cap_aux_left'] * lvl_aux_left) * (fsdata.instr['fuel_weight'] / 256)
+            quantity_aux_left = fsdata.instr['cap_aux_left'] * lvl_aux_left
             total_fuel_quantity += quantity_aux_left
             total_fuel_weight += weight_aux_left
-        if self.instr['cap_aux_right'] != 0:
-            lvl_aux_right = self.instr['lvl_aux_right'] / (128 * 65536)
-            weight_aux_right = (self.instr['cap_aux_right'] * lvl_aux_right) * (self.instr['fuel_weight'] / 256)
-            quantity_aux_right = self.instr['cap_aux_right'] * lvl_aux_right
+        if fsdata.instr['cap_aux_right'] != 0:
+            lvl_aux_right = fsdata.instr['lvl_aux_right'] / (128 * 65536)
+            weight_aux_right = (fsdata.instr['cap_aux_right'] * lvl_aux_right) * (fsdata.instr['fuel_weight'] / 256)
+            quantity_aux_right = fsdata.instr['cap_aux_right'] * lvl_aux_right
             total_fuel_quantity += quantity_aux_right
             total_fuel_weight += weight_aux_right
-        if self.instr['cap_tip_left'] != 0:
-            lvl_tip_left = self.instr['lvl_tip_left'] / (128 * 65536)
-            weight_tip_left = (self.instr['cap_tip_left'] * lvl_tip_left) * (self.instr['fuel_weight'] / 256)
-            quantity_tip_left = self.instr['cap_tip_left'] * lvl_tip_left
+        if fsdata.instr['cap_tip_left'] != 0:
+            lvl_tip_left = fsdata.instr['lvl_tip_left'] / (128 * 65536)
+            weight_tip_left = (fsdata.instr['cap_tip_left'] * lvl_tip_left) * (fsdata.instr['fuel_weight'] / 256)
+            quantity_tip_left = fsdata.instr['cap_tip_left'] * lvl_tip_left
             total_fuel_quantity += quantity_tip_left
             total_fuel_weight += weight_tip_left
-        if self.instr['cap_tip_right'] != 0:
-            lvl_tip_right = self.instr['lvl_tip_right'] / (128 * 65536)
-            weight_tip_right = (self.instr['cap_tip_right'] * lvl_tip_right) * (self.instr['fuel_weight'] / 256)
-            quantity_tip_right = self.instr['cap_tip_right'] * lvl_tip_right
+        if fsdata.instr['cap_tip_right'] != 0:
+            lvl_tip_right = fsdata.instr['lvl_tip_right'] / (128 * 65536)
+            weight_tip_right = (fsdata.instr['cap_tip_right'] * lvl_tip_right) * (fsdata.instr['fuel_weight'] / 256)
+            quantity_tip_right = fsdata.instr['cap_tip_right'] * lvl_tip_right
             total_fuel_quantity += quantity_tip_right
             total_fuel_weight += weight_tip_right
         self.output (F'total fuel: {round(total_fuel_weight)} pounds. ')
         self.output (F'{round(total_fuel_quantity)} gallons. ')
-        total_fuel_flow = self.instr['eng1_fuel_flow'] + self.instr['eng2_fuel_flow'] + self.instr['eng3_fuel_flow'] + self.instr['eng4_fuel_flow']
+        total_fuel_flow = fsdata.instr['eng1_fuel_flow'] + fsdata.instr['eng2_fuel_flow'] + fsdata.instr['eng3_fuel_flow'] + fsdata.instr['eng4_fuel_flow']
         self.output (F'Total fuel flow: {round(total_fuel_flow)} P P H')
         pub.sendMessage('reset', arg1=True)
     def fuel_flow_report (self):
-        num_engines = self.instr['num_engines']
+        num_engines = fsdata.instr['num_engines']
         self.output ("Fuel flow: ")
-        self.output (F'Engine 1: {round(self.instr["eng1_fuel_flow"])}.')
+        self.output (F'Engine 1: {round(fsdata.instr["eng1_fuel_flow"])}.')
         if num_engines >= 2:
-            self.output (F'Engine 2: {round(self.instr["eng2_fuel_flow"])}.')
+            self.output (F'Engine 2: {round(fsdata.instr["eng2_fuel_flow"])}.')
         if num_engines >= 3:
-            self.output (F'Engine 3: {round(self.instr["eng3_fuel_flow"])}.')
+            self.output (F'Engine 3: {round(fsdata.instr["eng3_fuel_flow"])}.')
         if num_engines >= 4:
-            self.output (F'Engine 4: {round(self.instr["eng4_fuel_flow"])}.')
+            self.output (F'Engine 4: {round(fsdata.instr["eng4_fuel_flow"])}.')
         pub.sendMessage('reset', arg1=True)
     def read_fuel_tank(self, key):
         if self.tanks[key].name == 'center':
-            percentage = self.instr['lvl_center'] / (128 * 65536)
-            weight = round((self.instr['cap_center'] * percentage) * (self.instr['fuel_weight'] / 256))
-            quantity = round(self.instr['cap_center'] * percentage)
+            percentage = fsdata.instr['lvl_center'] / (128 * 65536)
+            weight = round((fsdata.instr['cap_center'] * percentage) * (fsdata.instr['fuel_weight'] / 256))
+            quantity = round(fsdata.instr['cap_center'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         elif self.tanks[key].name == 'center2':
-            percentage = self.instr['lvl_center2'] / (128 * 65536)
-            weight = round((self.instr['cap_center2'] * percentage) * (self.instr['fuel_weight'] / 256))
-            quantity = round(self.instr['cap_center2'] * percentage)
+            percentage = fsdata.instr['lvl_center2'] / (128 * 65536)
+            weight = round((fsdata.instr['cap_center2'] * percentage) * (fsdata.instr['fuel_weight'] / 256))
+            quantity = round(fsdata.instr['cap_center2'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         elif self.tanks[key].name == 'center3':
-            percentage = self.instr['lvl_center3'] / (128 * 65536)
-            weight = round((self.instr['cap_center3'] * percentage) * (self.instr['fuel_weight'] / 256))
-            quantity = round(self.instr['cap_center3'] * percentage)
+            percentage = fsdata.instr['lvl_center3'] / (128 * 65536)
+            weight = round((fsdata.instr['cap_center3'] * percentage) * (fsdata.instr['fuel_weight'] / 256))
+            quantity = round(fsdata.instr['cap_center3'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         elif self.tanks[key].name == 'main left':
-            percentage = self.instr['lvl_main_left'] / (128 * 65536)
-            weight = round((self.instr['cap_main_left'] * percentage) * (self.instr['fuel_weight'] / 256))
-            quantity = round(self.instr['cap_main_left'] * percentage)
+            percentage = fsdata.instr['lvl_main_left'] / (128 * 65536)
+            weight = round((fsdata.instr['cap_main_left'] * percentage) * (fsdata.instr['fuel_weight'] / 256))
+            quantity = round(fsdata.instr['cap_main_left'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         elif self.tanks[key].name == 'main right':
-            percentage = self.instr['lvl_main_right'] / (128 * 65536)
-            weight = round((self.instr['cap_main_right'] * percentage) * (self.instr['fuel_weight'] / 256))
-            quantity = round(self.instr['cap_main_right'] * percentage)
+            percentage = fsdata.instr['lvl_main_right'] / (128 * 65536)
+            weight = round((fsdata.instr['cap_main_right'] * percentage) * (fsdata.instr['fuel_weight'] / 256))
+            quantity = round(fsdata.instr['cap_main_right'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         elif self.tanks[key].name == 'aux left':
-            percentage = self.instr['lvl_aux_left'] / (128 * 65536)
-            weight = round((self.instr['cap_aux_left'] * percentage) * (self.instr['fuel_weight'] / 256))
-            quantity = round(self.instr['cap_aux_left'] * percentage)
+            percentage = fsdata.instr['lvl_aux_left'] / (128 * 65536)
+            weight = round((fsdata.instr['cap_aux_left'] * percentage) * (fsdata.instr['fuel_weight'] / 256))
+            quantity = round(fsdata.instr['cap_aux_left'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         elif self.tanks[key].name == 'aux right':
-            percentage = self.instr['lvl_aux_right'] / (128 * 65536)
-            weight = round((self.instr['cap_aux_right'] * percentage) * (self.instr['fuel_weight'] / 256))
-            quantity = round(self.instr['cap_aux_right'] * percentage)
+            percentage = fsdata.instr['lvl_aux_right'] / (128 * 65536)
+            weight = round((fsdata.instr['cap_aux_right'] * percentage) * (fsdata.instr['fuel_weight'] / 256))
+            quantity = round(fsdata.instr['cap_aux_right'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         elif self.tanks[key].name == 'tip left':
-            percentage = self.instr['lvl_tip_left'] / (128 * 65536)
-            weight = round((self.instr['cap_tip_left'] * percentage) * (self.instr['fuel_weight'] / 256))
-            quantity = round(self.instr['cap_tip_left'] * percentage)
+            percentage = fsdata.instr['lvl_tip_left'] / (128 * 65536)
+            weight = round((fsdata.instr['cap_tip_left'] * percentage) * (fsdata.instr['fuel_weight'] / 256))
+            quantity = round(fsdata.instr['cap_tip_left'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         elif self.tanks[key].name == 'tip right':
-            percentage = self.instr['lvl_tip_right'] / (128 * 65536)
-            weight = round((self.instr['cap_tip_right'] * percentage) * (self.instr['fuel_weight'] / 256))
-            quantity = round(self.instr['cap_tip_right'] * percentage)
+            percentage = fsdata.instr['lvl_tip_right'] / (128 * 65536)
+            weight = round((fsdata.instr['cap_tip_right'] * percentage) * (fsdata.instr['fuel_weight'] / 256))
+            quantity = round(fsdata.instr['cap_tip_right'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         
 
@@ -1112,7 +919,7 @@ class TFM(threading.Thread):
         if self.calloutsEnabled:
             result = pyuipc.read (self.pyuipcRadioAlt)
             radio_alt = round(result[0] / 65536 * 3.28084)
-            vspeed = self.instr['VerticalSpeed']
+            vspeed = fsdata.instr['VerticalSpeed']
             callout = 0
             if vspeed < -50:
                 for i in self.calloutsHigh:
@@ -1134,17 +941,17 @@ class TFM(threading.Thread):
         # Get data from simulator
         self.getPyuipcData()
 
-        # self.output (self.instr['test'].decode())
-        if self.instr['TextDisplay'] != self.oldInstr['TextDisplay']:
-            self.output (self.instr['TextDisplay'].decode())
+        # self.output (fsdata.instr['test'].decode())
+        if fsdata.instr['TextDisplay'] != self.oldInstr['TextDisplay']:
+            self.output (fsdata.instr['TextDisplay'].decode())
         # read aircraft name and set up fuel tank info
-        if self.instr['AircraftName'] != self.oldAircraftName:
-            self.output (f"current aircraft: {self.instr['AircraftName'].decode('UTF-8')}")
-            self.oldAircraftName = self.instr['AircraftName']
+        if fsdata.instr['AircraftName'] != self.oldAircraftName:
+            self.output (f"current aircraft: {fsdata.instr['AircraftName'].decode('UTF-8')}")
+            self.oldAircraftName = fsdata.instr['AircraftName']
             self.setup_fuel_tanks()
         # detect if aircraft is on ground or airborne.
-        if self.oldInstr['OnGround'] != self.instr['OnGround']:
-            if self.instr['OnGround'] == False:
+        if self.oldInstr['OnGround'] != fsdata.instr['OnGround']:
+            if fsdata.instr['OnGround'] == False:
                 self.output ("Positive rate.")
                 log.debug("unscheduling groundspeed")
                 pyglet.clock.unschedule(self.readGroundSpeed)
@@ -1154,87 +961,87 @@ class TFM(threading.Thread):
                 pyglet.clock.unschedule(self.play_heading_tones)
                 self.runway_guidance = False
         # landing gear
-        if self.instr['Gear'] != self.oldInstr['Gear']:
-            if self.instr['Gear'] == 0:
+        if fsdata.instr['Gear'] != self.oldInstr['Gear']:
+            if fsdata.instr['Gear'] == 0:
                 self.output ('Gear up.')
-            elif self.instr['Gear'] == 16383:
+            elif fsdata.instr['Gear'] == 16383:
                 self.output ('Gear down.')
-            self.oldInstr['Gear'] = self.instr['Gear']
+            self.oldInstr['Gear'] = fsdata.instr['Gear']
 
         # if flaps position has changed, flaps are in motion. We need to wait until they have stopped moving to read the value.
         if self.flapsEnabled:
-            if self.instr['Flaps'] != self.oldInstr['Flaps']:
+            if fsdata.instr['Flaps'] != self.oldInstr['Flaps']:
                 flapsTransit = True
                 while flapsTransit:
                     self.getPyuipcData()
-                    if self.instr['Flaps'] != self.oldInstr['Flaps']:
-                        self.oldInstr['Flaps'] = self.instr['Flaps']
+                    if fsdata.instr['Flaps'] != self.oldInstr['Flaps']:
+                        self.oldInstr['Flaps'] = fsdata.instr['Flaps']
                         time.sleep (0.2)
                     else:
                         flapsTransit = False
                 
-                self.output (F'Flaps {self.instr["Flaps"]:.0f}')
-                self.oldInstr['Flaps'] = self.instr['Flaps']
+                self.output (F'Flaps {fsdata.instr["Flaps"]:.0f}')
+                self.oldInstr['Flaps'] = fsdata.instr['Flaps']
             # announce radio frequency changes
-        if self.instr['Com1Freq'] != self.oldInstr['Com1Freq']:
-            self.output (F"com 1, {self.instr['Com1Freq']}")
-        if self.instr['Com2Freq'] != self.oldInstr['Com2Freq']:
-            self.output (F"com 2, {self.instr['Com2Freq']}")
+        if fsdata.instr['Com1Freq'] != self.oldInstr['Com1Freq']:
+            self.output (F"com 1, {fsdata.instr['Com1Freq']}")
+        if fsdata.instr['Com2Freq'] != self.oldInstr['Com2Freq']:
+            self.output (F"com 2, {fsdata.instr['Com2Freq']}")
 
         # spoilers
-        if self.oldInstr['Spoilers'] != self.instr['Spoilers']:
-            if self.instr['Spoilers'] == 4800:
+        if self.oldInstr['Spoilers'] != fsdata.instr['Spoilers']:
+            if fsdata.instr['Spoilers'] == 4800:
                 self.output ("spoilers armed.")
-            elif self.instr['Spoilers'] == 16384:
+            elif fsdata.instr['Spoilers'] == 16384:
                 self.output(f'Spoilers deployed')
-            elif self.instr['Spoilers'] == 0:
+            elif fsdata.instr['Spoilers'] == 0:
                 if self.oldInstr['Spoilers'] == 4800:
                     self.output(F'arm spoilers off')
                 else:
                     self.output(F'Spoilers retracted')
-        if self.oldInstr['ApAltitude'] != self.instr['ApAltitude']:
-            self.output(F"Altitude set to {round(self.instr['ApAltitude'])}")
+        if self.oldInstr['ApAltitude'] != fsdata.instr['ApAltitude']:
+            self.output(F"Altitude set to {round(fsdata.instr['ApAltitude'])}")
         if self.APEnabled:
-            if self.oldInstr['ApHeading'] != self.instr['ApHeading']:
-                self.output (F"{self.instr['ApHeading']} degrees")
-            if self.oldInstr['ApAirspeed'] != self.instr['ApAirspeed']:
-                self.output (F"{self.instr['ApAirspeed']}")
-            if self.oldInstr['ApMach'] != self.instr['ApMach']:
-                self.output (F"mach {self.instr['ApMach']:.2f}")
-            if self.oldInstr['ApVerticalSpeed'] != self.instr['ApVerticalSpeed']:
-                self.output (F"{self.instr['ApVerticalSpeed']} feet per minute")
+            if self.oldInstr['ApHeading'] != fsdata.instr['ApHeading']:
+                self.output (F"{fsdata.instr['ApHeading']} degrees")
+            if self.oldInstr['ApAirspeed'] != fsdata.instr['ApAirspeed']:
+                self.output (F"{fsdata.instr['ApAirspeed']}")
+            if self.oldInstr['ApMach'] != fsdata.instr['ApMach']:
+                self.output (F"mach {fsdata.instr['ApMach']:.2f}")
+            if self.oldInstr['ApVerticalSpeed'] != fsdata.instr['ApVerticalSpeed']:
+                self.output (F"{fsdata.instr['ApVerticalSpeed']} feet per minute")
 
 
 
         # transponder
-        if self.instr['Transponder'] != self.oldInstr['Transponder']:
-            self.output(F'Squawk {self.instr["Transponder"]:x}')
+        if fsdata.instr['Transponder'] != self.oldInstr['Transponder']:
+            self.output(F'Squawk {fsdata.instr["Transponder"]:x}')
         # next waypoint
-        if self.instr['NextWPId'] != self.oldInstr['NextWPId']:
+        if fsdata.instr['NextWPId'] != self.oldInstr['NextWPId']:
             time.sleep(3)
             self.getPyuipcData()
             self.readWaypoint(0)
-            self.oldInstr['NextWPId'] = self.instr['NextWPId']
+            self.oldInstr['NextWPId'] = fsdata.instr['NextWPId']
         # read autobrakes
-        if self.instr['AutoBrake'] != self.oldInstr['AutoBrake']:
-            if self.instr['AutoBrake'] == 0:
+        if fsdata.instr['AutoBrake'] != self.oldInstr['AutoBrake']:
+            if fsdata.instr['AutoBrake'] == 0:
                 brake = 'R T O'
-            elif self.instr['AutoBrake'] == 1:
+            elif fsdata.instr['AutoBrake'] == 1:
                 brake = 'off'
-            elif self.instr['AutoBrake'] == 2:
+            elif fsdata.instr['AutoBrake'] == 2:
                 brake = 'position 1'
-            elif self.instr['AutoBrake'] == 3:
+            elif fsdata.instr['AutoBrake'] == 3:
                 brake = 'position 2'
-            elif self.instr['AutoBrake'] == 4:
+            elif fsdata.instr['AutoBrake'] == 4:
                 brake = 'position 3'
-            elif self.instr['AutoBrake'] == 5:
+            elif fsdata.instr['AutoBrake'] == 5:
                 brake = 'maximum'
             self.output (F'Auto brake {brake}')
-        if self.instr['ElevatorTrim'] != self.oldInstr['ElevatorTrim'] and self.instr['ApMaster'] != 1 and self.trimEnabled:
-            if self.instr['ElevatorTrim'] < 0:
-                self.output (F"Trim down {abs(round (self.instr['ElevatorTrim'], 2))}")
+        if fsdata.instr['ElevatorTrim'] != self.oldInstr['ElevatorTrim'] and fsdata.instr['ApMaster'] != 1 and self.trimEnabled:
+            if fsdata.instr['ElevatorTrim'] < 0:
+                self.output (F"Trim down {abs(round (fsdata.instr['ElevatorTrim'], 2))}")
             else:
-                self.output (F"Trim up {round (self.instr['ElevatorTrim'], 2)}")
+                self.output (F"Trim up {round (fsdata.instr['ElevatorTrim'], 2)}")
 
 
         if self.AltHPA != self.oldHPA:
@@ -1242,20 +1049,20 @@ class TFM(threading.Thread):
             self.oldHPA = self.AltHPA
         # read nav1 ILS info if enabled
         if self.readILSEnabled:
-            if self.instr['Nav1Signal'] == 256 and self.LocDetected == False and self.instr['Nav1Type']:
+            if fsdata.instr['Nav1Signal'] == 256 and self.LocDetected == False and fsdata.instr['Nav1Type']:
                 self.sapi_q.put (F'localiser is alive')
                 self.LocDetected = True
                 pyglet.clock.schedule_interval (self.readILS, self.ILSInterval)
-            if self.instr['Nav1GS'] and self.GSDetected == False:
+            if fsdata.instr['Nav1GS'] and self.GSDetected == False:
                 self.sapi_q.put (F'Glide slope is alive.')
                 self.GSDetected = True
                 
             
             
-            if self.instr['Nav1Type'] and self.HasLoc == False:
+            if fsdata.instr['Nav1Type'] and self.HasLoc == False:
                 self.sapi_q.put (F'Nav 1 has localiser')
                 self.HasLoc = True
-            if self.instr['Nav1GSAvailable'] and self.HasGS == False:
+            if fsdata.instr['Nav1GSAvailable'] and self.HasGS == False:
                 self.sapi_q.put (F'Nav 1 has glide slope')
                 self.HasGS = True
         else:
@@ -1314,36 +1121,36 @@ class TFM(threading.Thread):
         self.readToggle('Eng4FuelValve', 'number 4 fuel valve', 'open', 'closed')
         self.readToggle("FuelPump", "Fuel pump", "active", "off")
         self.readToggle("Eng1Select", "number 1", 'selected', 'unselected')
-        if self.instr['num_engines'] >= 2:
+        if fsdata.instr['num_engines'] >= 2:
             self.readToggle("Eng2Select", "number 2", 'selected', 'unselected')
-        if self.instr['num_engines'] >= 3:
+        if fsdata.instr['num_engines'] >= 3:
             self.readToggle("Eng3Select", "number 3", 'selected', 'unselected')
-        if self.instr['num_engines'] >= 4:
+        if fsdata.instr['num_engines'] >= 4:
             self.readToggle("Eng4Select", "number 4", 'selected', 'unselected')
 
         if self.groundspeedEnabled:
-            if self.instr['GroundSpeed'] > 0 and self.instr['OnGround'] and self.groundSpeed == False:
+            if fsdata.instr['GroundSpeed'] > 0 and fsdata.instr['OnGround'] and self.groundSpeed == False:
                 log.debug("moving on ground. Scheduling groundspeed callouts")
                 pyglet.clock.schedule_interval(self.readGroundSpeed, 3)
                 self.groundSpeed = True
-            elif self.instr['GroundSpeed'] == 0 and self.groundSpeed:
+            elif fsdata.instr['GroundSpeed'] == 0 and self.groundSpeed:
                 pyglet.clock.unschedule(self.readGroundSpeed)
                 self.groundSpeed = False
 
         # read APU status
-        if self.instr['APUPercentage'] > 4 and self.APUStarting == False and self.APURunning == False and self.APUShutdown == False and self.APUOff == True:
+        if fsdata.instr['APUPercentage'] > 4 and self.APUStarting == False and self.APURunning == False and self.APUShutdown == False and self.APUOff == True:
             self.output('A P U starting')
             self.APUStarting = True
             self.APUOff = False
-        if self.instr['APUPercentage'] < 100 and self.APURunning:
+        if fsdata.instr['APUPercentage'] < 100 and self.APURunning:
             self.output ('Shutting down A P U')
             self.APURunning = False
             self.APUShutdown = True
-        if self.instr['APUPercentage'] == 100 and self.APUStarting:
+        if fsdata.instr['APUPercentage'] == 100 and self.APUStarting:
             self.APUStarting = False
             self.APURunning = True
             self.output("apu at 100 percent")
-        if self.instr['APUPercentage'] == 0 and self.APUOff == False:
+        if fsdata.instr['APUPercentage'] == 0 and self.APUOff == False:
             self.output('A P U shut down')
             self.APURunning = False
             self.APUStarting = False
@@ -1351,48 +1158,48 @@ class TFM(threading.Thread):
             self.APUOff = True
 
 
-        if self.instr['APUGenerator'] and self.APUGenerator == False:
-            self.output (F"{round(self.instr['APUVoltage'])} volts")
+        if fsdata.instr['APUGenerator'] and self.APUGenerator == False:
+            self.output (F"{round(fsdata.instr['APUVoltage'])} volts")
             self.APUGenerator = True
-        if self.instr['APUGenerator'] == False:
+        if fsdata.instr['APUGenerator'] == False:
             self.APUGenerator = False
 
 
         # read engine status on startup.
-        if self.instr['Eng1FuelFlow'] > 10 and self.instr['Eng1Starter'] and self.Eng1FuelFlow == False:
+        if fsdata.instr['Eng1FuelFlow'] > 10 and fsdata.instr['Eng1Starter'] and self.Eng1FuelFlow == False:
             self.output ('Number 1 fuel flow')
             self.Eng1FuelFlow = True
-        if self.instr['Eng2FuelFlow'] > 10 and self.instr['Eng2Starter'] and self.Eng2FuelFlow == False:
+        if fsdata.instr['Eng2FuelFlow'] > 10 and fsdata.instr['Eng2Starter'] and self.Eng2FuelFlow == False:
             self.output ('Number 2 fuel flow')
             self.Eng2FuelFlow = True
-        if self.instr['Eng3FuelFlow'] > 10 and self.instr['Eng3Starter'] and self.Eng3FuelFlow == False:
+        if fsdata.instr['Eng3FuelFlow'] > 10 and fsdata.instr['Eng3Starter'] and self.Eng3FuelFlow == False:
             self.output ('Number 3 fuel flow')
             self.Eng3FuelFlow = True
-        if self.instr['Eng4FuelFlow'] > 10 and self.instr['Eng4Starter'] and self.Eng4FuelFlow == False:
+        if fsdata.instr['Eng4FuelFlow'] > 10 and fsdata.instr['Eng4Starter'] and self.Eng4FuelFlow == False:
             self.output ('Number 4 fuel flow')
             self.Eng4FuelFlow = True
-        if self.instr['Eng1N2'] > 5 and self.Eng1N2 == False and self.instr['Eng1Starter']:
+        if fsdata.instr['Eng1N2'] > 5 and self.Eng1N2 == False and fsdata.instr['Eng1Starter']:
             self.output ('number 1, 5 percent N2')
             self.Eng1N2 = True
-        if self.instr['Eng1N1'] > 5 and self.Eng1N1 == False  and self.instr['Eng1Starter']:
+        if fsdata.instr['Eng1N1'] > 5 and self.Eng1N1 == False  and fsdata.instr['Eng1Starter']:
             self.output ('number 1, 5 percent N1')
             self.Eng1N1 = True
-        if self.instr['Eng2N2'] > 5 and self.Eng2N2 == False  and self.instr['Eng2Starter']:
+        if fsdata.instr['Eng2N2'] > 5 and self.Eng2N2 == False  and fsdata.instr['Eng2Starter']:
             self.output ('number 2, 5 percent N2')
             self.Eng2N2 = True
-        if self.instr['Eng2N1'] > 5 and self.Eng2N1 == False  and self.instr['Eng2Starter']:
+        if fsdata.instr['Eng2N1'] > 5 and self.Eng2N1 == False  and fsdata.instr['Eng2Starter']:
             self.output ('number 2, 5 percent N1')
             self.Eng2N1 = True
-        if self.instr['Eng3N2'] > 5 and self.Eng3N2 == False  and self.instr['Eng3Starter']:
+        if fsdata.instr['Eng3N2'] > 5 and self.Eng3N2 == False  and fsdata.instr['Eng3Starter']:
             self.output ('number 3, 5 percent N2')
             self.Eng3N2 = True
-        if self.instr['Eng3N1'] > 5 and self.Eng3N1 == False  and self.instr['Eng3Starter']:
+        if fsdata.instr['Eng3N1'] > 5 and self.Eng3N1 == False  and fsdata.instr['Eng3Starter']:
             self.output ('number 3, 5 percent N1')
             self.Eng3N1 = True
-        if self.instr['Eng4N2'] > 5 and self.Eng4N2 == False  and self.instr['Eng4Starter']:
+        if fsdata.instr['Eng4N2'] > 5 and self.Eng4N2 == False  and fsdata.instr['Eng4Starter']:
             self.output ('number 4, 5 percent N2')
             self.Eng4N2 = True
-        if self.instr['Eng4N1'] > 5 and self.Eng4N1 == False  and self.instr['Eng4Starter']:
+        if fsdata.instr['Eng4N1'] > 5 and self.Eng4N1 == False  and fsdata.instr['Eng4Starter']:
             self.output ('number 4, 5 percent N1')
             self.Eng4N1 = True
 
@@ -1402,47 +1209,58 @@ class TFM(threading.Thread):
 
         # read altitude every 1000 feet
         for i in range (1000, 65000, 1000):
-            if self.instr['Altitude'] >= i - 10 and self.instr['Altitude'] <= i + 10 and self.altFlag[i] == False:
+            if fsdata.instr['Altitude'] >= i - 10 and fsdata.instr['Altitude'] <= i + 10 and self.altFlag[i] == False:
                 self.speak (F"{i} feet")
                 self.altFlag[i] = True
-            elif self.instr['Altitude'] >= i + 100:
+            elif fsdata.instr['Altitude'] >= i + 100:
                 self.altFlag[i] = False
         # read Bonanza instruments
-        if 'Bonanza' in self.instr['AircraftName'].decode():
+        if 'Bonanza' in fsdata.instr['AircraftName'].decode():
             self.readToggle('BatterySwitch', "battery", "active", "off")
             self.readToggle('TipTankLeftPump', 'left tip tank pump', 'active', 'off')
             self.readToggle('TipTankRightPump', 'right tip tank pump', 'active', 'off')
             self.readToggle('window', 'window', 'open', 'closed')
             self.readToggle('fan', 'fan', 'active', 'off')
+            # fuel selector
+            fsel_state = {
+                0: 'off',
+                1: 'left',
+                2: 'right'
+            }
+            if fsdata.instr['FuelSelector'] != self.old_a2a_fsel:
+                fsel = fsdata.instr['FuelSelector']
+                self.output (F"fuel selector {fsel_state[fsel]}")
+                self.old_a2a_fsel = fsdata.instr['FuelSelector']
+        
             # maintain state of instruments so we can check on the next run.
-        self.oldInstr = copy.deepcopy(self.instr)
+        self.oldInstr = copy.deepcopy(fsdata.instr)
 
     def readEngTemps(self, dt = 0):
         if self.use_metric == False:
-            Eng1Temp = round(9.0/5.0 * self.instr['Eng1ITT'] + 32)
-            Eng2Temp = round(9.0/5.0 * self.instr['Eng2ITT'] + 32)
-            Eng3Temp = round(9.0/5.0 * self.instr['Eng3ITT'] + 32)
-            Eng4Temp = round(9.0/5.0 * self.instr['Eng4ITT'] + 32)
+            Eng1Temp = round(9.0/5.0 * fsdata.instr['Eng1ITT'] + 32)
+            Eng2Temp = round(9.0/5.0 * fsdata.instr['Eng2ITT'] + 32)
+            Eng3Temp = round(9.0/5.0 * fsdata.instr['Eng3ITT'] + 32)
+            Eng4Temp = round(9.0/5.0 * fsdata.instr['Eng4ITT'] + 32)
         else:
-            Eng1Temp = self.instr['Eng1ITT']
-            Eng2Temp = self.instr['Eng2ITT']
-            Eng3Temp = self.instr['Eng3ITT']
-            Eng4Temp = self.instr['Eng4ITT']
-        if self.instr['Eng1Starter'] and self.instr['Eng1Combustion']:
+            Eng1Temp = fsdata.instr['Eng1ITT']
+            Eng2Temp = fsdata.instr['Eng2ITT']
+            Eng3Temp = fsdata.instr['Eng3ITT']
+            Eng4Temp = fsdata.instr['Eng4ITT']
+        if fsdata.instr['Eng1Starter'] and fsdata.instr['Eng1Combustion']:
             self.output (F"number 1 temp, {Eng1Temp}")
-        elif self.instr['Eng2Starter'] and self.instr['Eng2Combustion']:
+        elif fsdata.instr['Eng2Starter'] and fsdata.instr['Eng2Combustion']:
             self.output (F"number 2 temp, {Eng2Temp}")
-        elif self.instr['Eng3Starter'] and self.instr['Eng3Combustion']:
+        elif fsdata.instr['Eng3Starter'] and fsdata.instr['Eng3Combustion']:
             self.output (F"number 3 temp, {Eng3Temp}")
-        elif self.instr['Eng4Starter'] and self.instr['Eng4Combustion']:
+        elif fsdata.instr['Eng4Starter'] and fsdata.instr['Eng4Combustion']:
             self.output (F"number 4 temp, {Eng4Temp}")
         
     def readGroundSpeed(self, dt=0):
-        self.sapi_q.put(F"{self.instr['GroundSpeed']} knotts")
+        self.sapi_q.put(F"{fsdata.instr['GroundSpeed']} knotts")
 
     def readILS(self, dt=0):
-        GSNeedle = self.instr['Nav1GSNeedle']
-        LocNeedle = self.instr['Nav1LocNeedle']
+        GSNeedle = fsdata.instr['Nav1GSNeedle']
+        LocNeedle = fsdata.instr['Nav1LocNeedle']
         if GSNeedle > 0 and GSNeedle < 119:
             GSPercent = GSNeedle / 119 * 100.0
             self.speak (f'up {GSPercent:.0f} percent G S I')
@@ -1462,12 +1280,12 @@ class TFM(threading.Thread):
         ## There are several aircraft functions that are simply on/off toggles. 
         ## This function allows reading those without a bunch of duplicate code.
         try:
-            if self.oldInstr[instrument] != self.instr[instrument]:
-                if self.instr[instrument]:
+            if self.oldInstr[instrument] != fsdata.instr[instrument]:
+                if fsdata.instr[instrument]:
                     self.output (F'{name} {onMessage}.')
                 else:
                     self.output (F'{name} {offMessage}')
-                self.oldInstr[instrument] = self.instr[instrument]
+                self.oldInstr[instrument] = fsdata.instr[instrument]
         except Exception as e:
             log.exception(F"error in instrument toggle. Instrument was {instrument}")
 
@@ -1485,12 +1303,12 @@ class TFM(threading.Thread):
     def readWaypoint(self, triggered=False):
         msg = ""
         try:
-            WPId = self.instr['NextWPId'].decode ('UTF-8')
-            distance = self.instr['NextWPDistance'] * 0.00053995
+            WPId = fsdata.instr['NextWPId'].decode ('UTF-8')
+            distance = fsdata.instr['NextWPDistance'] * 0.00053995
             msg = F'Next waypoint: {WPId}, distance: {distance:.1f} nautical miles. '
-            msg = msg + F'baring: {self.instr["NextWPBaring"]:.0f}\n'
+            msg = msg + F'baring: {fsdata.instr["NextWPBaring"]:.0f}\n'
             # read estimated time enroute to next waypoint
-            strTime = self.secondsToText(self.instr['NextWPETE'])
+            strTime = self.secondsToText(fsdata.instr['NextWPETE'])
             msg = msg + strTime
             if self.triggered:
                 self.speak(msg)
@@ -1592,11 +1410,11 @@ class TFM(threading.Thread):
         # Lookup nearest cities to aircraft position using the Geonames database.
         self.airport="test"
         try:
-            response = requests.get('http://api.geonames.org/findNearbyPlaceNameJSON?style=long&lat={}&lng={}&username={}&cities=cities5000&radius=200'.format(self.instr['Lat'],self.instr['Long'], self.geonames_username))
+            response = requests.get('http://api.geonames.org/findNearbyPlaceNameJSON?style=long&lat={}&lng={}&username={}&cities=cities5000&radius=200'.format(fsdata.instr['Lat'],fsdata.instr['Long'], self.geonames_username))
             response.raise_for_status() # throw an exception if we get an error from Geonames.
             data =response.json()
             if len(data['geonames']) >= 1:
-                bearing = calcBearing (self.instr['Lat'], self.instr['Long'], float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
+                bearing = calcBearing (fsdata.instr['Lat'], fsdata.instr['Long'], float(data["geonames"][0]["lat"]), float(data["geonames"][0]["lng"]))
                 bearing = (degrees(bearing) +360) % 360
                 if self.use_metric == False:
                     distance = float(data["geonames"][0]["distance"]) / 1.609
@@ -1608,11 +1426,11 @@ class TFM(threading.Thread):
             else:
                 distance = 0
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            log.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
+            log.error('latitude:{}, longitude:{}'.format(fsdata.instr['Lat'], fsdata.instr['Long']))
             log.exception('error getting nearest city: ' + str(e))
             self.output ('cannot find nearest city. Geonames connection error. Check error log.')
         except requests.exceptions.HTTPError as e:
-            log.error('latitude:{}, longitude:{}'.format(self.instr['Lat'], self.instr['Long']))
+            log.error('latitude:{}, longitude:{}'.format(fsdata.instr['Lat'], fsdata.instr['Long']))
             log.exception('error getting nearest city. Error while connecting to Geonames.' + str(e))
             self.output ('cannot find nearest city. Geonames may be busy. Check error log.')
             
@@ -1620,7 +1438,7 @@ class TFM(threading.Thread):
         ## If so, announce body of water.
         ## We will continue to announce over water until the maximum radius of the search is reached.
         try:
-            response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(self.instr['Lat'],self.instr['Long'], self.geonames_username))
+            response = requests.get('http://api.geonames.org/oceanJSON?lat={}&lng={}&username={}'.format(fsdata.instr['Lat'],fsdata.instr['Long'], self.geonames_username))
             data = response.json()
             if 'ocean' in data and distance >= 1:
                 msg = msg + 'currently over {}\n'.format(data['ocean']['name'])
@@ -1631,7 +1449,7 @@ class TFM(threading.Thread):
             
         ## Read time zone information
         try:
-            response = requests.get('http://api.geonames.org/timezoneJSON?lat={}&lng={}&username={}'.format(self.instr['Lat'],self.instr['Long'], self.geonames_username))
+            response = requests.get('http://api.geonames.org/timezoneJSON?lat={}&lng={}&username={}'.format(fsdata.instr['Lat'],fsdata.instr['Long'], self.geonames_username))
             data = response.json()
             
             if 'timezoneId' in data:
@@ -1655,76 +1473,76 @@ class TFM(threading.Thread):
         try:
             # read types: 0 - all, 1 - instrumentation, 2 - SimConnect, 3 - attitude    
             if type == 0 or type == 1:
-                self.instr = dict(zip(self.InstrOffsets.keys(), pyuipc.read(self.pyuipcOffsets)))
+                fsdata.instr = dict(zip(fsdata.InstrOffsets.keys(), pyuipc.read(self.pyuipcOffsets)))
                 # prepare instrumentation variables
-                hexCode = hex(self.instr['Com1Freq'])[2:]
-                self.instr['Com1Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
-                hexCode = hex(self.instr['Com2Freq'])[2:]
-                self.instr['Com2Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
+                hexCode = hex(fsdata.instr['Com1Freq'])[2:]
+                fsdata.instr['Com1Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
+                hexCode = hex(fsdata.instr['Com2Freq'])[2:]
+                fsdata.instr['Com2Freq'] = float('1{}.{}'.format(hexCode[0:2],hexCode[2:]))
                 # lat lon
-                self.instr['Lat'] = self.instr['Lat'] * (90.0/(10001750.0 * 65536.0 * 65536.0))
-                self.instr['Long'] = self.instr['Long'] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
-                self.instr['Flaps'] = self.instr['Flaps'] / 256
-                self.instr['OnGround'] = bool(self.instr['OnGround'])
-                self.instr['ParkingBrake'] = bool(self.instr['ParkingBrake'])
+                fsdata.instr['Lat'] = fsdata.instr['Lat'] * (90.0/(10001750.0 * 65536.0 * 65536.0))
+                fsdata.instr['Long'] = fsdata.instr['Long'] * (360.0/(65536.0 * 65536.0 * 65536.0 * 65536.0))
+                fsdata.instr['Flaps'] = fsdata.instr['Flaps'] / 256
+                fsdata.instr['OnGround'] = bool(fsdata.instr['OnGround'])
+                fsdata.instr['ParkingBrake'] = bool(fsdata.instr['ParkingBrake'])
                 # self.ASLAltitude = round(results[8] * 3.28084)
-                self.instr['Altitude'] = round(self.instr['Altitude'])
-                self.instr['GroundAltitude'] = self.instr['GroundAltitude'] / 256 * 3.28084
-                self.instr['ApHeading'] = round(self.instr['ApHeading']/65536*360)
-                self.instr['ApAltitude'] = self.instr['ApAltitude'] / 65536 * 3.28084
-                self.instr['ApMach'] = self.instr['ApMach'] / 65536
-                # self.headingTrue = floor(((self.instr['Heading'] * 360) / (65536 * 65536)) + 0.5)
-                self.headingTrue = self.instr['Heading'] * 360 / (65536 * 65536)
-                self.headingCorrected = self.instr['CompassHeading']
-                self.instr['AirspeedTrue'] = round(self.instr['AirspeedTrue'] / 128)
-                self.instr['AirspeedIndicated'] = round(self.instr['AirspeedIndicated'] / 128)
-                self.instr['AirspeedMach'] = self.instr['AirspeedMach'] / 20480
-                self.instr['GroundSpeed'] = round((self.instr['GroundSpeed'] * 3600) / (65536 * 1852))
-                self.instr['NextWPETA'] = time.strftime('%H:%M', time.localtime(self.instr['NextWPETA']))
-                self.instr['NextWPBaring'] = degrees(self.instr['NextWPBaring'])
-                self.instr['DestETE'] =self.secondsToText(self.instr['DestETE'])
-                self.instr['DestETA'] = time.strftime('%H:%M', time.localtime(self.instr['DestETA']))
-                self.instr['ElevatorTrim'] = degrees(self.instr['ElevatorTrim'])
-                self.instr['VerticalSpeed'] = round ((self.instr['VerticalSpeed'] * 3.28084) * -1, 0)
-                self.tempC = round(self.instr['AirTemp'] / 256, 0)
+                fsdata.instr['Altitude'] = round(fsdata.instr['Altitude'])
+                fsdata.instr['GroundAltitude'] = fsdata.instr['GroundAltitude'] / 256 * 3.28084
+                fsdata.instr['ApHeading'] = round(fsdata.instr['ApHeading']/65536*360)
+                fsdata.instr['ApAltitude'] = fsdata.instr['ApAltitude'] / 65536 * 3.28084
+                fsdata.instr['ApMach'] = fsdata.instr['ApMach'] / 65536
+                # self.headingTrue = floor(((fsdata.instr['Heading'] * 360) / (65536 * 65536)) + 0.5)
+                self.headingTrue = fsdata.instr['Heading'] * 360 / (65536 * 65536)
+                self.headingCorrected = fsdata.instr['CompassHeading']
+                fsdata.instr['AirspeedTrue'] = round(fsdata.instr['AirspeedTrue'] / 128)
+                fsdata.instr['AirspeedIndicated'] = round(fsdata.instr['AirspeedIndicated'] / 128)
+                fsdata.instr['AirspeedMach'] = fsdata.instr['AirspeedMach'] / 20480
+                fsdata.instr['GroundSpeed'] = round((fsdata.instr['GroundSpeed'] * 3600) / (65536 * 1852))
+                fsdata.instr['NextWPETA'] = time.strftime('%H:%M', time.localtime(fsdata.instr['NextWPETA']))
+                fsdata.instr['NextWPBaring'] = degrees(fsdata.instr['NextWPBaring'])
+                fsdata.instr['DestETE'] =self.secondsToText(fsdata.instr['DestETE'])
+                fsdata.instr['DestETA'] = time.strftime('%H:%M', time.localtime(fsdata.instr['DestETA']))
+                fsdata.instr['ElevatorTrim'] = degrees(fsdata.instr['ElevatorTrim'])
+                fsdata.instr['VerticalSpeed'] = round ((fsdata.instr['VerticalSpeed'] * 3.28084) * -1, 0)
+                self.tempC = round(fsdata.instr['AirTemp'] / 256, 0)
                 self.tempF = round(9.0/5.0 * self.tempC + 32)
-                self.AGLAltitude = self.instr['Altitude'] - self.instr['GroundAltitude']
-                self.RadioAltitude = self.instr['RadioAltimeter']  / 65536 * 3.28084
-                self.instr['APUPercentage'] = round(self.instr['APUPercentage'])
-                self.EngSelect = list(map(int, '{0:08b}'.format(self.instr['EngineSelectFlags'])))
-                self.instr['Eng1Select'] = self.EngSelect[7]
-                self.instr['Eng2Select'] = self.EngSelect[6]
-                self.instr['Eng3Select'] = self.EngSelect[5]
-                self.instr['Eng4Select'] = self.EngSelect[4]
-                self.Nav1Bits = list(map(int, '{0:08b}'.format(self.instr['Nav1Flags'])))
-                self.instr['Nav1Type'] = self.Nav1Bits[0]
-                self.instr['Nav1GSAvailable'] = self.Nav1Bits[6]
-                self.DoorBits = list(map(int, '{0:08b}'.format(self.instr['Doors'])))
-                self.instr['Door1'] = self.DoorBits[7]
-                self.instr['Door2'] = self.DoorBits[6]
-                self.instr['Door3'] = self.DoorBits[5]
-                self.instr['Door4'] = self.DoorBits[4]
-                self.lights = list(map(int, '{0:08b}'.format(self.instr['Lights'])))
-                self.lights1 = list(map(int, '{0:08b}'.format(self.instr['Lights1'])))
+                self.AGLAltitude = fsdata.instr['Altitude'] - fsdata.instr['GroundAltitude']
+                self.RadioAltitude = fsdata.instr['RadioAltimeter']  / 65536 * 3.28084
+                fsdata.instr['APUPercentage'] = round(fsdata.instr['APUPercentage'])
+                self.EngSelect = list(map(int, '{0:08b}'.format(fsdata.instr['EngineSelectFlags'])))
+                fsdata.instr['Eng1Select'] = self.EngSelect[7]
+                fsdata.instr['Eng2Select'] = self.EngSelect[6]
+                fsdata.instr['Eng3Select'] = self.EngSelect[5]
+                fsdata.instr['Eng4Select'] = self.EngSelect[4]
+                self.Nav1Bits = list(map(int, '{0:08b}'.format(fsdata.instr['Nav1Flags'])))
+                fsdata.instr['Nav1Type'] = self.Nav1Bits[0]
+                fsdata.instr['Nav1GSAvailable'] = self.Nav1Bits[6]
+                self.DoorBits = list(map(int, '{0:08b}'.format(fsdata.instr['Doors'])))
+                fsdata.instr['Door1'] = self.DoorBits[7]
+                fsdata.instr['Door2'] = self.DoorBits[6]
+                fsdata.instr['Door3'] = self.DoorBits[5]
+                fsdata.instr['Door4'] = self.DoorBits[4]
+                self.lights = list(map(int, '{0:08b}'.format(fsdata.instr['Lights'])))
+                self.lights1 = list(map(int, '{0:08b}'.format(fsdata.instr['Lights1'])))
                 # breakpoint()
-                self.instr['CabinLights'] = self.lights[0]
-                self.instr['LogoLights'] = self.lights[1]
-                self.instr['WingLights'] = self.lights1[0]
-                self.instr['RecognitionLights'] = self.lights1[1]
-                self.instr['InstrumentLights'] = self.lights1[2]
-                self.instr['StrobeLights'] = self.lights1[3]
-                self.instr['TaxiLights'] = self.lights1[4]
-                self.instr['LandingLights'] = self.lights1[5]
-                self.instr['BeaconLights'] = self.lights1[6]
-                self.instr['NavigationLights'] = self.lights1[7]
-                self.AltQNH = self.instr['Altimeter'] / 16
+                fsdata.instr['CabinLights'] = self.lights[0]
+                fsdata.instr['LogoLights'] = self.lights[1]
+                fsdata.instr['WingLights'] = self.lights1[0]
+                fsdata.instr['RecognitionLights'] = self.lights1[1]
+                fsdata.instr['InstrumentLights'] = self.lights1[2]
+                fsdata.instr['StrobeLights'] = self.lights1[3]
+                fsdata.instr['TaxiLights'] = self.lights1[4]
+                fsdata.instr['LandingLights'] = self.lights1[5]
+                fsdata.instr['BeaconLights'] = self.lights1[6]
+                fsdata.instr['NavigationLights'] = self.lights1[7]
+                self.AltQNH = fsdata.instr['Altimeter'] / 16
                 self.AltHPA = floor(self.AltQNH + 0.5)
                 self.AltInches = floor(((100 * self.AltQNH * 29.92) / 1013.2) + 0.5)
-                self.instr['Eng1ITT'] = round(self.instr['Eng1ITT'] / 16384)
-                self.instr['Eng2ITT'] = round(self.instr['Eng2ITT'] / 16384)
-                self.instr['Eng3ITT'] = round(self.instr['Eng3ITT'] / 16384)
-                self.instr['Eng4ITT'] = round(self.instr['Eng4ITT'] / 16384)
-                self.instr['WindDirection'] = self.instr['WindDirection'] *360/65536
+                fsdata.instr['Eng1ITT'] = round(fsdata.instr['Eng1ITT'] / 16384)
+                fsdata.instr['Eng2ITT'] = round(fsdata.instr['Eng2ITT'] / 16384)
+                fsdata.instr['Eng3ITT'] = round(fsdata.instr['Eng3ITT'] / 16384)
+                fsdata.instr['Eng4ITT'] = round(fsdata.instr['Eng4ITT'] / 16384)
+                fsdata.instr['WindDirection'] = fsdata.instr['WindDirection'] *360/65536
 
 
 
@@ -1735,13 +1553,13 @@ class TFM(threading.Thread):
                 # prepare simConnect message data
                 try:
                     if self.SimCEnabled:
-                        self.SimCData = dict(zip(self.SimCOffsets.keys(), pyuipc.read(self.pyuipcSIMC)))
+                        self.SimCData = dict(zip(fsdata.SimCOffsets.keys(), pyuipc.read(self.pyuipcSIMC)))
                         self.SimCMessage = self.SimCData['SimCData'].decode ('UTF-8', 'ignore')
                 except Exception as e:
                     log.exception ('error reading simconnect message data')
             if type == 0 or type == 3:
                 # Read attitude
-                self.attitude = dict(zip(self.AttitudeOffsets.keys(), pyuipc.read(self.pyuipcAttitude)))
+                self.attitude = dict(zip(fsdata.AttitudeOffsets.keys(), pyuipc.read(self.pyuipcAttitude)))
                 self.attitude['Pitch'] = self.attitude['Pitch'] * 360 / (65536 * 65536)
                 self.attitude['Bank'] = self.attitude['Bank'] * 360 / (65536 * 65536)
         except pyuipc.FSUIPCException as e:
@@ -1781,49 +1599,53 @@ class TFM(threading.Thread):
 
 
 
-    
+    def macro(self, macro):
+        # execute an FSUIPC macro 
+        print (macro)
+        pyuipc.write([(0x0d70, -40, macro.encode())])
+
     def read_a2a_info (self, dt=0):
-        if self.instr['BatterySwitch'] != self.old_a2a_bat:
-            if self.instr['BatterySwitch']:
+        if fsdata.instr['BatterySwitch'] != self.old_a2a_bat:
+            if fsdata.instr['BatterySwitch']:
                 self.output ("Battery on")
             else:
                 self.output ("battery off")
-            self.old_a2a_bat = self.instr['BatterySwitch']
-        if self.instr['TipTankLeftPump'] != self.old_a2a_ttl:
-            if self.instr['TipTankLeftPump']:
+            self.old_a2a_bat = fsdata.instr['BatterySwitch']
+        if fsdata.instr['TipTankLeftPump'] != self.old_a2a_ttl:
+            if fsdata.instr['TipTankLeftPump']:
                 self.output ("left tip tank pump on")
             else:
                 self.output ("left tip tank pump off")
-            self.old_a2a_ttl = self.instr['TipTankLeftPump']
-        if self.instr['TipTankRightPump'] != self.old_a2a_ttr:
-            if self.instr['TipTankRightPump']:
+            self.old_a2a_ttl = fsdata.instr['TipTankLeftPump']
+        if fsdata.instr['TipTankRightPump'] != self.old_a2a_ttr:
+            if fsdata.instr['TipTankRightPump']:
                 self.output ("Right tip tank pump on")
             else:
                 self.output ("Right tip tank pump off")
-            self.old_a2a_ttr = self.instr['TipTankRightPump']
+            self.old_a2a_ttr = fsdata.instr['TipTankRightPump']
 
-        if self.instr['TipTanksAvailable'] != self.old_a2a_tt:
-            if self.instr['TipTanksAvailable']:
+        if fsdata.instr['TipTanksAvailable'] != self.old_a2a_tt:
+            if fsdata.instr['TipTanksAvailable']:
                 self.output(F"tip tanks available")
             else:
                 self.output ("Tip tanks not available")
-            self.old_a2a_tt = self.instr['TipTanksAvailable']
+            self.old_a2a_tt = fsdata.instr['TipTanksAvailable']
         # fuel selector
         fsel_state = {
             0: 'off',
             1: 'left',
             2: 'right'
         }
-        if self.instr['FuelSelector'] != self.old_a2a_fsel:
-            fsel = self.instr['FuelSelector']
+        if fsdata.instr['FuelSelector'] != self.old_a2a_fsel:
+            fsel = fsdata.instr['FuelSelector']
             self.output (F"fuel selector {fsel_state[fsel]}")
-            self.old_a2a_fsel = self.instr['FuelSelector']
-        if self.instr['window'] != self.old_a2a_window:
-            if self.instr['window'] == 1:
+            self.old_a2a_fsel = fsdata.instr['FuelSelector']
+        if fsdata.instr['window'] != self.old_a2a_window:
+            if fsdata.instr['window'] == 1:
                 self.output ("window open")
             else:
                 self.output ("window closed")
-            self.old_a2a_window = self.instr['window']
+            self.old_a2a_window = fsdata.instr['window']
 
     def read_a2a_toggle(self, instrument, name, onMessage, offMessage):
         ## There are several aircraft functions that are simply on/off toggles. 
@@ -1892,8 +1714,8 @@ class TFM(threading.Thread):
     def tip_tank_left_off (self):
         self.write_var('TipTankLeftPumpSwitch', 0)
         
-    def tip_tank_left_toggle (self):
-        if self.instr['TipTankLeftPump'] == 1:
+    def tip_tank_left_toggle (self, msg=None):
+        if fsdata.instr['TipTankLeftPump'] == 1 or msg == False:
             self.tip_tank_left_off()
         else:
             self.tip_tank_left_on()
@@ -1905,7 +1727,7 @@ class TFM(threading.Thread):
     def tip_tank_right_off (self):
         self.write_var('TipTankRightPumpSwitch', 0)
     def tip_tank_right_toggle(self):
-        if self.instr['TipTankRightPump'] == 1:
+        if fsdata.instr['TipTankRightPump'] == 1:
             self.tip_tank_right_off()
         else:
             self.tip_tank_right_on()
@@ -1917,25 +1739,15 @@ class TFM(threading.Thread):
     def window_close(self):
         self.write_var('WindowLeft', 0)
     def window_toggle(self):
-        if self.instr['window']:
+        if fsdata.instr['window']:
             self.window_close()
         else:
             self.window_open()
         pub.sendMessage('reset', arg1=True)
-    def fan_on(self):
-        self.write_var('VentCabinFanSwitch', 1)
-        time.sleep(3)
-        self.write_var("FluidClick", 1)
-
-    def fan_off(self):
-        self.write_var('VentCabinFanSwitch', 0)
 
         
     def fan_toggle(self):
-        if self.instr['fan']:
-            self.fan_off()
-        else:
-            self.fan_on()
+        self.macro("bonanza:L:VentCabinFanSwitch")
         pub.sendMessage('reset', arg1=True)
     def fan_speed(self):
         spd = self.read_long_var(0x66c8, "VentCabinOverheadFreshAirControl")

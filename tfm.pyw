@@ -27,6 +27,7 @@ import sys
 import time
 import warnings
 import config
+import fsdata
 import winsound
 #redirect the original stdout and stderr
 stdout = sys.stdout
@@ -61,8 +62,7 @@ import queue
 import flightsim
 import settings
 import a2a_fuel
-
-# import pyglet
+import a2a_controls
 import threading
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
@@ -160,7 +160,7 @@ def commandMode():
         log.exception ("error in command mode.")
 def a2a_command_mode():
     try:
-        if 'Bonanza' in tfm.instr['AircraftName'].decode():
+        if 'Bonanza' in fsdata.instr['AircraftName'].decode():
             keyboard_handler.unregister_all_keys()
             # send a message indicating that the next speech event has been triggered by a hotkey.
             pub.sendMessage("triggered", msg=True)
@@ -373,7 +373,7 @@ class TFMFrame(wx.Frame):
     def onExit(self, event):
         self.Close()
     def onFuel(self, event):
-        if 'Bonanza' in tfm.instr['AircraftName'].decode():
+        if 'Bonanza' in fsdata.instr['AircraftName'].decode():
             dlg = a2a_fuel.fuelControllerBonanza()
             wl = dlg.dialog.get_value("fuel", "wing_left")
             wr = dlg.dialog.get_value("fuel", "wing_right")
