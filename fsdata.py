@@ -127,13 +127,6 @@ InstrOffsets = {'Com1Freq': (0x034E,'H'),	# com1freq
         'RadioAltimeter': (0x31e4, 'u'), # Radio altitude in metres * 65536
         'AircraftName': (0x3d00, -255), # aircraft name
         'TextDisplay': (0x3380, -128), # FSUIPC text display
-        "BatterySwitch": (0x66c0, 'b'), # a2a battery switch
-        'TipTankLeftPump': (0x66c1, 'b'), # left tip tank pump
-        'TipTankRightPump': (0x66c2, 'b'), # right tip tank pump
-        'TipTanksAvailable': (0x66c4, 'b'), # tip tanks avaiable
-        'FuelSelector': (0x66c3, 'b'), # a2a fuel selector
-        'window': (0x66c5, 'b'), # a2a windows
-        'fan': (0x66c6, 'b'), # a2a cabin fan
         'FuelPump': (0x3104, 'b'), # fuel pump
         'lvl_center': (0x0b74, 'u'),
         'cap_center': (0x0b78, 'u'),
@@ -177,6 +170,31 @@ InstrOffsets = {'Com1Freq': (0x034E,'H'),	# com1freq
 
 
 }
+# offsets for A2A Bonanza
+BonanzaOffsets = {
+    "BatterySwitch": (0x66c0, 'b'), # a2a battery switch
+    'TipTankLeftPump': (0x66c1, 'b'), # left tip tank pump
+    'TipTankRightPump': (0x66c2, 'b'), # right tip tank pump
+    'FuelSelector': (0x66c3, 'b'), # a2a fuel selector
+    'TipTanksAvailable': (0x66c4, 'b'), # tip tanks avaiable
+    'window': (0x66c5, 'b'), # a2a windows
+    'fan': (0x66c6, 'b'), # a2a cabin fan
+    'CabinHeat': (0x66c7, 'b'),
+    'defrost': (0x66c8, 'b'),
+
+}
+# offsets for A2A Cherokee
+CherokeeOffsets = {
+    "BatterySwitch": (0x66c0, 'b'), # a2a battery switch
+    'FuelSelector': (0x66c1, 'b'), # a2a fuel selector
+    'window': (0x66c2, 'b'), # a2a windows
+    'CabinHeat': (0x66c3, 'b'),
+    'defrost': (0x66c4, 'b'),
+    'CarbHeat': (0x66c5, 'b'), 
+}
+
+
+
 
 # Offsets for SimConnect messages.
 SimCOffsets = {'SimCChanged': (0xb000,'u'), # changed indicator (4 bytes)

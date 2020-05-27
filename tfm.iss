@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Talking Flight Monitor"
-#define MyAppVersion "1.2"
+#define MyAppVersion "1.3 Beta"
 #define MyAppPublisher "Jason Fayre"
 #define MyAppURL "http://www.bvipilots.net"
 #define MyAppExeName "tfm.exe"
@@ -24,7 +24,7 @@ LicenseFile=LICENSE.txt
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputDir=tfm
-OutputBaseFilename=tfm-setup
+OutputBaseFilename=tfm-beta-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

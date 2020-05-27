@@ -1,0 +1,9 @@
+[Macros]
+1=L:FSelCherokeeState=Cyclic,2
+2=L:WindowLeft=Toggle
+3=L:PrimerState=Inc,2
+4=L:PrimerState=Dec,0
+5=L:Eng1CarbHeatSwitch=Inc,100
+6=L:Eng1CarbHeatSwitch=Dec,0
+7=L:CabinTempControl=Inc,100
+8=L:CabinTempControl=Dec,0

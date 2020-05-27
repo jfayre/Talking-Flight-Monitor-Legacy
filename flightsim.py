@@ -64,6 +64,9 @@ class TFM(threading.Thread):
                 self.pyuipcSIMC = pyuipc.prepare_data(list (fsdata.SimCOffsets.values()))
                 log.debug("preparing attitude mode offsets")
                 self.pyuipcAttitude = pyuipc.prepare_data(list (fsdata.AttitudeOffsets.values()))
+                self.pyuipcBonanza = pyuipc.prepare_data(list (fsdata.BonanzaOffsets.values()))
+                self.pyuipcCherokee = pyuipc.prepare_data(list (fsdata.CherokeeOffsets.values()))
+                # self.pyuipcC182 = pyuipc.prepare_data(list (fsdata.C182Offsets.values()))
                 self.pyuipcRadioAlt = pyuipc.prepare_data ([(0x31e4, 'u')])
                 
                 break
@@ -1226,7 +1229,8 @@ class TFM(threading.Thread):
             fsel_state = {
                 0: 'off',
                 1: 'left',
-                2: 'right'
+                2: 'right',
+                3: 'both'
             }
             if fsdata.instr['FuelSelector'] != self.old_a2a_fsel:
                 fsel = fsdata.instr['FuelSelector']
@@ -1486,7 +1490,6 @@ class TFM(threading.Thread):
                 fsdata.instr['Flaps'] = fsdata.instr['Flaps'] / 256
                 fsdata.instr['OnGround'] = bool(fsdata.instr['OnGround'])
                 fsdata.instr['ParkingBrake'] = bool(fsdata.instr['ParkingBrake'])
-                # self.ASLAltitude = round(results[8] * 3.28084)
                 fsdata.instr['Altitude'] = round(fsdata.instr['Altitude'])
                 fsdata.instr['GroundAltitude'] = fsdata.instr['GroundAltitude'] / 256 * 3.28084
                 fsdata.instr['ApHeading'] = round(fsdata.instr['ApHeading']/65536*360)
@@ -1544,6 +1547,15 @@ class TFM(threading.Thread):
                 fsdata.instr['Eng3ITT'] = round(fsdata.instr['Eng3ITT'] / 16384)
                 fsdata.instr['Eng4ITT'] = round(fsdata.instr['Eng4ITT'] / 16384)
                 fsdata.instr['WindDirection'] = fsdata.instr['WindDirection'] *360/65536
+                # prepare A2A aircraft data
+                fsdata.bonanza = dict(zip(fsdata.BonanzaOffsets.keys(), pyuipc.read(self.pyuipcBonanza)))
+                fsdata.cherokee = dict(zip(fsdata.CherokeeOffsets.keys(), pyuipc.read(self.pyuipcCherokee)))
+                self.ac = fsdata.instr['AircraftName'].decode()
+                if "Bonanza" in self.ac:
+                    fsdata.instr.update(fsdata.bonanza)
+                if 'Cherokee' in self.ac:
+                    fsdata.instr.update(fsdata.cherokee)
+
 
 
 
@@ -1669,8 +1681,9 @@ class TFM(threading.Thread):
         tip_tank_right = round(self.read_long_var(0x66e4, 'FuelRightTipTank'), 1)
         self.output (F'left: {tank_left} gallons')
         self.output (F'right: {tank_right} gallons')
-        self.output (F'left tip: {tip_tank_left} gallons')
-        self.output (F'right tip: {tip_tank_right} gallons')
+        if 'Bonanza' in fsdata.instr['AircraftName'].decode() and fsdata.instr['TipTanksAvailable']:
+            self.output (F'left tip: {tip_tank_left} gallons')
+            self.output (F'right tip: {tip_tank_right} gallons')
         pub.sendMessage('reset', arg1=True)
 
     def oil_quantity(self):
@@ -1749,9 +1762,9 @@ class TFM(threading.Thread):
         pub.sendMessage('reset', arg1=True)
 # cabbin heat and ventilation
     def window_open(self):
-        self.write_var('WindowLeft', 1)
+        self.write_var('WindowLeft', 1.0)
     def window_close(self):
-        self.write_var('WindowLeft', 0)
+        self.write_var('WindowLeft', 0.0)
     def window_toggle(self):
         if fsdata.instr['window']:
             self.window_close()

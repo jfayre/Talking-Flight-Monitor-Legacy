@@ -160,7 +160,8 @@ def commandMode():
         log.exception ("error in command mode.")
 def a2a_command_mode():
     try:
-        if 'Bonanza' in fsdata.instr['AircraftName'].decode():
+        ac = fsdata.instr['AircraftName'].decode()
+        if 'Bonanza' in ac or 'Cherokee' in ac or 'C182' in ac:
             keyboard_handler.unregister_all_keys()
             # send a message indicating that the next speech event has been triggered by a hotkey.
             pub.sendMessage("triggered", msg=True)
@@ -181,18 +182,12 @@ def a2a_command_mode():
                 config.app['hotkeys']['a2a_fuel_flow']: tfm.gph,    
                 config.app['hotkeys']['a2a_fuel_quantity']: tfm.fuel_quantity,
                 config.app['hotkeys']['a2a_oil_quantity']: tfm.oil_quantity,
-                config.app['hotkeys']['a2a_tip_tank_left']: tfm.tip_tank_left_toggle,
-                config.app['hotkeys']['a2a_tip_tank_right']: tfm.tip_tank_right_toggle,
-                config.app['hotkeys']['a2a_window']: tfm.window_toggle,
-                config.app['hotkeys']['a2a_fan']: tfm.fan_toggle,
-                config.app['hotkeys']['a2a_fan_speed']: tfm.fan_speed,
                 config.app['hotkeys']['a2a_cabin_temp']: tfm.cabin_temp,
                 config.app['hotkeys']['a2a_cabin_heat_inc']: tfm.cabin_heat_inc,
                 config.app['hotkeys']['a2a_cabin_heat_dec']: tfm.cabin_heat_dec,
                 config.app['hotkeys']['a2a_defrost_inc']: tfm.defrost_inc,
                 config.app['hotkeys']['a2a_defrost_dec']: tfm.defrost_dec,
                 config.app['hotkeys']['a2a_command_key']: tfm.exit_command_mode,
-                config.app['hotkeys']['a2a_fsel']: tfm.fuel_selector,
                 config.app['hotkeys']['a2a_tip_tank']: tfm.toggle_tip_tank,
 
                 }
@@ -377,27 +372,54 @@ class TFMFrame(wx.Frame):
         self.Close()
     def onFuel(self, event):
         if 'Bonanza' in fsdata.instr['AircraftName'].decode():
-            dlg = a2a_fuel.fuelControllerBonanza()
-            wl = dlg.dialog.get_value("fuel", "wing_left")
-            wr = dlg.dialog.get_value("fuel", "wing_right")
-            oil = dlg.dialog.get_value("fuel", "oil_quantity")
-            if dlg.response == widgetUtils.OK:
-                if wl != "":
-                    tfm.write_var("FuelLeftWingTank", float(wl))
-                if wr != "":
-                    tfm.write_var("FuelRightWingTank", float(wr))
-                if fsdata.instr['TipTanksAvailable']:
-                    tl = dlg.dialog.get_value("fuel", "tip_left")
-                    tr = dlg.dialog.get_value("fuel", "tip_right")
-                    if tl != "":
-                        tfm.write_var("FuelLeftTipTank", float(tl))
-                    if tr != "":
-                        tfm.write_var("FuelRightTipTank", float(tr))
-                if oil != "":
-                    tfm.write_var("Eng1_OilQuantity", float(oil))
-                    tfm.write_var("SystemCondSelectFSX", 46.0)
-                    tfm.write_var("SystemCondValueFSX", float(oil))
+            self.fuel_bonanza()
+        if 'Cherokee' in fsdata.instr['AircraftName'].decode():
+            self.fuel_cherokee()
 
+    def fuel_bonanza(self):
+        dlg = a2a_fuel.fuelControllerBonanza()
+        wl = dlg.dialog.get_value("fuel", "wing_left")
+        wr = dlg.dialog.get_value("fuel", "wing_right")
+        oil = dlg.dialog.get_value("fuel", "oil_quantity")
+        if dlg.response == widgetUtils.OK:
+            if wl != "":
+                tfm.write_var("FuelLeftWingTank", float(wl))
+            if wr != "":
+                tfm.write_var("FuelRightWingTank", float(wr))
+            if fsdata.instr['TipTanksAvailable']:
+                tl = dlg.dialog.get_value("fuel", "tip_left")
+                tr = dlg.dialog.get_value("fuel", "tip_right")
+                if tl != "":
+                    tfm.write_var("FuelLeftTipTank", float(tl))
+                if tr != "":
+                    tfm.write_var("FuelRightTipTank", float(tr))
+            if oil != "":
+                tfm.write_var("Eng1_OilQuantity", float(oil))
+                tfm.write_var("SystemCondSelectFSX", 46.0)
+                tfm.write_var("SystemCondValueFSX", float(oil))
+    def fuel_cherokee(self):
+        dlg = a2a_fuel.fuelControllerCherokee()
+        wl = dlg.dialog.get_value("fuel", "wing_left")
+        wr = dlg.dialog.get_value("fuel", "wing_right")
+        oil = dlg.dialog.get_value("fuel", "oil_quantity")
+        if dlg.response == widgetUtils.OK:
+            if wl != "":
+                tfm.write_var("FuelLeftWingTank", float(wl))
+            if wr != "":
+                tfm.write_var("FuelRightWingTank", float(wr))
+            if fsdata.instr['TipTanksAvailable']:
+                tl = dlg.dialog.get_value("fuel", "tip_left")
+                tr = dlg.dialog.get_value("fuel", "tip_right")
+                if tl != "":
+                    tfm.write_var("FuelLeftTipTank", float(tl))
+                if tr != "":
+                    tfm.write_var("FuelRightTipTank", float(tr))
+            if oil != "":
+                tfm.write_var("Eng1_OilQuantity", float(oil))
+                tfm.write_var("SystemCondSelectFSX", 46.0)
+                tfm.write_var("SystemCondValueFSX", float(oil))
+
+    
     def onAbout(self, event):
         info = wx.adv.AboutDialogInfo()
         info.SetName(application.name)
