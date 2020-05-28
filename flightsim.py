@@ -1217,30 +1217,54 @@ class TFM(threading.Thread):
                 self.altFlag[i] = True
             elif fsdata.instr['Altitude'] >= i + 100:
                 self.altFlag[i] = False
+        
         # read Bonanza instruments
         if 'Bonanza' in fsdata.instr['AircraftName'].decode():
-            self.readToggle('BatterySwitch', "battery", "active", "off")
-            self.readToggle('TipTankLeftPump', 'left tip tank pump', 'active', 'off')
-            self.readToggle('TipTankRightPump', 'right tip tank pump', 'active', 'off')
-            self.readToggle('TipTanksAvailable', 'tip tanks', 'installed', 'not installed')
-            self.readToggle('window', 'window', 'open', 'closed')
-            self.readToggle('fan', 'fan', 'active', 'off')
-            # fuel selector
-            fsel_state = {
-                0: 'off',
-                1: 'left',
-                2: 'right',
-                3: 'both'
-            }
-            if fsdata.instr['FuelSelector'] != self.old_a2a_fsel:
-                fsel = fsdata.instr['FuelSelector']
-                self.output (F"fuel selector {fsel_state[fsel]}")
-                self.old_a2a_fsel = fsdata.instr['FuelSelector']
-        
-            # maintain state of instruments so we can check on the next run.
+            self.read_bonanza()
+            self.read_cabin()
+        # read cherokee instruments
+        if 'Cherokee' in fsdata.instr['AircraftName'].decode():
+            self.read_cherokee()
+            self.read_cabin()
+        # maintain state of instruments so we can check on the next run.
         self.oldInstr = copy.deepcopy(fsdata.instr)
+    def read_bonanza(self):
+        self.readToggle('BatterySwitch', "battery", "active", "off")
+        self.readToggle('TipTankLeftPump', 'left tip tank pump', 'active', 'off')
+        self.readToggle('TipTankRightPump', 'right tip tank pump', 'active', 'off')
+        self.readToggle('TipTanksAvailable', 'tip tanks', 'installed', 'not installed')
+        self.readToggle('window', 'window', 'open', 'closed')
+        self.readToggle('fan', 'fan', 'active', 'off')
+        # fuel selector
+        fsel_state = {
+            0: 'off',
+            1: 'left',
+            2: 'right',
+        }
+        if fsdata.instr['FuelSelector'] != self.old_a2a_fsel:
+            fsel = fsdata.instr['FuelSelector']
+            self.output (F"fuel selector {fsel_state[fsel]}")
+            self.old_a2a_fsel = fsdata.instr['FuelSelector']
 
-    def readEngTemps(self, dt = 0):
+    def read_cherokee(self):
+        self.readToggle('BatterySwitch', "battery", "active", "off")
+        self.readToggle('window', 'window', 'open', 'closed')
+        # fuel selector
+        fsel_state = {
+            0: 'off',
+            1: 'left',
+            2: 'right',
+        }
+        if fsdata.instr['FuelSelector'] != self.old_a2a_fsel:
+            fsel = fsdata.instr['FuelSelector']
+            self.output (F"fuel selector {fsel_state[fsel]}")
+            self.old_a2a_fsel = fsdata.instr['FuelSelector']
+    def read_cabin(self):
+        # read cabin climate info such as heat and defrost
+        if fsdata.instr['CabinHeat'] != self.oldInstr['CabinHeat']:
+            self.output (F"cabin heat at {int(fsdata.instr['CabinHeat'])}")
+            self.oldInstr['CabinHeat'] = fsdata.instr['CabinHeat']
+    def readEngTemps(self):
         if self.use_metric == False:
             Eng1Temp = round(9.0/5.0 * fsdata.instr['Eng1ITT'] + 32)
             Eng2Temp = round(9.0/5.0 * fsdata.instr['Eng2ITT'] + 32)
@@ -1251,14 +1275,6 @@ class TFM(threading.Thread):
             Eng2Temp = fsdata.instr['Eng2ITT']
             Eng3Temp = fsdata.instr['Eng3ITT']
             Eng4Temp = fsdata.instr['Eng4ITT']
-        if fsdata.instr['Eng1Starter'] and fsdata.instr['Eng1Combustion']:
-            self.output (F"number 1 temp, {Eng1Temp}")
-        elif fsdata.instr['Eng2Starter'] and fsdata.instr['Eng2Combustion']:
-            self.output (F"number 2 temp, {Eng2Temp}")
-        elif fsdata.instr['Eng3Starter'] and fsdata.instr['Eng3Combustion']:
-            self.output (F"number 3 temp, {Eng3Temp}")
-        elif fsdata.instr['Eng4Starter'] and fsdata.instr['Eng4Combustion']:
-            self.output (F"number 4 temp, {Eng4Temp}")
         
     def readGroundSpeed(self, dt=0):
         self.sapi_q.put(F"{fsdata.instr['GroundSpeed']} knotts")

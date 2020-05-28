@@ -183,10 +183,6 @@ def a2a_command_mode():
                 config.app['hotkeys']['a2a_fuel_quantity']: tfm.fuel_quantity,
                 config.app['hotkeys']['a2a_oil_quantity']: tfm.oil_quantity,
                 config.app['hotkeys']['a2a_cabin_temp']: tfm.cabin_temp,
-                config.app['hotkeys']['a2a_cabin_heat_inc']: tfm.cabin_heat_inc,
-                config.app['hotkeys']['a2a_cabin_heat_dec']: tfm.cabin_heat_dec,
-                config.app['hotkeys']['a2a_defrost_inc']: tfm.defrost_inc,
-                config.app['hotkeys']['a2a_defrost_dec']: tfm.defrost_dec,
                 config.app['hotkeys']['a2a_command_key']: tfm.exit_command_mode,
                 config.app['hotkeys']['a2a_tip_tank']: tfm.toggle_tip_tank,
 

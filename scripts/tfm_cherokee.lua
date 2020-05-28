@@ -20,10 +20,16 @@ end
 function carb_heat(varname, value)
     ipc.writeUB(0x66c5, value)
 end
+function starter(varname, value)
+    ipc.sleep(1000)
+    ipc.writeLvar("L:Eng1_StarterSwitch",0)
+end
+
 event.Lvar("Battery1Switch",1000,"battery")
 event.Lvar("FSelCherokeeState", 1000, "fsel")
 event.Lvar("WindowLeft", 1000, "window")
-event.Lvar ("VentCabinFanSwitch", 1000, "fan")
+-- event.Lvar ("VentCabinFanSwitch", 1000, "fan")
 event.Lvar ("CabinTempControl", 1000, "heat")
 event.Lvar ("WindowDefrosterControlKnob", 1000, "defrost")
 event.Lvar ("Eng1_CarbHeatSwitch", 1000, "carb_heat")
+event.Lvar ("Eng1_StarterSwitch", 500, "starter")
