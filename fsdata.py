@@ -153,7 +153,8 @@ InstrOffsets = {'Com1Freq': (0x034E,'H'),	# com1freq
         'eng3_fuel_flow': (0x0a48, 'f'),
         'eng4_fuel_flow': (0x0ae0, 'f'),
         'EngineSelectFlags': (0x0888, 'b'), # engine select flags
-        'a2a_cabin_heat': (0x66c7, 'b'),
+        'GyroSuction': (0x0b18, 'f'), # gyro suction gauge
+        'OilQuantity': (0x66c9, 'b'),
 
 
 
@@ -192,6 +193,7 @@ CherokeeOffsets = {
     'defrost': (0x66c4, 'b'),
     'CarbHeat': (0x66c5, 'b'), 
 }
+a2a_payload = {}
 
 
 

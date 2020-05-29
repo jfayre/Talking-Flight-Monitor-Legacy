@@ -219,7 +219,8 @@ class TFM(threading.Thread):
         self.oldInstr = copy.deepcopy(fsdata.instr)
         # Start closest city loop if enabled.
         pub.subscribe(self.set_triggered, "triggered")
-        pub.subscribe (self.tip_tank_left_toggle, "ttl")
+        pub.subscribe(self.update_payload_data, "payload")
+
         if 'A2A Beechcraft' in fsdata.instr['AircraftName'].decode():
             log.debug("starting A2A Bonanza features")
             # pyglet.clock.schedule_interval(self.read_a2a_info, 1)
@@ -823,6 +824,41 @@ class TFM(threading.Thread):
             quantity = round(fsdata.instr['cap_tip_right'] * percentage)
             self.output (F'{round(percentage * 100)} percent. {weight} pounds. {quantity} gallons')
         
+    def update_payload_data(self, msg=None):
+        # populate dictionary with payload values from a2a aircraft
+        s1 = self.read_long_var(0x66e4, "Seat1Character")
+        print (F"seat1 {s1}")
+        s2 = self.read_long_var(0x66e4, "Seat2Character")
+        print (F"seat2 {s2}")
+        s3 = self.read_long_var(0x66e4, "Seat3Character")
+        print (F"seat3 {s3}")
+        s4 = self.read_long_var(0x66e4, "Seat4Character")
+        print (F"seat4 {s4}")
+        if s1 > 0:
+            fsdata.a2a_payload['seat1'] = True
+        else:
+            fsdata.a2a_payload['seat1'] = False
+        if s2 > 0:
+            fsdata.a2a_payload['seat2'] = True
+        else:
+            fsdata.a2a_payload['seat2'] = False
+        
+        if s3 > 0:
+            fsdata.a2a_payload['seat3'] = True
+        else:
+            fsdata.a2a_payload['seat3'] = False
+        
+        if s4 > 0:
+            fsdata.a2a_payload['seat4'] = True
+        else:
+            fsdata.a2a_payload['seat4'] = False
+        
+        
+        
+        fsdata.a2a_payload['Seat1Weight'] = self.read_long_var(0x66e4, "Character1Weight")
+        fsdata.a2a_payload['Seat2Weight'] = self.read_long_var(0x66e4, "Character2Weight")
+        fsdata.a2a_payload['Seat3Weight'] = self.read_long_var(0x66e4, "Character3Weight")
+        fsdata.a2a_payload['Seat4Weight'] = self.read_long_var(0x66e4, "Character4Weight")
 
     def fuel_t1(self):
         try:
@@ -1249,6 +1285,11 @@ class TFM(threading.Thread):
     def read_cherokee(self):
         self.readToggle('BatterySwitch', "battery", "active", "off")
         self.readToggle('window', 'window', 'open', 'closed')
+        # carb heat
+        if fsdata.instr['CarbHeat'] != self.oldInstr['CarbHeat']:
+            self.output (F"carburetor heat {int(fsdata.instr['CarbHeat'])} percent ")
+            self.oldInstr['CarbHeat'] = fsdata.instr['CarbHeat']
+
         # fuel selector
         fsel_state = {
             0: 'off',
@@ -1264,6 +1305,10 @@ class TFM(threading.Thread):
         if fsdata.instr['CabinHeat'] != self.oldInstr['CabinHeat']:
             self.output (F"cabin heat at {int(fsdata.instr['CabinHeat'])}")
             self.oldInstr['CabinHeat'] = fsdata.instr['CabinHeat']
+        if fsdata.instr['defrost'] != self.oldInstr['defrost']:
+            self.output (F"defrost {int(fsdata.instr['defrost'])}")
+            self.oldInstr['defrost'] = fsdata.instr['defrost']
+
     def readEngTemps(self):
         if self.use_metric == False:
             Eng1Temp = round(9.0/5.0 * fsdata.instr['Eng1ITT'] + 32)
@@ -1569,8 +1614,13 @@ class TFM(threading.Thread):
                 self.ac = fsdata.instr['AircraftName'].decode()
                 if "Bonanza" in self.ac:
                     fsdata.instr.update(fsdata.bonanza)
+                    fsdata.instr['OilQuantity'] = round(self.read_long_var(0x66e4, 'Eng1_OilQuantity'), 1)
                 if 'Cherokee' in self.ac:
                     fsdata.instr.update(fsdata.cherokee)
+                    fsdata.instr['OilQuantity'] = round(self.read_long_var(0x66e4, 'Eng1_OilQuantity'), 1)
+                if 'C182' in self.ac:
+                    fsdata.instr.update(fsdata.c182)
+                    fsdata.instr['OilQuantity'] = round(self.read_long_var(0x66e4, 'Eng1_OilQuantity'), 1)
 
 
 
@@ -1618,8 +1668,8 @@ class TFM(threading.Thread):
 
     def write_var(self, var, value):
         var = "::" + var
-        pyuipc.write([(0x66f0, 'F', value)])
-        pyuipc.write([(0x0d6c, 'u', 0x166f0),
+        pyuipc.write([(0x66f0, 'f', value)])
+        pyuipc.write([(0x0d6c, 'u', 0x066f0),
             (0x0d70, -40, var.encode()),
             
         ])

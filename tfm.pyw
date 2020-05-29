@@ -333,7 +333,7 @@ class TFMFrame(wx.Frame):
         app_exit = app_menu.Append (wx.ID_EXIT,"E&xit"," Terminate the program")
         # aircraft menu
         aircraft_menu = wx.Menu()
-        aircraft_fuel = aircraft_menu.Append(wx.ID_ANY, "A2A &fuel manager")
+        aircraft_fuel = aircraft_menu.Append(wx.ID_ANY, "A2A &fuel and payload manager")
         # help menu
         help_menu = wx.Menu()
         help_website = help_menu.Append(wx.ID_ANY, "visit &website")
@@ -371,34 +371,42 @@ class TFMFrame(wx.Frame):
             self.fuel_bonanza()
         if 'Cherokee' in fsdata.instr['AircraftName'].decode():
             self.fuel_cherokee()
+        self.payload()
 
     def fuel_bonanza(self):
-        dlg = a2a_fuel.fuelControllerBonanza()
-        wl = dlg.dialog.get_value("fuel", "wing_left")
-        wr = dlg.dialog.get_value("fuel", "wing_right")
-        oil = dlg.dialog.get_value("fuel", "oil_quantity")
-        if dlg.response == widgetUtils.OK:
+        self.dlg = a2a_fuel.fuelControllerBonanza()
+        wl = self.dlg.dialog.get_value("fuel", "wing_left")
+        wr = self.dlg.dialog.get_value("fuel", "wing_right")
+        oil = self.dlg.dialog.get_value("fuel", "oil_quantity")
+        if self.dlg.response == widgetUtils.OK:
             if wl != "":
                 tfm.write_var("FuelLeftWingTank", float(wl))
+                time.sleep(0.25)
             if wr != "":
                 tfm.write_var("FuelRightWingTank", float(wr))
+                time.sleep(0.25)
             if fsdata.instr['TipTanksAvailable']:
-                tl = dlg.dialog.get_value("fuel", "tip_left")
-                tr = dlg.dialog.get_value("fuel", "tip_right")
+                tl = self.dlg.dialog.get_value("fuel", "tip_left")
+                tr = self.dlg.dialog.get_value("fuel", "tip_right")
                 if tl != "":
                     tfm.write_var("FuelLeftTipTank", float(tl))
+                    time.sleep(0.25)
                 if tr != "":
                     tfm.write_var("FuelRightTipTank", float(tr))
+                    time.sleep(0.25)
             if oil != "":
                 tfm.write_var("Eng1_OilQuantity", float(oil))
+                time.sleep(0.25)
                 tfm.write_var("SystemCondSelectFSX", 46.0)
+                time.sleep(0.25)
                 tfm.write_var("SystemCondValueFSX", float(oil))
+                time.sleep(0.25)
     def fuel_cherokee(self):
-        dlg = a2a_fuel.fuelControllerCherokee()
-        wl = dlg.dialog.get_value("fuel", "wing_left")
-        wr = dlg.dialog.get_value("fuel", "wing_right")
-        oil = dlg.dialog.get_value("fuel", "oil_quantity")
-        if dlg.response == widgetUtils.OK:
+        self.dlg = a2a_fuel.fuelControllerCherokee()
+        wl = self.dlg.dialog.get_value("fuel", "wing_left")
+        wr = self.dlg.dialog.get_value("fuel", "wing_right")
+        oil = self.dlg.dialog.get_value("fuel", "oil_quantity")
+        if self.dlg.response == widgetUtils.OK:
             if wl != "":
                 tfm.write_var("FuelLeftWingTank", float(wl))
             if wr != "":
@@ -415,7 +423,65 @@ class TFMFrame(wx.Frame):
                 tfm.write_var("SystemCondSelectFSX", 46.0)
                 tfm.write_var("SystemCondValueFSX", float(oil))
 
-    
+    def payload(self):
+        # get payload fields from dialog
+        # checkboxes for occupied seats
+        s1 = self.dlg.dialog.get_value('payload', 'seat1')
+        print (F"write seat 1: {s1}")
+        s2 = self.dlg.dialog.get_value('payload', 'seat2')
+        print (F'write seat 2: {s2}')
+        s3 = self.dlg.dialog.get_value('payload', 'seat3')
+        print (F"write seat 3: {s3}")
+        s4 = self.dlg.dialog.get_value('payload', 'seat4')
+        print (F'write seat 4: {s4}')
+
+
+        # fields for passenger weights
+        s1_weight = self.dlg.dialog.get_value('payload', 'seat1_weight')
+        s2_weight = self.dlg.dialog.get_value('payload', 'seat2_weight')
+        s3_weight = self.dlg.dialog.get_value('payload', 'seat3_weight')
+        s4_weight = self.dlg.dialog.get_value('payload', 'seat4_weight')
+        # Seat 1 is the pilot. If there is no pilot, clear the other seats
+        if s1:
+            print ("pilot present")
+            tfm.write_var("Seat1Character", 1.0)
+            time.sleep(0.25)
+            tfm.write_var("Character1Weight", float(s1_weight))
+        else:
+            print ("no pilot, clearing")
+            tfm.write_var("Seat1Character", 0.0)
+            tfm.write_var("Seat2Character", 0.0)
+            tfm.write_var("Seat3Character", 0.0)
+            tfm.write_var("Seat4Character", 0.0)
+            return
+        if s2:
+            print ("writing character 2")
+            tfm.write_var("Seat2Character", 2.0)
+            time.sleep(0.25)
+            tfm.write_var("Character2Weight", float(s2_weight))
+        else:
+            tfm.write_var("Seat2Character", 0.0)
+        if s3:
+            print ("writing character 3")
+            tfm.write_var("Seat3Character", 3.0)
+            time.sleep(0.25)
+            tfm.write_var("Character3Weight", float(s3_weight))
+        else:
+            tfm.write_var("Seat2Character", 0.0)
+        if s4:
+            print ("writing character 4")
+            tfm.write_var("Seat4Character", 4.0)
+            time.sleep(0.25)
+            tfm.write_var("Character4Weight", float(s4_weight))
+        else:
+            tfm.write_var("Seat4Character", 0.0)
+
+
+
+
+
+
+        
     def onAbout(self, event):
         info = wx.adv.AboutDialogInfo()
         info.SetName(application.name)

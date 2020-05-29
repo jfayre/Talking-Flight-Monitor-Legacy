@@ -37,11 +37,51 @@ class fuel(wx.Panel, baseDialog.BaseWXDialog):
             ttr_box.Add(self.tip_right, 0, wx.ALL, 5)
             sizer.Add(ttr_box, 0, wx.ALL, 5)
         oil_box = wx.BoxSizer(wx.HORIZONTAL)
-        oil_box.Add(wx.StaticText(self, -1, "Oil quantity in gallons (max 2.5): "), 0, wx.ALL, 5)
+        oil_box.Add(wx.StaticText(self, -1, "Oil quantity in quarts (max 10): "), 0, wx.ALL, 5)
         self.oil_quantity = wx.TextCtrl(self, -1)
         oil_box.Add(self.oil_quantity, 0, wx.ALL, 5)
         sizer.Add(oil_box, 0, wx.ALL, 5)
         self.SetSizer(sizer)
+
+class payload(wx.Panel, baseDialog.BaseWXDialog):
+    def __init__(self, parent):
+        super(payload, self).__init__(parent)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        self.seat1 = wx.CheckBox(self, -1, "Pilot (required for other passengers)")
+        seat1_label = wx.StaticText(self, wx.ID_ANY, "Pilot weight in pounds (min 100, max 300):")
+        self.seat1_weight = wx.TextCtrl(self, -1)
+        seat1_box = wx.BoxSizer(wx.HORIZONTAL)
+        seat1_box.Add(self.seat1, 0, wx.ALL, 5)
+        seat1_box.Add(seat1_label, 0, wx.ALL, 5)
+        seat1_box.Add(self.seat1_weight, 0, wx.ALL, 5)
+        sizer.Add(seat1_box, 0, wx.ALL, 5)
+        self.seat2 = wx.CheckBox(self, -1, "Passenger 1")
+        seat2_label = wx.StaticText(self, wx.ID_ANY, "Passenger 1 weight in pounds (min 100, max 300):")
+        self.seat2_weight = wx.TextCtrl(self, -1)
+        seat2_box = wx.BoxSizer(wx.HORIZONTAL)
+        seat2_box.Add(self.seat2, 0, wx.ALL, 5)
+        seat2_box.Add(seat2_label, 0, wx.ALL, 5)
+        seat2_box.Add(self.seat2_weight, 0, wx.ALL, 5)
+        sizer.Add(seat2_box, 0, wx.ALL, 5)
+        self.seat3 = wx.CheckBox(self, -1, "Passenger 2")
+        seat3_label = wx.StaticText(self, wx.ID_ANY, "Passenger 2 weight in pounds (min 100, max 300): ")
+        self.seat3_weight = wx.TextCtrl(self, -1)
+        seat3_box = wx.BoxSizer(wx.HORIZONTAL)
+        seat3_box.Add(self.seat3, 0, wx.ALL, 5)
+        seat3_box.Add(seat3_label, 0, wx.ALL, 5)
+        seat3_box.Add(self.seat2_weight, 0, wx.ALL, 5)
+        sizer.Add(seat3_box, 0, wx.ALL, 5)
+        self.seat4 = wx.CheckBox(self, -1, "Passenger 3")
+        seat4_label = wx.StaticText(self, wx.ID_ANY, "Passenger 3 weight in pounds (min 100, max 300): ")
+        self.seat4_weight = wx.TextCtrl(self, -1)
+        seat4_box = wx.BoxSizer(wx.HORIZONTAL)
+        seat4_box.Add(self.seat4, 0, wx.ALL, 5)
+        seat4_box.Add(seat4_label, 0, wx.ALL, 5)
+        seat4_box.Add(self.seat4_weight, 0, wx.ALL, 5)
+        sizer.Add(seat4_box, 0, wx.ALL, 5)
+        self.SetSizer(sizer)
+
+
 
 
 class fuelDialog(baseDialog.BaseWXDialog):
@@ -58,6 +98,9 @@ class fuelDialog(baseDialog.BaseWXDialog):
         self.fuel = fuel(self.notebook)
         self.notebook.AddPage(self.fuel, "Fuel")
         self.fuel.SetFocus()
+    def create_payload(self):
+        self.payload = payload(self.notebook)
+        self.notebook.AddPage(self.payload, "Payload")
 
     def realize(self):
         self.sizer.Add(self.notebook, 0, wx.ALL, 5)
