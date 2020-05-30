@@ -182,6 +182,7 @@ BonanzaOffsets = {
     'fan': (0x66c6, 'b'), # a2a cabin fan
     'CabinHeat': (0x66c7, 'b'),
     'defrost': (0x66c8, 'b'),
+    'PayloadWeight': (0x4222, 'H'),
 
 }
 # offsets for A2A Cherokee

@@ -855,10 +855,10 @@ class TFM(threading.Thread):
         
         
         
-        fsdata.a2a_payload['Seat1Weight'] = self.read_long_var(0x66e4, "Character1Weight")
-        fsdata.a2a_payload['Seat2Weight'] = self.read_long_var(0x66e4, "Character2Weight")
-        fsdata.a2a_payload['Seat3Weight'] = self.read_long_var(0x66e4, "Character3Weight")
-        fsdata.a2a_payload['Seat4Weight'] = self.read_long_var(0x66e4, "Character4Weight")
+        fsdata.a2a_payload['Seat1Weight'] = int(self.read_long_var(0x66e4, "Character1Weight"))
+        fsdata.a2a_payload['Seat2Weight'] = int(self.read_long_var(0x66e4, "Character2Weight"))
+        fsdata.a2a_payload['Seat3Weight'] = int(self.read_long_var(0x66e4, "Character3Weight"))
+        fsdata.a2a_payload['Seat4Weight'] = int(self.read_long_var(0x66e4, "Character4Weight"))
 
     def fuel_t1(self):
         try:
@@ -1281,6 +1281,9 @@ class TFM(threading.Thread):
             fsel = fsdata.instr['FuelSelector']
             self.output (F"fuel selector {fsel_state[fsel]}")
             self.old_a2a_fsel = fsdata.instr['FuelSelector']
+        if fsdata.instr['PayloadWeight'] != self.oldInstr['PayloadWeight']:
+            self.output (F"Payload weight now {int(fsdata.instr['PayloadWeight'])} pounds")
+            
 
     def read_cherokee(self):
         self.readToggle('BatterySwitch', "battery", "active", "off")
@@ -1910,4 +1913,35 @@ class TFM(threading.Thread):
         self.adjust_defrost = False
         self.output ("done")
         pub.sendMessage('reset', arg1=True)
+    
+    def set_fuel(self, tank, value):
+        value = float(value )
+        # write fuel values to fsuipc offsets to be handed off to the lua script
+        # left wing
+        if tank == 0:
+            pyuipc.write([(0x4200, 'F', value)])
+        # wing right
+        if tank == 1:
+            pyuipc.write([(0x4204, 'F', value)])
+        # tip left
+        if tank == 2:
+            pyuipc.write([(0x4208, 'F', value)])
+        # tip right
+        if tank == 3:
+            pyuipc.write([(0x420c, 'F', value)])
+    def set_oil(self, value):
+        value = float(value)
+        pyuipc.write([(0x4230, 'f', value)])
+        time.sleep(0.5)
+    def set_seat (self, seat, weight):
+        weight = int(weight)
+        if seat == 1:
+            pyuipc.write([(0x4214, 'H', weight)])
+        if seat == 2:
+            pyuipc.write([(0x4216, 'H', weight)])
+        if seat == 3:
+            pyuipc.write([(0x4218, 'H', weight)])
+        if seat == 4:
+            pyuipc.write([(0x4220, 'H', weight)])
         
+

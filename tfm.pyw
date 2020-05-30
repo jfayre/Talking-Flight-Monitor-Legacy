@@ -380,27 +380,33 @@ class TFMFrame(wx.Frame):
         oil = self.dlg.dialog.get_value("fuel", "oil_quantity")
         if self.dlg.response == widgetUtils.OK:
             if wl != "":
-                tfm.write_var("FuelLeftWingTank", float(wl))
+                # tfm.write_var("FuelLeftWingTank", float(wl))
+                tfm.set_fuel(0, wl)
                 time.sleep(0.25)
             if wr != "":
-                tfm.write_var("FuelRightWingTank", float(wr))
+                # tfm.write_var("FuelRightWingTank", float(wr))
+                tfm.set_fuel(1, wr)
                 time.sleep(0.25)
             if fsdata.instr['TipTanksAvailable']:
                 tl = self.dlg.dialog.get_value("fuel", "tip_left")
                 tr = self.dlg.dialog.get_value("fuel", "tip_right")
                 if tl != "":
-                    tfm.write_var("FuelLeftTipTank", float(tl))
+                    # tfm.write_var("FuelLeftTipTank", float(tl))
+                    tfm.set_fuel(2, tl)
                     time.sleep(0.25)
                 if tr != "":
-                    tfm.write_var("FuelRightTipTank", float(tr))
+                    # tfm.write_var("FuelRightTipTank", float(tr))
+                    tfm.set_fuel(3, tr)
                     time.sleep(0.25)
             if oil != "":
-                tfm.write_var("Eng1_OilQuantity", float(oil))
-                time.sleep(0.25)
-                tfm.write_var("SystemCondSelectFSX", 46.0)
-                time.sleep(0.25)
-                tfm.write_var("SystemCondValueFSX", float(oil))
-                time.sleep(0.25)
+                # tfm.write_var("Eng1_OilQuantity", float(oil))
+                # time.sleep(0.25)
+                # tfm.write_var("SystemCondSelectFSX", 46.0)
+                # time.sleep(0.25)
+                # tfm.write_var("SystemCondValueFSX", float(oil))
+                # time.sleep(0.25)
+                tfm.set_oil(oil)
+
     def fuel_cherokee(self):
         self.dlg = a2a_fuel.fuelControllerCherokee()
         wl = self.dlg.dialog.get_value("fuel", "wing_left")
@@ -427,13 +433,9 @@ class TFMFrame(wx.Frame):
         # get payload fields from dialog
         # checkboxes for occupied seats
         s1 = self.dlg.dialog.get_value('payload', 'seat1')
-        print (F"write seat 1: {s1}")
         s2 = self.dlg.dialog.get_value('payload', 'seat2')
-        print (F'write seat 2: {s2}')
         s3 = self.dlg.dialog.get_value('payload', 'seat3')
-        print (F"write seat 3: {s3}")
         s4 = self.dlg.dialog.get_value('payload', 'seat4')
-        print (F'write seat 4: {s4}')
 
 
         # fields for passenger weights
@@ -443,38 +445,26 @@ class TFMFrame(wx.Frame):
         s4_weight = self.dlg.dialog.get_value('payload', 'seat4_weight')
         # Seat 1 is the pilot. If there is no pilot, clear the other seats
         if s1:
-            print ("pilot present")
-            tfm.write_var("Seat1Character", 1.0)
+            tfm.set_seat(1, s1_weight)
             time.sleep(0.25)
-            tfm.write_var("Character1Weight", float(s1_weight))
         else:
-            print ("no pilot, clearing")
-            tfm.write_var("Seat1Character", 0.0)
-            tfm.write_var("Seat2Character", 0.0)
-            tfm.write_var("Seat3Character", 0.0)
-            tfm.write_var("Seat4Character", 0.0)
+            tfm.set_seat(1, 0)
+            tfm.set_seat(2, 0)
+            tfm.set_seat(3, 0)
+            tfm.set_seat(4, 0)
             return
         if s2:
-            print ("writing character 2")
-            tfm.write_var("Seat2Character", 2.0)
-            time.sleep(0.25)
-            tfm.write_var("Character2Weight", float(s2_weight))
+            tfm.set_seat(2, s2_weight)
         else:
-            tfm.write_var("Seat2Character", 0.0)
+            tfm.set_seat(2, 0)
         if s3:
-            print ("writing character 3")
-            tfm.write_var("Seat3Character", 3.0)
-            time.sleep(0.25)
-            tfm.write_var("Character3Weight", float(s3_weight))
+            tfm.set_seat(3, s3_weight)
         else:
-            tfm.write_var("Seat2Character", 0.0)
+            tfm.set_seat(3, 0)
         if s4:
-            print ("writing character 4")
-            tfm.write_var("Seat4Character", 4.0)
-            time.sleep(0.25)
-            tfm.write_var("Character4Weight", float(s4_weight))
+            tfm.set_seat(4, s4_weight)
         else:
-            tfm.write_var("Seat4Character", 0.0)
+            tfm.set_seat(4, 0)
 
 
 
