@@ -40,32 +40,48 @@ end
 -- event.Lvar ("WindowDefrosterControlKnob", 1000, "defrost")
 
 function fuel_wl (offset, value)
+    if value == 0 then
+        return
+    end
     ipc.writeLvar("FuelLeftWingTank", value)
     ipc.sleep(250)
 end
 event.offset(0x4200, "FLT", "fuel_wl")
 function fuel_wr (offset, value)
+    if value == 0 then
+        return
+end
+
     ipc.writeLvar("FuelRightWingTank", value)
     ipc.sleep(250)
 end
 event.offset(0x4204, "FLT", "fuel_wr")
 function fuel_tl (offset, value)
+    if value == 0 then
+        return
+    end
     ipc.writeLvar("FuelLeftTipTank", value)
     ipc.sleep(250)
 end
 event.offset(0x4208, "FLT", "fuel_tl")
 function fuel_tr (offset, value)
+    if value == 0 then
+        return
+    end
     ipc.writeLvar("FuelRightTipTank", value)
     ipc.sleep(250)
 end
 event.offset(0x420c, "FLT", "fuel_tr")
 function oil(offset, value)
-    value = math.floor(value*10)/10
+    if value == 0 then
+        return
+    end
+    -- value = math.floor(value*10)/10
     ipc.log("writing oil: " .. value)
     ipc.writeLvar("Eng1_OilQuantity", value)
-    ipc.sleep(500)
+    -- ipc.sleep()
     ipc.writeLvar("SystemCondSelectFSX", 46)
-    ipc.sleep(500)
+    --ipc.sleep(500)
     ipc.writeLvar("SystemCondValueFSX", value)
 end
 event.offset(0x4230, "DBL", "oil")

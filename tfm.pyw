@@ -414,21 +414,18 @@ class TFMFrame(wx.Frame):
         oil = self.dlg.dialog.get_value("fuel", "oil_quantity")
         if self.dlg.response == widgetUtils.OK:
             if wl != "":
-                tfm.write_var("FuelLeftWingTank", float(wl))
+                tfm.set_fuel(0, wl)
             if wr != "":
-                tfm.write_var("FuelRightWingTank", float(wr))
+                tfm.set_fuel(1, wr)
             if fsdata.instr['TipTanksAvailable']:
                 tl = dlg.dialog.get_value("fuel", "tip_left")
                 tr = dlg.dialog.get_value("fuel", "tip_right")
                 if tl != "":
-                    tfm.write_var("FuelLeftTipTank", float(tl))
+                    tfm.set_fuel(2, tl)
                 if tr != "":
-                    tfm.write_var("FuelRightTipTank", float(tr))
+                    tfm.set_fuel(3, tr)
             if oil != "":
-                tfm.write_var("Eng1_OilQuantity", float(oil))
-                tfm.write_var("SystemCondSelectFSX", 46.0)
-                tfm.write_var("SystemCondValueFSX", float(oil))
-
+                tfm.set_oil(oil)
     def payload(self):
         # get payload fields from dialog
         # checkboxes for occupied seats

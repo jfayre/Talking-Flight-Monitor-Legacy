@@ -30,7 +30,7 @@ class fuelControllerBonanza(object):
         if fsdata.instr['TipTanksAvailable']:
             self.dialog.set_value("fuel", "tip_left", self.get_fuel_data(2))
             self.dialog.set_value("fuel", "tip_right", self.get_fuel_data(3))
-        self.dialog.set_value ('fuel', 'oil_quantity', str(fsdata.instr['OilQuantity']))
+        # self.dialog.set_value ('fuel', 'oil_quantity', str(fsdata.instr['OilQuantity']))
         # payload tab
         self.dialog.create_payload()
         pub.sendMessage("payload", msg=True)
