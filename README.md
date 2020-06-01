@@ -176,6 +176,18 @@ pyinstaller tfm.spec
 ```
 Disregard the warning about UPX not being present.
 
+## Generating HTML Documentation
+To generate HTML documentation, install [Pandoc](https://github.com/jgm/pandoc/releases) for your platform, either using the MSI installer (recommended) or the ZIP archive. Once Pandoc is installed, run the following:
+```
+pandoc readme.md -s -o tfm.html
+```
+
+## Building the Installer
+To build the installer, [InnoSetup](https://www.jrsoftware.org/isinfo.php) needs to be installed. Be sure to add the path to InnoSetup to your PATH environment variable. Once this is done, and a binary version has been built (see above), run:
+```
+iscc tfm.iss
+```
+The installer will be built and placed in the tfm/ subdirectory.
 
 ## Bugs and issues
 * Please report bugs via the github issues tab.

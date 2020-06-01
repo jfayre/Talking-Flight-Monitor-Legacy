@@ -1,3 +1,23 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>readme</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
 <h1 id="talking-flight-monitor-tfm">Talking Flight Monitor (TFM)</h1>
 <p>An accessibility layer for Microsoft FSX and Lockhede Martin Prepar3d.</p>
 <h2 id="downloading">downloading</h2>
@@ -151,6 +171,13 @@
 <p>Once PyInstaller is installed, execute the following from the root of the checkout:</p>
 <pre><code>pyinstaller tfm.spec</code></pre>
 <p>Disregard the warning about UPX not being present.</p>
+<h2 id="generating-html-documentation">Generating HTML Documentation</h2>
+<p>To generate HTML documentation, install <a href="https://github.com/jgm/pandoc/releases">Pandoc</a> for your platform, either using the MSI installer (recommended) or the ZIP archive. Once Pandoc is installed, run the following:</p>
+<pre><code>pandoc readme.md -s -o tfm.html</code></pre>
+<h2 id="building-the-installer">Building the Installer</h2>
+<p>To build the installer, <a href="https://www.jrsoftware.org/isinfo.php">InnoSetup</a> needs to be installed. Be sure to add the path to InnoSetup to your PATH environment variable. Once this is done, and a binary version has been built (see above), run:</p>
+<pre><code>iscc tfm.iss</code></pre>
+<p>The installer will be built and placed in the tfm/ subdirectory.</p>
 <h2 id="bugs-and-issues">Bugs and issues</h2>
 <ul>
 <li>Please report bugs via the github issues tab.</li>
@@ -166,3 +193,5 @@
 <li>Thanks to Tyler Rodick for his assistance with this project. This is my first major coding project, and it’s helpful to have someone fixing my occasional oversight.</li>
 <li>Thanks also to Manuel Cortez, who wrote the keyboard handling code that TFM uses.</li>
 </ul>
+</body>
+</html>
