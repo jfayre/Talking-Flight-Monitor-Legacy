@@ -371,6 +371,8 @@ class TFMFrame(wx.Frame):
             self.fuel_bonanza()
         if 'Cherokee' in fsdata.instr['AircraftName'].decode():
             self.fuel_cherokee()
+        if 'C182' in fsdata.instr['AircraftName'].decode():
+            self.fuel_c182()
         self.payload()
 
     def fuel_bonanza(self):
