@@ -66,7 +66,7 @@ class TFM(threading.Thread):
                 self.pyuipcAttitude = pyuipc.prepare_data(list (fsdata.AttitudeOffsets.values()))
                 self.pyuipcBonanza = pyuipc.prepare_data(list (fsdata.BonanzaOffsets.values()))
                 self.pyuipcCherokee = pyuipc.prepare_data(list (fsdata.CherokeeOffsets.values()))
-                # self.pyuipcC182 = pyuipc.prepare_data(list (fsdata.C182Offsets.values()))
+                self.pyuipcC182 = pyuipc.prepare_data(list (fsdata.C182Offsets.values()))
                 self.pyuipcRadioAlt = pyuipc.prepare_data ([(0x31e4, 'u')])
                 
                 break
@@ -827,13 +827,9 @@ class TFM(threading.Thread):
     def update_payload_data(self, msg=None):
         # populate dictionary with payload values from a2a aircraft
         s1 = self.read_long_var(0x66e4, "Seat1Character")
-        print (F"seat1 {s1}")
         s2 = self.read_long_var(0x66e4, "Seat2Character")
-        print (F"seat2 {s2}")
         s3 = self.read_long_var(0x66e4, "Seat3Character")
-        print (F"seat3 {s3}")
         s4 = self.read_long_var(0x66e4, "Seat4Character")
-        print (F"seat4 {s4}")
         if s1 > 0:
             fsdata.a2a_payload['seat1'] = True
         else:
@@ -1262,6 +1258,10 @@ class TFM(threading.Thread):
         if 'Cherokee' in fsdata.instr['AircraftName'].decode():
             self.read_cherokee()
             self.read_cabin()
+        if 'C182' in fsdata.instr['AircraftName'].decode():
+            self.read_c182()
+            self.read_cabin()
+
         # maintain state of instruments so we can check on the next run.
         self.oldInstr = copy.deepcopy(fsdata.instr)
     def read_bonanza(self):
@@ -1269,7 +1269,12 @@ class TFM(threading.Thread):
         self.readToggle('TipTankLeftPump', 'left tip tank pump', 'active', 'off')
         self.readToggle('TipTankRightPump', 'right tip tank pump', 'active', 'off')
         self.readToggle('TipTanksAvailable', 'tip tanks', 'installed', 'not installed')
-        self.readToggle('window', 'window', 'open', 'closed')
+        if fsdata.instr['TipTanksAvailable']:
+            self.tt = True
+        else:
+            self.tt = False
+
+        # self.readToggle('window', 'window', 'open', 'closed')
         self.readToggle('fan', 'fan', 'active', 'off')
         # fuel selector
         fsel_state = {
@@ -1285,6 +1290,23 @@ class TFM(threading.Thread):
             self.output (F"Payload weight now {int(fsdata.instr['PayloadWeight'])} pounds")
             
 
+    def read_c182(self):
+        self.readToggle('BatterySwitch', "battery", "active", "off")
+        self.readToggle('window', 'window', 'open', 'closed')
+        # fuel selector
+        fsel_state = {
+            0: 'off',
+            1: 'left',
+            2: 'both',
+            3: 'Right',
+        }
+        if fsdata.instr['FuelSelector'] != self.old_a2a_fsel:
+            fsel = fsdata.instr['FuelSelector']
+            self.output (F"fuel selector {fsel_state[fsel]}")
+            self.old_a2a_fsel = fsdata.instr['FuelSelector']
+        if fsdata.instr['PayloadWeight'] != self.oldInstr['PayloadWeight']:
+            self.output (F"Payload weight now {int(fsdata.instr['PayloadWeight'])} pounds")
+        
     def read_cherokee(self):
         self.readToggle('BatterySwitch', "battery", "active", "off")
         self.readToggle('window', 'window', 'open', 'closed')
@@ -1303,6 +1325,9 @@ class TFM(threading.Thread):
             fsel = fsdata.instr['FuelSelector']
             self.output (F"fuel selector {fsel_state[fsel]}")
             self.old_a2a_fsel = fsdata.instr['FuelSelector']
+        if fsdata.instr['PayloadWeight'] != self.oldInstr['PayloadWeight']:
+            self.output (F"Payload weight now {int(fsdata.instr['PayloadWeight'])} pounds")
+        
     def read_cabin(self):
         # read cabin climate info such as heat and defrost
         if fsdata.instr['CabinHeat'] != self.oldInstr['CabinHeat']:
@@ -1614,6 +1639,7 @@ class TFM(threading.Thread):
                 # prepare A2A aircraft data
                 fsdata.bonanza = dict(zip(fsdata.BonanzaOffsets.keys(), pyuipc.read(self.pyuipcBonanza)))
                 fsdata.cherokee = dict(zip(fsdata.CherokeeOffsets.keys(), pyuipc.read(self.pyuipcCherokee)))
+                fsdata.c182 = dict(zip(fsdata.C182Offsets.keys(), pyuipc.read(self.pyuipcC182)))
                 self.ac = fsdata.instr['AircraftName'].decode()
                 if "Bonanza" in self.ac:
                     fsdata.instr.update(fsdata.bonanza)
@@ -1932,7 +1958,7 @@ class TFM(threading.Thread):
     def set_oil(self, value):
         value = float(value)
         pyuipc.write([(0x4230, 'f', value)])
-        time.sleep(0.5)
+        time.sleep(0.25)
     def set_seat (self, seat, weight):
         weight = int(weight)
         if seat == 1:

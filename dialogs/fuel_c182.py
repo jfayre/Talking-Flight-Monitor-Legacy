@@ -25,7 +25,7 @@ class fuel(wx.Panel, baseDialog.BaseWXDialog):
         self.wing_right = wx.TextCtrl(self, -1)
         wr_box.Add(self.wing_right, 0, wx.ALL, 5)
         sizer.Add(wr_box, 0, wx.ALL, 5)
-        self.oil = wx.CheckBox(self, -1, "Fill oil tank ( 8 quarts)")
+        self.oil = wx.CheckBox(self, -1, "Fill oil tank ( 9 quarts)")
         sizer.Add(self.oil, 0, wx.ALL, 5)
         self.SetSizer(sizer)
 
@@ -77,7 +77,7 @@ class fuelDialog(baseDialog.BaseWXDialog):
     def __init__(self):
         super(fuelDialog, self).__init__(None, -1)
         self.panel = wx.Panel(self)
-        self.SetTitle("A2A Cherokee Fuel manager")
+        self.SetTitle("A2A C182 Fuel manager")
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.notebook = wx.Notebook(self.panel)
     def create_fuel(self):

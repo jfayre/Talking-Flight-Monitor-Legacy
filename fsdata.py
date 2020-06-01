@@ -193,7 +193,17 @@ CherokeeOffsets = {
     'CabinHeat': (0x66c3, 'b'),
     'defrost': (0x66c4, 'b'),
     'CarbHeat': (0x66c5, 'b'), 
+    'PayloadWeight': (0x4222, 'H'),
 }
+C182Offsets = {
+    "BatterySwitch": (0x66c0, 'b'), # a2a battery switch
+    'FuelSelector': (0x66c1, 'b'), # a2a fuel selector
+    'window': (0x66c2, 'b'), # a2a windows
+    'CabinHeat': (0x66c3, 'b'),
+    'defrost': (0x66c4, 'b'),
+    'PayloadWeight': (0x4222, 'H'),
+}
+
 a2a_payload = {}
 
 

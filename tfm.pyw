@@ -377,7 +377,7 @@ class TFMFrame(wx.Frame):
         self.dlg = a2a_fuel.fuelControllerBonanza()
         wl = self.dlg.dialog.get_value("fuel", "wing_left")
         wr = self.dlg.dialog.get_value("fuel", "wing_right")
-        oil = self.dlg.dialog.get_value("fuel", "oil_quantity")
+        oil = self.dlg.dialog.get_value("fuel", "oil")
         if self.dlg.response == widgetUtils.OK:
             if wl != "":
                 # tfm.write_var("FuelLeftWingTank", float(wl))
@@ -387,45 +387,44 @@ class TFMFrame(wx.Frame):
                 # tfm.write_var("FuelRightWingTank", float(wr))
                 tfm.set_fuel(1, wr)
                 time.sleep(0.25)
-            if fsdata.instr['TipTanksAvailable']:
+            if tfm.tt:
                 tl = self.dlg.dialog.get_value("fuel", "tip_left")
                 tr = self.dlg.dialog.get_value("fuel", "tip_right")
                 if tl != "":
-                    # tfm.write_var("FuelLeftTipTank", float(tl))
                     tfm.set_fuel(2, tl)
                     time.sleep(0.25)
                 if tr != "":
-                    # tfm.write_var("FuelRightTipTank", float(tr))
                     tfm.set_fuel(3, tr)
                     time.sleep(0.25)
-            if oil != "":
-                # tfm.write_var("Eng1_OilQuantity", float(oil))
-                # time.sleep(0.25)
-                # tfm.write_var("SystemCondSelectFSX", 46.0)
-                # time.sleep(0.25)
-                # tfm.write_var("SystemCondValueFSX", float(oil))
-                # time.sleep(0.25)
-                tfm.set_oil(oil)
+            if oil:
+                tfm.set_oil(2.5)
 
     def fuel_cherokee(self):
         self.dlg = a2a_fuel.fuelControllerCherokee()
         wl = self.dlg.dialog.get_value("fuel", "wing_left")
         wr = self.dlg.dialog.get_value("fuel", "wing_right")
-        oil = self.dlg.dialog.get_value("fuel", "oil_quantity")
+        oil = self.dlg.dialog.get_value("fuel", "oil")
         if self.dlg.response == widgetUtils.OK:
             if wl != "":
                 tfm.set_fuel(0, wl)
             if wr != "":
                 tfm.set_fuel(1, wr)
-            if fsdata.instr['TipTanksAvailable']:
-                tl = dlg.dialog.get_value("fuel", "tip_left")
-                tr = dlg.dialog.get_value("fuel", "tip_right")
-                if tl != "":
-                    tfm.set_fuel(2, tl)
-                if tr != "":
-                    tfm.set_fuel(3, tr)
-            if oil != "":
-                tfm.set_oil(oil)
+            if oil:
+                tfm.set_oil(2)
+
+    def fuel_c182(self):
+        self.dlg = a2a_fuel.fuelControllerC182()
+        wl = self.dlg.dialog.get_value("fuel", "wing_left")
+        wr = self.dlg.dialog.get_value("fuel", "wing_right")
+        oil = self.dlg.dialog.get_value("fuel", "oil")
+        if self.dlg.response == widgetUtils.OK:
+            if wl != "":
+                tfm.set_fuel(0, wl)
+            if wr != "":
+                tfm.set_fuel(1, wr)
+            if oil:
+                tfm.set_oil(2.25)
+
     def payload(self):
         # get payload fields from dialog
         # checkboxes for occupied seats
@@ -446,9 +445,6 @@ class TFMFrame(wx.Frame):
             time.sleep(0.25)
         else:
             tfm.set_seat(1, 0)
-            tfm.set_seat(2, 0)
-            tfm.set_seat(3, 0)
-            tfm.set_seat(4, 0)
             return
         if s2:
             tfm.set_seat(2, s2_weight)

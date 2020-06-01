@@ -36,11 +36,8 @@ class fuel(wx.Panel, baseDialog.BaseWXDialog):
             self.tip_right = wx.TextCtrl(self, -1)
             ttr_box.Add(self.tip_right, 0, wx.ALL, 5)
             sizer.Add(ttr_box, 0, wx.ALL, 5)
-        oil_box = wx.BoxSizer(wx.HORIZONTAL)
-        oil_box.Add(wx.StaticText(self, -1, "Oil quantity in quarts (max 10): "), 0, wx.ALL, 5)
-        self.oil_quantity = wx.TextCtrl(self, -1)
-        oil_box.Add(self.oil_quantity, 0, wx.ALL, 5)
-        sizer.Add(oil_box, 0, wx.ALL, 5)
+        self.oil = wx.CheckBox(self, -1, "Fill oil tank ( 10 quarts)")
+        sizer.Add(self.oil, 0, wx.ALL, 5)
         self.SetSizer(sizer)
 
 class payload(wx.Panel, baseDialog.BaseWXDialog):
