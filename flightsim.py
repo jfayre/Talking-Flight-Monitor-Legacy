@@ -1327,7 +1327,17 @@ class TFM(threading.Thread):
             self.old_a2a_fsel = fsdata.instr['FuelSelector']
         if fsdata.instr['PayloadWeight'] != self.oldInstr['PayloadWeight']:
             self.output (F"Payload weight now {int(fsdata.instr['PayloadWeight'])} pounds")
-        
+        # primer pump
+        primer_state = {
+            0: "closed",
+            1: "open",
+            2: "pump",
+        }
+        if fsdata.instr['PrimerState'] != self.oldInstr['PrimerState']:
+            primer = fsdata.instr['PrimerState']
+            self.output (F"primer {primer_state[primer]}")
+            self.oldInstr['PrimerState'] = fsdata.instr['PrimerState']
+
     def read_cabin(self):
         # read cabin climate info such as heat and defrost
         if fsdata.instr['CabinHeat'] != self.oldInstr['CabinHeat']:

@@ -103,21 +103,18 @@ Runway guidance mode is designed to help you hold a constant heading on takeoff 
 The Talking Flight Monitor window contains several edit fields that allow you to control the aircraft's autopilot and com radios directly. To change a setting, just type the value you want into the edit box and press Enter.
 
 ## experimental A2A aircraft support
-TFM now contains experimental support for the payware aircraft from A2A Simulations. Initially, the Beachcraft Bonanza is supported, with plans to add support for the C182 Skylane and the Piper Cherokee in the future.
-You are able to check various aircraft instruments, as well as control a few aircraft systems.
+TFM now contains experimental support for the payware aircraft from A2A Simulations. Currently, the Beachcraft Bonanza, C182 Skylane and the Piper Cherokee have initial support. Given how these aircraft are designed, it is possible to add much more support in the future!
+Currently, you are able to check various aircraft instruments, as well as control a few aircraft systems.
 
 ### enabling A2A support
 The A2A aircraft support requires a registered version of FSUIPC. 
 To install the A2A support:
 
-1. In your TFM install folder, there is a folder called "scripts". Copy the tfm_bonanza.lua file from  this folder into your FSUIPC folder. This should be C:\program files\Lockheed Martin\Prepar3D v4\Modules
-2. Add the following to the end of your FSUIPC5.ini file, which is in the same folder where you placed the lua file. Note that the file is called fsuipc6.ini if you are using fSUIPC 6:
-```
-[Auto.Bonanza]
-1=Lua tfm_bonanza
-```
+1. In your TFM install folder, there is a folder called "scripts". Copy all files from  this folder into your FSUIPC folder. This should be 
+``` C:\program files\Lockheed Martin\Prepar3D v4\Modules ```
+2. One of the files in the scripts folder is called fsuipc.txt. Add the contents of this file to the end of your fsuipc5.ini or fsuipc6.ini, depending on which version of FSUIPC you own. If you already have some of the sections in your existing fsuipc file, delete them first, then copy in the new sections. I hope to automate this process in the future.
 
-### hotkeys
+### hotkeys for reading A2A specific info
 When TFM detects you are running a supported A2A aircraft, the following hotkeys will be enabled. These also follow a similar layered command mode as the rest of TFM. The command key is the left square bracket. 
 Note that these keys are not part of the TFM settings dialog yet. The dialog will be updated once the A2A support is finalized. For now, the keys can be changed by editing the tfm.ini file.
 
@@ -130,17 +127,32 @@ Note that these keys are not part of the TFM settings dialog yet. The dialog wil
 * 6: manifold pressure
 * 7: Ammeter
 * 8: volt meter
-* a: toggle cabin air circulation fan
-* d: check or increase windshield defroster setting (keep pressing d to adjust by 10 percent increments, press left bracket again when done)
-* shift+d: check or decrease windshield defroster setting (keep pressing d to adjust by 10 percent increments, press left bracket again when done)
 * f: fuel tank levels
 * shift+f: fuel flow
-* h: check or increase cabin heat setting (keep pressing h to adjust by 10 percent increments, press left bracket again when done)
-* shift+h: check or decrease cabin heat setting (keep pressing shift+h to adjust by 10 percent increments, press left bracket again when done)
-* l: toggle left tip tank fuel pump
-* r: toggle right tip tank fuel pump
 * t: read cabin temperature
-* w: open and close cabin window
+
+### keys for controlling aircraft systems
+The following keys are only available while in the simulator window. They use the tab key as a modifier, meaning you need to hold down the tab key for each of these keys to work. This does not affect the tab key when using dialogs inside the sim.
+
+* tab+a: toggle air circulation fan (bonanza only)
+* tab+c: increase carburetor heat (Piper Cherokee only)
+* shift+tab+c: decrease carburetor heat (Piper Cherokee only)
+* tab+d: increasse windshield defrost (all aircraft)
+* shift+tab+d: decrease windshield defrost (all aircraft)
+* tab+f: fuel selector (all aircraft)
+* tab+h: increase cabin heat (all aircraft)
+* shift+tab+h: decrease cabin heat (all aircraft)
+* tab+l: left tip tank pump switch (Bonanza only)
+* tab+p: primer pump open and pump (Cherokee only)
+* shift+tab+p: primer close (cherokee only)
+* tab+r: right tip tank pump switch (Bonanza only)
+* tab+s: adjust fan speed (Bonanza only and not sure if working as expected yet)
+* tab+w: open/close window (all aircraft)
+
+### Fuel and Payload dialog
+TFM now includes a Fuel and Payload dialog for supported A2A aircraft. You will find this feature under the Aircraft menu in TFM. The fuel tab allows you to adjust fuel levels in the various fuel tanks, as well as fill the oil.
+
+The Payload tab lets you add or remove passengers. Note that it is not currently possible to remove the pilot.
 
 ## Running from Source
 * Get the latest python 3.7 ([Python releases](https://www.python.org/downloads/))

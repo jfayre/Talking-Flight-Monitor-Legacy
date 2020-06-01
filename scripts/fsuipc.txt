@@ -1,0 +1,62 @@
+[LuaFiles]
+1=tfm_bonanza
+2=tfm_cherokee
+3=tfm_c182
+
+[Auto.Bonanza]
+1=Lua tfm_bonanza
+
+[Auto.Cherokee]
+1=Lua tfm_cherokee
+
+[Auto.C182]
+1=Lua tfm_c182
+
+[Profile.Bonanza]
+1=Bonanza
+
+[Profile.C182]
+1=C182
+
+[Profile.Cherokee]
+1=A2A Piper PA-28-180 Cherokee
+
+[Keys.C182]
+6=192,9,L3:K,0 	-{shft+'@key: Press=LuaKill tfm_c182 (Flag 0) }-
+8=192,8,L3:R,0 	-{'@key: Press=Lua tfm_c182 }-
+5=72,24,L3:S,5 	-{tab+H: Press=LuaSet tfm_c182 (Flag 5) }-
+7=72,25,L3:S,6 	-{shft+tab+H: Press=LuaSet tfm_c182 (Flag 6) }-
+9=65,24,L3:S,0 	-{tab+A: Press=LuaSet tfm_c182 (Flag 0) }-
+15=70,24,L3:S,2 	-{tab+F: Press=LuaSet tfm_c182 (Flag 2) }-
+17=87,24,L3:S,1 	-{tab+W: Press=LuaSet tfm_c182 (Flag 1) }-
+19=68,24,L3:S,7 	-{tab+D: Press=LuaSet tfm_c182 (Flag 7) }-
+21=68,25,L3:S,8 	-{shft+tab+D: Press=LuaSet tfm_c182 (Flag 8) }-
+23=83,24,L3:S,9 	-{tab+S: Press=LuaSet tfm_c182 (Flag 9) }-
+
+[Keys.Cherokee]
+6=192,9,L2:K,0 	-{shft+'@key: Press=LuaKill tfm_cherokee (Flag 0) }-
+8=192,8,L2:R,0 	-{'@key: Press=Lua tfm_cherokee }-
+5=72,24,L2:S,5 	-{tab+H: Press=LuaSet tfm_cherokee (Flag 5) }-
+7=72,25,L2:S,6 	-{shft+tab+H: Press=LuaSet tfm_cherokee (Flag 6) }-
+9=65,24,L2:S,0 	-{tab+A: Press=LuaSet tfm_cherokee (Flag 0) }-
+15=70,24,L2:S,2 	-{tab+F: Press=LuaSet tfm_cherokee (Flag 2) }-
+17=87,24,L2:S,1 	-{tab+W: Press=LuaSet tfm_cherokee (Flag 1) }-
+19=68,24,L2:S,7 	-{tab+D: Press=LuaSet tfm_cherokee (Flag 7) }-
+21=68,25,L2:S,8 	-{shft+tab+D: Press=LuaSet tfm_cherokee (Flag 8) }-
+23=83,24,L2:S,9 	-{tab+S: Press=LuaSet tfm_cherokee (Flag 9) }-
+25=67,24,L2:S,9 	-{tab+C: Press=LuaSet tfm_cherokee (Flag 9) }-
+27=67,25,L2:S,10 	-{shft+tab+C: Press=LuaSet tfm_cherokee (Flag 10) }-
+29=80,24,L2:S,11 	-{tab+P: Press=LuaSet tfm_cherokee (Flag 11) }-
+31=80,25,L2:S,12 	-{shft+tab+P: Press=LuaSet tfm_cherokee (Flag 12) }-
+
+[Keys.Bonanza]
+5=72,24,L1:S,5 	-{tab+H: Press=LuaSet tfm_bonanza (Flag 5) }-
+7=72,25,L1:S,6 	-{shft+tab+H: Press=LuaSet tfm_bonanza (Flag 6) }-
+9=65,24,L1:S,0 	-{tab+A: Press=LuaSet tfm_bonanza (Flag 0) }-
+11=76,24,L1:S,3 	-{tab+L: Press=LuaSet tfm_bonanza (Flag 3) }-
+13=82,24,L1:S,4 	-{tab+R: Press=LuaSet tfm_bonanza (Flag 4) }-
+15=70,24,L1:S,2 	-{tab+F: Press=LuaSet tfm_bonanza (Flag 2) }-
+17=87,24,L1:S,1 	-{tab+W: Press=LuaSet tfm_bonanza (Flag 1) }-
+19=68,24,L1:S,7 	-{tab+D: Press=LuaSet tfm_bonanza (Flag 7) }-
+21=68,25,L1:S,8 	-{shft+tab+D: Press=LuaSet tfm_bonanza (Flag 8) }-
+23=83,24,L1:S,9 	-{tab+S: Press=LuaSet tfm_bonanza (Flag 9) }-

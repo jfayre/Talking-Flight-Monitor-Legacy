@@ -179,3 +179,17 @@ function carb_dec()
 end
 event.flag(10, "carb_dec")
 
+function primer_open()
+    local p = ipc.readLvar("PrimerState")
+    p = p + 1
+    if p > 2 then p = 2 end
+    ipc.writeLvar("PrimerState", p)
+    ipc.writeUB(0x66c6, p)
+end
+event.flag(11, "primer_open")
+function primer_close()
+    ipc.writeLvar("PrimerState", 0)
+    ipc.writeUB(0x66c6, 0)
+end
+event.flag(12, "primer_close")
+

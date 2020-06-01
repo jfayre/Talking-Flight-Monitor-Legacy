@@ -123,7 +123,7 @@ function fuel_selector()
         f = 0
     end
     ipc.writeLvar("FSelC182State", f)
-    ipc.writeUB(0x66c3, f)
+    ipc.writeUB(0x66c1, f)
 end
 event.flag(2, "fuel_selector")
 

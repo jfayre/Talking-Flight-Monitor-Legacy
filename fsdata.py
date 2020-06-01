@@ -193,6 +193,7 @@ CherokeeOffsets = {
     'CabinHeat': (0x66c3, 'b'),
     'defrost': (0x66c4, 'b'),
     'CarbHeat': (0x66c5, 'b'), 
+    'PrimerState': (0x66c6, 'b'), 
     'PayloadWeight': (0x4222, 'H'),
 }
 C182Offsets = {

@@ -209,8 +209,8 @@ class Form(wx.Panel):
 
     def createControls(self):
         self.logger = wx.TextCtrl(self, style=wx.TE_MULTILINE|wx.TE_READONLY)
-        #sys.stdout = self.logger
-        #sys.stderr = self.logger
+        sys.stdout = self.logger
+        sys.stderr = self.logger
         self.hdg_label = wx.StaticText(self, label='heading:')
         self.hdg_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         self.alt_label = wx.StaticText(self, label='Altitude:')
