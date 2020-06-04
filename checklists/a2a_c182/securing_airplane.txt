@@ -1,0 +1,12 @@
+SECURING AIRPLANE
+1. Parking Brake - SET
+2. Throttle - IDLE (pull full out)
+3. Electrical Equipment - OFF
+4. AVIONICS Switch - OFF
+5. Mixture - IDLE CUTOFF (pull full out)
+6. MAGNETOS Switch - OFF
+7. MASTER Switch (ALT and BAT) - OFF
+8. Control Lock - INSTALL
+9. FUEL SELECTOR Valve - LEFT
+
+

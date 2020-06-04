@@ -1,0 +1,15 @@
+TAKEOFF
+1. Wing Flaps - SET (0-20)
+2. Power - FULL THROTTLE and 2400 RPM
+3. Mixture - RICH (can lean to MAX power)
+4. Lightly LIFT NOSE WHEEL at 50-60 kts
+5. Climb - 70 - 80 kts  (Flaps 0 - 20)
+6. Wing Flaps - RETRACT
+
+CLIMB
+1. Airspeed - 85 - 95 kts
+2. Throttle - 23 Inches or FULL (if less than 23 inches
+3. Propeller - 2400 RPM
+4. Mixture - 15gph (or RICH if under 15gph)
+5. Fuel Selector - BOTH
+6. Cowl Flaps - OPEN (or as required)
