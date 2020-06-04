@@ -1,0 +1,8 @@
+TAKEOFF
+1. Throttle - FULL
+2. Rotate - 77 kts
+3. Positive climb - CHECK
+4. Gear - UP
+5. Flaps Up - CHECK
+6. Climb Out at Vy - 96 kts
+7. Verify safe landing area

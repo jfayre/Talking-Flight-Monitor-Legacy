@@ -1,0 +1,10 @@
+TAXI
+1. Radios - ON
+2. Transponder - ALT
+3. Altimeter - SET
+4. Heading indicator - SET
+5. Landing gear indicator - GREEN
+6. Radio - ATIS
+7. Parking brake - RELEASE
+8. Brakes - Test on Initial Roll
+9. Lights - AS REQUIRED

@@ -1,0 +1,16 @@
+Notes:
+- Lean on ground to avoid fouling plugs
+- Check oil temp before runup
+- Idle under 1000rpm with cold engine
+- Takeoff Rotation:  77 kts
+- Best Angle-of-Climb (Vx):  77 kts
+- Best Rate-of-Climb (Vy):  96 kts
+- Cruise Climb:  107 kts
+- Turbulent Air Penetration:  134 kts
+- Landing Approach:  70 kts
+- Balked Landing Climb:  70 kts
+- Max flap ext speed: App/Full: 154/123 kts
+- Max gear ext speed: 154 kts
+- Max crosswind - 17 kts
+
+

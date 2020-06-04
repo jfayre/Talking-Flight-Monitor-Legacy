@@ -1,0 +1,13 @@
+UPON ENTERING CABIN:
+1. Preflight - Complete
+2. Passengers - Briefed
+3. Seat Belts, Shoulder Harness - ON
+4. Flaps - UP
+5. Radios - OFF
+6. Circuit breakers - IN
+7. All Electrical Switches - OFF
+8. Auto Pilot - OFF
+9. Rotating Beacon - ON
+10. Fuel Selectors - DESIRED TANK
+11. Gear Switch - DOWN
+

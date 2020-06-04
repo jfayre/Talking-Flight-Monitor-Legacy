@@ -1,0 +1,10 @@
+NOTES:
+- Prime 1 - 3 strokes before starting
+- Lean on ground to avoid fouling plugs
+- Check oil temp before runup
+- Idle under 1000RPM with cold engine
+- Stall speed (flaps down): 57 mph
+- Max flap extension speed: 115 mph
+- Approach speed (flaps up): 85 mph kts
+- Max crosswind - 17 kts
+
