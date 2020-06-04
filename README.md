@@ -21,7 +21,7 @@ In order to use this software, you will need either [Microsoft Flight Simulator 
 In order to read the nearest city to your aircraft, you will need a free [GeoNames](http://www.geonames.org) account. Once you create the account, enable web access under your profile. 
 
 You will need the latest version of Pete Dowson's [FSUIPC module](http://www.fsuipc.com). If you are using Microsoft FSX, you need version 4. 
-Prepar3d requires version 5. You do not need to purchase a registration for Talking Flight Monitor to work. 
+Prepar3d requires version 5 or 6. In most cases, you do not need to purchase a registration for Talking Flight Monitor to work. However, if you plan to use TFM with the aircraft from A2A simulations, a registered version of FSUIPC is required.
 
 ## Quick Start
 * Install Talking Flight Monitor by running the installer you downloaded.
@@ -107,12 +107,12 @@ TFM now contains experimental support for the payware aircraft from A2A Simulati
 Currently, you are able to check various aircraft instruments, as well as control a few aircraft systems.
 
 ### enabling A2A support
-The A2A aircraft support requires a registered version of FSUIPC. 
+The A2A aircraft support requires a registered (payed) version of FSUIPC. Additionally, the A2A aircraft is not fully functional using FSX at this point, due to changes between FSUIPC 4 and FSUIPC 6.
 To install the A2A support:
 
 1. In your TFM install folder, there is a folder called "scripts". Copy all files from  this folder into your FSUIPC folder. This should be 
 ``` C:\program files\Lockheed Martin\Prepar3D v4\Modules ```
-2. One of the files in the scripts folder is called fsuipc.txt. Add the contents of this file to the end of your fsuipc5.ini or fsuipc6.ini, depending on which version of FSUIPC you own. If you already have some of the sections in your existing fsuipc file, delete them first, then copy in the new sections. I hope to automate this process in the future.
+2. One of the files in the scripts folder is called fsuipc.txt. Add the contents of this file to the end of your fsuipc5.ini or fsuipc6.ini, depending on which version of FSUIPC you own. If you already have some of the sections in your existing fsuipc file, delete them first, then copy in the new sections. Also, if you have been running earlier TFM 1.3 betas, you need to remove the profiles and keys sections. They are no longer required. I hope to automate this process in the future.
 
 ### hotkeys for reading A2A specific info
 When TFM detects you are running a supported A2A aircraft, the following hotkeys will be enabled. These also follow a similar layered command mode as the rest of TFM. The command key is the left square bracket. 
@@ -148,6 +148,9 @@ The following keys are only available while in the simulator window. They use th
 * tab+r: right tip tank pump switch (Bonanza only)
 * tab+s: adjust fan speed (Bonanza only and not sure if working as expected yet)
 * tab+w: open/close window (all aircraft)
+
+### aircraft checklists
+In your TFM install folder, you will find a folder called "checklists". This folder contains the checklists for the A2A aircraft. These have been taken directly from the Clipboard panel in the aircraft. For now, there is not a way of accessing the checklists directly from TFM. This is a work in progress.
 
 ### Fuel and Payload dialog
 TFM now includes a Fuel and Payload dialog for supported A2A aircraft. You will find this feature under the Aircraft menu in TFM. The fuel tab allows you to adjust fuel levels in the various fuel tanks, as well as fill the oil.

@@ -1,3 +1,8 @@
+[LuaFiles]
+1=tfm_bonanza
+2=tfm_cherokee
+3=tfm_c182
+
 [Auto.Bonanza]
 1=Lua tfm_bonanza
 

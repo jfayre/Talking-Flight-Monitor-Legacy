@@ -1,23 +1,3 @@
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
-<head>
-  <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>readme</title>
-  <style>
-    code{white-space: pre-wrap;}
-    span.smallcaps{font-variant: small-caps;}
-    span.underline{text-decoration: underline;}
-    div.column{display: inline-block; vertical-align: top; width: 50%;}
-    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-    ul.task-list{list-style: none;}
-  </style>
-  <!--[if lt IE 9]>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
-  <![endif]-->
-</head>
-<body>
 <h1 id="talking-flight-monitor-tfm">Talking Flight Monitor (TFM)</h1>
 <p>An accessibility layer for Microsoft FSX and Lockhede Martin Prepar3d.</p>
 <h2 id="downloading">downloading</h2>
@@ -39,7 +19,7 @@
 <h2 id="requirements">Requirements</h2>
 <p>In order to use this software, you will need either <a href="https://store.steampowered.com/app/314160/Microsoft_Flight_Simulator_X_Steam_Edition/">Microsoft Flight Simulator X</a>, or <a href="https://www.prepar3d.com/">Lockheed Martin Prepar3d</a>.</p>
 <p>In order to read the nearest city to your aircraft, you will need a free <a href="http://www.geonames.org">GeoNames</a> account. Once you create the account, enable web access under your profile.</p>
-<p>You will need the latest version of Pete Dowson’s <a href="http://www.fsuipc.com">FSUIPC module</a>. If you are using Microsoft FSX, you need version 4. Prepar3d requires version 5. You do not need to purchase a registration for Talking Flight Monitor to work.</p>
+<p>You will need the latest version of Pete Dowson’s <a href="http://www.fsuipc.com">FSUIPC module</a>. If you are using Microsoft FSX, you need version 4. Prepar3d requires version 5 or 6. In most cases, you do not need to purchase a registration for Talking Flight Monitor to work. However, if you plan to use TFM with the aircraft from A2A simulations, a registered version of FSUIPC is required.</p>
 <h2 id="quick-start">Quick Start</h2>
 <ul>
 <li>Install Talking Flight Monitor by running the installer you downloaded.</li>
@@ -112,10 +92,10 @@
 <h2 id="experimental-a2a-aircraft-support">experimental A2A aircraft support</h2>
 <p>TFM now contains experimental support for the payware aircraft from A2A Simulations. Currently, the Beachcraft Bonanza, C182 Skylane and the Piper Cherokee have initial support. Given how these aircraft are designed, it is possible to add much more support in the future! Currently, you are able to check various aircraft instruments, as well as control a few aircraft systems.</p>
 <h3 id="enabling-a2a-support">enabling A2A support</h3>
-<p>The A2A aircraft support requires a registered version of FSUIPC. To install the A2A support:</p>
+<p>The A2A aircraft support requires a registered (payed) version of FSUIPC. Additionally, the A2A aircraft is not fully functional using FSX at this point, due to changes between FSUIPC 4 and FSUIPC 6. To install the A2A support:</p>
 <ol type="1">
 <li>In your TFM install folder, there is a folder called “scripts”. Copy all files from this folder into your FSUIPC folder. This should be <code>C:\program files\Lockheed Martin\Prepar3D v4\Modules</code></li>
-<li>One of the files in the scripts folder is called fsuipc.txt. Add the contents of this file to the end of your fsuipc5.ini or fsuipc6.ini, depending on which version of FSUIPC you own. If you already have some of the sections in your existing fsuipc file, delete them first, then copy in the new sections. I hope to automate this process in the future.</li>
+<li>One of the files in the scripts folder is called fsuipc.txt. Add the contents of this file to the end of your fsuipc5.ini or fsuipc6.ini, depending on which version of FSUIPC you own. If you already have some of the sections in your existing fsuipc file, delete them first, then copy in the new sections. Also, if you have been running earlier TFM 1.3 betas, you need to remove the profiles and keys sections. They are no longer required. I hope to automate this process in the future.</li>
 </ol>
 <h3 id="hotkeys-for-reading-a2a-specific-info">hotkeys for reading A2A specific info</h3>
 <p>When TFM detects you are running a supported A2A aircraft, the following hotkeys will be enabled. These also follow a similar layered command mode as the rest of TFM. The command key is the left square bracket. Note that these keys are not part of the TFM settings dialog yet. The dialog will be updated once the A2A support is finalized. For now, the keys can be changed by editing the tfm.ini file.</p>
@@ -151,6 +131,8 @@
 <li>tab+s: adjust fan speed (Bonanza only and not sure if working as expected yet)</li>
 <li>tab+w: open/close window (all aircraft)</li>
 </ul>
+<h3 id="aircraft-checklists">aircraft checklists</h3>
+<p>In your TFM install folder, you will find a folder called “checklists”. This folder contains the checklists for the A2A aircraft. These have been taken directly from the Clipboard panel in the aircraft. For now, there is not a way of accessing the checklists directly from TFM. This is a work in progress.</p>
 <h3 id="fuel-and-payload-dialog">Fuel and Payload dialog</h3>
 <p>TFM now includes a Fuel and Payload dialog for supported A2A aircraft. You will find this feature under the Aircraft menu in TFM. The fuel tab allows you to adjust fuel levels in the various fuel tanks, as well as fill the oil.</p>
 <p>The Payload tab lets you add or remove passengers. Note that it is not currently possible to remove the pilot.</p>
@@ -193,5 +175,3 @@
 <li>Thanks to Tyler Rodick for his assistance with this project. This is my first major coding project, and it’s helpful to have someone fixing my occasional oversight.</li>
 <li>Thanks also to Manuel Cortez, who wrote the keyboard handling code that TFM uses.</li>
 </ul>
-</body>
-</html>
