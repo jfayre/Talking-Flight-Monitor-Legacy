@@ -221,11 +221,7 @@ class TFM(threading.Thread):
         pub.subscribe(self.set_triggered, "triggered")
         pub.subscribe(self.update_payload_data, "payload")
 
-        if 'A2A Beechcraft' in fsdata.instr['AircraftName'].decode():
-            log.debug("starting A2A Bonanza features")
-            # pyglet.clock.schedule_interval(self.read_a2a_info, 1)
-            # pyglet.clock.schedule_once(self.test_var, 4)
-
+        
 
         if self.FFEnabled:
             log.debug("scheduling flight following function")
@@ -1309,6 +1305,7 @@ class TFM(threading.Thread):
         
     def read_cherokee(self):
         self.readToggle('BatterySwitch', "battery", "active", "off")
+        self.readToggle("ScriptRunning", "Cherokee script", "running", "not running")
         self.readToggle('window', 'window', 'open', 'closed')
         # carb heat
         if fsdata.instr['CarbHeat'] != self.oldInstr['CarbHeat']:
@@ -1717,67 +1714,9 @@ class TFM(threading.Thread):
 
 
 
-    def macro(self, macro):
-        # execute an FSUIPC macro 
-        pyuipc.write([(0x0d70, -40, macro.encode())])
+    
 
-    def read_a2a_info (self, dt=0):
-        if fsdata.instr['BatterySwitch'] != self.old_a2a_bat:
-            if fsdata.instr['BatterySwitch']:
-                self.output ("Battery on")
-            else:
-                self.output ("battery off")
-            self.old_a2a_bat = fsdata.instr['BatterySwitch']
-        if fsdata.instr['TipTankLeftPump'] != self.old_a2a_ttl:
-            if fsdata.instr['TipTankLeftPump']:
-                self.output ("left tip tank pump on")
-            else:
-                self.output ("left tip tank pump off")
-            self.old_a2a_ttl = fsdata.instr['TipTankLeftPump']
-        if fsdata.instr['TipTankRightPump'] != self.old_a2a_ttr:
-            if fsdata.instr['TipTankRightPump']:
-                self.output ("Right tip tank pump on")
-            else:
-                self.output ("Right tip tank pump off")
-            self.old_a2a_ttr = fsdata.instr['TipTankRightPump']
-
-        if fsdata.instr['TipTanksAvailable'] != self.old_a2a_tt:
-            if fsdata.instr['TipTanksAvailable']:
-                self.output(F"tip tanks available")
-            else:
-                self.output ("Tip tanks not available")
-            self.old_a2a_tt = fsdata.instr['TipTanksAvailable']
-        # fuel selector
-        fsel_state = {
-            0: 'off',
-            1: 'left',
-            2: 'right'
-        }
-        if fsdata.instr['FuelSelector'] != self.old_a2a_fsel:
-            fsel = fsdata.instr['FuelSelector']
-            self.output (F"fuel selector {fsel_state[fsel]}")
-            self.old_a2a_fsel = fsdata.instr['FuelSelector']
-        if fsdata.instr['window'] != self.old_a2a_window:
-            if fsdata.instr['window'] == 1:
-                self.output ("window open")
-            else:
-                self.output ("window closed")
-            self.old_a2a_window = fsdata.instr['window']
-
-    def read_a2a_toggle(self, instrument, name, onMessage, offMessage):
-        ## There are several aircraft functions that are simply on/off toggles. 
-        ## This function allows reading those without a bunch of duplicate code.
-        try:
-            if self.old_a2a_instr[instrument] != self.a2a_instr[instrument]:
-                if self.a2a_instr[instrument]:
-                    self.output (F'{name} {onMessage}.')
-                else:
-                    self.output (F'{name} {offMessage}')
-                self.old_a2a_instr[instrument] = self.a2a_instr[instrument]
-        except Exception as e:
-            log.exception(F"error in A2A instrument toggle. Instrument was {instrument}")
-
-
+    
 
     def fuel_quantity(self):
         tank_left = round(self.read_long_var(0x66e4, 'FuelLeftWingTank'), 1)
@@ -1839,110 +1778,6 @@ class TFM(threading.Thread):
             self.write_var("TipTank", 1.0)
         self.write_var("EquipmentChangeClickSound", 1.0)
         pub.sendMessage('reset', arg1=True)
-    def tip_tank_left_on (self):
-        self.write_var('TipTankLeftPumpSwitch', 1)
-    def tip_tank_left_off (self):
-        self.write_var('TipTankLeftPumpSwitch', 0)
-        
-    def tip_tank_left_toggle (self, msg=None):
-        if fsdata.instr['TipTankLeftPump'] == 1 or msg == False:
-            self.tip_tank_left_off()
-        else:
-            self.tip_tank_left_on()
-
-        pub.sendMessage('reset', arg1=True)
-
-    def tip_tank_right_on (self):
-        self.write_var('TipTankRightPumpSwitch', 1)
-    def tip_tank_right_off (self):
-        self.write_var('TipTankRightPumpSwitch', 0)
-    def tip_tank_right_toggle(self):
-        if fsdata.instr['TipTankRightPump'] == 1:
-            self.tip_tank_right_off()
-        else:
-            self.tip_tank_right_on()
-        pub.sendMessage('reset', arg1=True)
-    def fuel_selector(self):
-        self.macro("bonanza:L:FSelBonanzaState")
-        pub.sendMessage('reset', arg1=True)
-# cabbin heat and ventilation
-    def window_open(self):
-        self.write_var('WindowLeft', 1.0)
-    def window_close(self):
-        self.write_var('WindowLeft', 0.0)
-    def window_toggle(self):
-        if fsdata.instr['window']:
-            self.window_close()
-        else:
-            self.window_open()
-        pub.sendMessage('reset', arg1=True)
-
-        
-    def fan_toggle(self):
-        self.macro("bonanza:L:VentCabinFanSwitch")
-        pub.sendMessage('reset', arg1=True)
-    def fan_speed(self):
-        spd = self.read_long_var(0x66c8, "VentCabinOverheadFreshAirControl")
-        spd += 1
-        if spd > 4:
-            spd = 0
-        spd = int(spd)
-        self.write_var("VentCabinOverheadFreshAirControl", spd)
-
-
-    def cabin_heat_inc(self):
-        step = 10
-        if self.adjust_heat == False:
-            result = pyuipc.read([(0x66c7, 'b')])
-            self.tfh = result[0]
-            self.output (F'cabin heat: {self.tfh} percent')
-            self.adjust_heat = True
-            return
-        self.tfh = self.tfh + step
-        if self.tfh > 100:
-            self.tfh = 100
-        self.write_var('CabinTempControl', self.tfh)
-        
-
-    def cabin_heat_dec(self):
-        step = 10
-        if self.adjust_heat == False:
-            result = pyuipc.read([(0x66c7, 'b')])
-            self.tfh = result[0]
-            self.output (F'cabin heat: {self.tfh} percent')
-            self.adjust_heat = True
-            return
-        self.tfh = self.tfh - step
-        if self.tfh < 0:
-            self.tfh = 0
-        self.write_var('CabinTempControl', self.tfh)
-    def defrost_inc(self):
-        step = 10
-        if self.adjust_defrost == False:
-            result = pyuipc.read([(0x66c8, 'b')])
-            self.defrost_level = result[0]
-            self.output (F'windshield defrost: {self.defrost_level} percent')
-            self.adjust_defrost = True
-            return
-        self.defrost_level = self.defrost_level + step
-        if self.defrost_level > 100:
-            self.defrost_level = 100
-        self.write_var('WindowDefrosterControlKnob', self.defrost_level)
-        
-
-    def defrost_dec(self):
-        step = 10
-        if self.adjust_defrost == False:
-            result = pyuipc.read([(0x66c8, 'b')])
-            self.defrost_level = result[0]
-            self.output (F'windshield defrost: {self.defrost_level} percent')
-            self.adjust_defrost = True
-            return
-        self.defrost_level = self.defrost_level - step
-        if self.defrost_level < 0:
-            self.defrost_level = 0
-        self.write_var('WindowDefrosterControlKnob', self.defrost_level)
-        
     
     def exit_command_mode(self):
         self.adjust_heat = False
@@ -1980,4 +1815,4 @@ class TFM(threading.Thread):
         if seat == 4:
             pyuipc.write([(0x4220, 'H', weight)])
         
-
+    

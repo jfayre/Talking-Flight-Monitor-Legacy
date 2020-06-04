@@ -194,6 +194,7 @@ CherokeeOffsets = {
     'defrost': (0x66c4, 'b'),
     'CarbHeat': (0x66c5, 'b'), 
     'PrimerState': (0x66c6, 'b'), 
+    'ScriptRunning': (0x66c7, 'b'), # flag to detect if the lua script is running
     'PayloadWeight': (0x4222, 'H'),
 }
 C182Offsets = {
