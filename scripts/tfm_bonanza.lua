@@ -176,7 +176,7 @@ event.offset(keys[8].flag, "UB", "left_pump")
 
 -- right tip tank pump: tab+r
 set_key(9, mod_tab, key_r)
-function right_pump()
+function right_pump(offset, value)
     if value == 0 then return end
     local var = "TipTankRightPumpSwitch"
     local val = ipc.readLvar(var)
@@ -190,7 +190,7 @@ function right_pump()
     ipc.writeUB(0x66c2, val)
     ipc.writeUB(keys[9].flag, 0)
 end
-event.offset(keys[8].flag, "UB", "right_pump")
+event.offset(keys[9].flag, "UB", "right_pump")
 
 -- windows
 set_key(10, mod_tab, key_w)
