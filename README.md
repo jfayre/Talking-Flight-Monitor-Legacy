@@ -202,7 +202,8 @@ The installer will be built and placed in the tfm/ subdirectory.
 
 ## donating
 I started working on Talking Flight Monitor in May of 2019. At that time, all it did was provide nearest city information to your aircraft. we have certainly come a long way since then!
-Flight following is and will continue to be free and open source. However, I have now started to work on providing support for commercial (payware) aircraft. This requires me to purchase any aircraft that I add support for. If you feel that TFM is useful and enhances your flight simming experience, I invite you to make a donation via Paypal. There is absolutely no obligation. 
+Talking Flight Monitor is and will continue to be free and open source. However, I have now started to work on providing support for commercial (payware) aircraft. This requires me to purchase any aircraft that I add support for. If you feel that TFM is useful and enhances your flight simming experience, I invite you to make a donation via Paypal. There is absolutely no obligation. 
+
 [Make a donation via Paypal](https://www.paypal.me/jfayre)
 
 
