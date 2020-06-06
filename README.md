@@ -200,6 +200,12 @@ The installer will be built and placed in the tfm/ subdirectory.
 * The city given does not take into account the heading of your aircraft. So, the nearest city may be behind you.
 * Offline access is not implemented yet. It may be added in the future.
 
+## donating
+I started working on Talking Flight Monitor in May of 2019. At that time, all it did was provide nearest city information to your aircraft. we have certainly come a long way since then!
+Flight following is and will continue to be free and open source. However, I have now started to work on providing support for commercial (payware) aircraft. This requires me to purchase any aircraft that I add support for. If you feel that TFM is useful and enhances your flight simming experience, I invite you to make a donation via Paypal. There is absolutely no obligation. 
+[Make a donation via Paypal](https://www.paypal.me/jfayre)
+
+
 
 ## contributors and credits
 * Thanks to Tyler Rodick for his assistance with this project. This is my first major coding project, and it's helpful to have someone fixing my occasional oversight.
