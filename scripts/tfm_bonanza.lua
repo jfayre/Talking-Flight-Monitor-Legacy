@@ -95,7 +95,7 @@ function defrost_inc(offset, value)
     t = t + 10
     if t > 100 then t = 100 end
     ipc.writeLvar("WindowDefrosterControlKnob", t)
-    ipc.writeUB(0x66c4, t)
+    ipc.writeUB(0x66c8, t)
     ipc.writeUB(keys[3].flag,0)
 end
 event.offset(keys[3].flag, "UB", "defrost_inc")
@@ -108,7 +108,7 @@ function defrost_dec(offset, value)
     t = t - 10
     if t < 0 then t = 0 end
     ipc.writeLvar("WindowDefrosterControlKnob", t)
-    ipc.writeUB(0x66c4, t)
+    ipc.writeUB(0x66c8, t)
     ipc.writeUB(keys[4].flag,0)
 end
 event.offset(keys[4].flag, "UB", "defrost_dec")
@@ -118,13 +118,13 @@ event.offset(keys[4].flag, "UB", "defrost_dec")
 set_key(5, mod_tab, key_f)
 function fuel_selector(offset, value)
     if value == 0 then return end
-    local f = ipc.readLvar("FSelCherokeeState")
+    local f = ipc.readLvar("FSelBonanzaState")
     f = f + 1
     if f > 2 then 
         f = 0
     end
-    ipc.writeLvar("FSelCherokeeState", f)
-    ipc.writeUB(0x66c1, f)
+    ipc.writeLvar("FSelBonanzaState", f)
+    ipc.writeUB(0x66c3, f)
     ipc.writeUB(keys[5].flag,0)
 end
 event.offset(keys[5].flag, "UB", "fuel_selector")
@@ -137,7 +137,7 @@ function heat_inc(offset, value)
     t = t + 10
     if t > 100 then t = 100 end
     ipc.writeLvar("CabinTempControl", t)
-    ipc.writeUB(0x66c3, t)
+    ipc.writeUB(0x66c7, t)
     ipc.writeUB(keys[6].flag,0)
 end
 event.offset(keys[6].flag, "UB", "heat_inc")
@@ -150,7 +150,7 @@ function heat_dec(offset, value)
     t = t - 10
     if t < 0 then t = 0 end
     ipc.writeLvar("CabinTempControl", t)
-    ipc.writeUB(0x66c3, t)
+    ipc.writeUB(0x66c7, t)
     ipc.writeUB(keys[7].flag,0)
 end
 event.offset(keys[7].flag, "UB", "heat_dec")
