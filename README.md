@@ -103,7 +103,7 @@ Runway guidance mode is designed to help you hold a constant heading on takeoff 
 The Talking Flight Monitor window contains several edit fields that allow you to control the aircraft's autopilot and com radios directly. To change a setting, just type the value you want into the edit box and press Enter.
 
 ## experimental A2A aircraft support
-TFM now contains experimental support for the payware aircraft from A2A Simulations. Currently, the Beachcraft Bonanza, C182 Skylane and the Piper Cherokee have initial support. Given how these aircraft are designed, it is possible to add much more support in the future!
+TFM now contains experimental support for the payware aircraft from A2A Simulations. Currently, the Beachcraft Bonanza, Cesna C172, Cesna C182 Skylane and the Piper Cherokee have initial support. Given how these aircraft are designed, it is possible to add much more support in the future!
 Currently, you are able to check various aircraft instruments, as well as control a few aircraft systems.
 
 ### enabling A2A support
@@ -129,13 +129,14 @@ Note that these keys are not part of the TFM settings dialog yet. The dialog wil
 * 8: volt meter
 * f: fuel tank levels
 * shift+f: fuel flow
+* l: read annunciator lights (Cesna C172 and C182)
 * t: read cabin temperature
 
 ### keys for controlling aircraft systems
 The following keys are only available while in the simulator window. They use the tab key as a modifier, meaning you need to hold down the tab key for each of these keys to work. This does not affect the tab key when using dialogs inside the sim.
 
 * tab+a: toggle air circulation fan (bonanza only)
-* tab+c: increase carburetor heat (Piper Cherokee only)
+* tab+c: increase carburetor heat (Piper Cherokee only). Also toggles fuel cutoff on C172.
 * shift+tab+c: decrease carburetor heat (Piper Cherokee only)
 * tab+d: increasse windshield defrost (all aircraft)
 * shift+tab+d: decrease windshield defrost (all aircraft)
@@ -202,7 +203,8 @@ The installer will be built and placed in the tfm/ subdirectory.
 
 ## donating
 I started working on Talking Flight Monitor in May of 2019. At that time, all it did was provide nearest city information to your aircraft. we have certainly come a long way since then!
-Flight following is and will continue to be free and open source. However, I have now started to work on providing support for commercial (payware) aircraft. This requires me to purchase any aircraft that I add support for. If you feel that TFM is useful and enhances your flight simming experience, I invite you to make a donation via Paypal. There is absolutely no obligation. 
+Talking Flight Monitor is and will continue to be free and open source. However, I have now started to work on providing support for commercial (payware) aircraft. This requires me to purchase any aircraft that I add support for. If you feel that TFM is useful and enhances your flight simming experience, I invite you to make a donation via Paypal. There is absolutely no obligation. 
+
 [Make a donation via Paypal](https://www.paypal.me/jfayre)
 
 

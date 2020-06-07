@@ -58,6 +58,23 @@ end
 ipc.writeUB(0x66c7, 1)
 
 -- define hotkeys
+-- fuel cutoff valve
+set_key(1, mod_tab, key_c)
+function toggle_cutoff(offset, value)
+    if value == 0 then return end
+    local c = ipc.readLvar("Eng1_FuelCutOffSwitch")
+if c == 0 then
+    ipc.writeLvar("Eng1_FuelCutOffSwitch", 1)
+    c = 1
+else
+    ipc.writeLvar("Eng1_FuelCutOffSwitch", 0)
+    c = 0
+end
+ipc.writeUB(keys[1].flag, 0)
+ipc.writeUB(0x66c5, c)
+end
+event.offset(keys[1].flag, "UB", "toggle_cutoff")
+
 
 -- defroster increase, tab+d
 set_key(3, mod_tab, key_d)
@@ -90,12 +107,12 @@ event.offset(keys[4].flag, "UB", "defrost_dec")
 set_key(5, mod_tab, key_f)
 function fuel_selector(offset, value)
     if value == 0 then return end
-    local f = ipc.readLvar("FSelC182State")
+    local f = ipc.readLvar("FSelC172State")
     f = f + 1
-    if f > 3 then 
+    if f > 2 then 
         f = 0
     end
-    ipc.writeLvar("FSelC182State", f)
+    ipc.writeLvar("FSelC172State", f)
     ipc.writeUB(keys[5].flag,0)
 end
 event.offset(keys[5].flag, "UB", "fuel_selector")
@@ -140,20 +157,21 @@ ipc.writeUB(keys[10].flag, 0)
 end
 event.offset(keys[10].flag, "UB", "toggle_window")
 
+
 -- read panel variables into offsets
 function battery(varname, value)
     ipc.writeUB(0x66c0, value)
 end
 event.Lvar("Battery1Switch",1000,"battery")
 function alternator(varname, value)
-    ipc.writeUB(0x66c5, value)
+    ipc.writeUB(0x66c6, value)
 end
 event.Lvar("Eng1_GeneratorSwitch",1000,"alternator")
 
 function read_fsel(varname, value)
     ipc.writeUB(0x66c1, f)
 end
-event.lvar("FSelC182State", 1000, "read_fsel")
+event.lvar("FSelC172State", 1000, "read_fsel")
 -- functions to set fuel quantity.
 function fuel_wl (offset, value)
     if value == 0 then
@@ -254,7 +272,6 @@ function payload_weight(varname, value)
 end
 event.Lvar("PayloadWeight", 3000, "payload_weight")
 
-set_key(11, mod_tab, key_p)
 function annunciator(offset, value)
     -- reset tfm annunciator offset
     ipc.writeDBL(0x4230, 0)

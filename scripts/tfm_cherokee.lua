@@ -13,7 +13,7 @@ keys = {}
 key = 1
 for i = 1, 56, 1 do
     offset = 0x3210 + count
-    shift = offset + 1
+    shift = ipc.readUB(offset + 1)
     if ipc.readUD(offset) == 0 or shift == 16 or shift == 17 then 
         -- we found a free slot
         keys[key] = {offset = offset, flag = offset+ 3}
@@ -121,7 +121,7 @@ function fuel_selector(offset, value)
         f = 0
     end
     ipc.writeLvar("FSelCherokeeState", f)
-    ipc.writeUB(0x66c1, f)
+    -- ipc.writeUB(0x66c1, f)
     ipc.writeUB(keys[5].flag,0)
 end
 event.offset(keys[5].flag, "UB", "fuel_selector")
@@ -196,6 +196,10 @@ function battery(varname, value)
     ipc.writeUB(0x66c0, value)
 end
 event.Lvar("Battery1Switch",1000,"battery")
+function read_fsel(varname, value)
+    ipc.writeUB(0x66c1, value)
+end
+event.lvar("FSelCherokeeState", 1000, "read_fsel")
 -- functions to set fuel quantity.
 function fuel_wl (offset, value)
     if value == 0 then
@@ -296,13 +300,31 @@ function payload_weight(varname, value)
 end
 event.Lvar("PayloadWeight", 3000, "payload_weight")
 
--- function that is executed when the script terminates
-function cleanup()
-    -- clear hotkey slots
-    ipc.log("cherokee script exiting. Clearing hotkey slots")
-    for i = 1, 10 do
-        ipc.writeUD(keys[i].offset, 0)
-    end
-ipc.writeUB(0x66c7, 0)
+-- complete overhaul
+function repair_all(offset, value)
+    if value == 0 then return end
+    ipc.log ("complete overhaul")
+    ipc.writeLvar("SystemCondSelectFSX", 100)
+    ipc.writeLvar("SystemCondValueFSX", 0)
+    ipc.writeLvar("Eng1_DamageFlagOvertorque", 0)
+    ipc.writeLvar("Eng1_DamageFlagHighCAT", 0)
+    ipc.writeLvar("Eng1_DamageFlagNoADI", 0)
+    ipc.writeLvar("Eng1_DamageFlagHighCHT", 0)
+    ipc.writeLvar("Eng1_WearFlag", 0)
+    ipc.writeLvar("Eng1_SuddenDamageFlag", 0)
+    ipc.writeLvar("Eng1_ShockCoolingFlag", 0)
+    ipc.writeLvar("RandStatic1", 0)
+    ipc.writeLvar("RandStatic1b", 0)
+    ipc.writeLvar("RandStatic1c", 0)
+    ipc.writeLvar("RandStatic1d", 0)
+    ipc.writeLvar("E1H", 0)
+    ipc.writeLvar("E1S", 0)
+    ipc.writeLvar("Prop1Strike", 0)
+    ipc.writeLvar("ExtendLeftGear", 1)
+    ipc.writeLvar("ExtendRightGear", 1)
+    ipc.writeLvar("RepairClickSound", 1)
+    ipc.writeLvar("CompleteOverhaulButton", 1)
+
 end
+event.intercept(0x4240, "UB", "repair_all")
 

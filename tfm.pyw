@@ -161,7 +161,7 @@ def commandMode():
 def a2a_command_mode():
     try:
         ac = fsdata.instr['AircraftName'].decode()
-        if 'Bonanza' in ac or 'Cherokee' in ac or 'C182' in ac:
+        if 'Bonanza' in ac or 'Cherokee' in ac or 'C182' in ac or 'C172' in ac:
             keyboard_handler.unregister_all_keys()
             # send a message indicating that the next speech event has been triggered by a hotkey.
             pub.sendMessage("triggered", msg=True)
@@ -185,6 +185,7 @@ def a2a_command_mode():
                 config.app['hotkeys']['a2a_cabin_temp']: tfm.cabin_temp,
                 config.app['hotkeys']['a2a_command_key']: tfm.exit_command_mode,
                 config.app['hotkeys']['a2a_tip_tank']: tfm.toggle_tip_tank,
+                config.app['hotkeys']['a2a_annunciator']: tfm.annunciator_panel,
 
                 }
 
@@ -334,6 +335,7 @@ class TFMFrame(wx.Frame):
         # aircraft menu
         aircraft_menu = wx.Menu()
         aircraft_fuel = aircraft_menu.Append(wx.ID_ANY, "A2A &fuel and payload manager")
+        aircraft_repair = aircraft_menu.Append(wx.ID_ANY, "&repair all aircraft damage")
         # help menu
         help_menu = wx.Menu()
         help_website = help_menu.Append(wx.ID_ANY, "visit &website")
@@ -349,6 +351,7 @@ class TFMFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onSettings, app_settings)
         self.Bind(wx.EVT_MENU, self.onExit, app_exit)
         self.Bind(wx.EVT_MENU, self.onFuel, aircraft_fuel)
+        self.Bind(wx.EVT_MENU, self.onRepair, aircraft_repair)
         self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
         self.Bind(wx.EVT_MENU, self.onAbout, help_about)
         self.Bind(wx.EVT_MENU, self.onIssue, help_issue)
@@ -371,10 +374,16 @@ class TFMFrame(wx.Frame):
             self.fuel_bonanza()
         if 'Cherokee' in fsdata.instr['AircraftName'].decode():
             self.fuel_cherokee()
+        if 'C172' in fsdata.instr['AircraftName'].decode():
+            self.fuel_c172()
         if 'C182' in fsdata.instr['AircraftName'].decode():
             self.fuel_c182()
         self.payload()
-
+    def onRepair(self, event):
+        if any(x in fsdata.instr['AircraftName'].decode() for x in ["Bonanza", "Cherokee", "C172", "C182"]):
+            tfm.repair_all()
+        else:
+            wx.MessageBox("Not supported with current aircraft", "error", wx.OK | wx.ICON_ERROR)
     def fuel_bonanza(self):
         self.dlg = a2a_fuel.fuelControllerBonanza()
         wl = self.dlg.dialog.get_value("fuel", "wing_left")
@@ -413,7 +422,20 @@ class TFMFrame(wx.Frame):
                 tfm.set_fuel(1, wr)
             if oil:
                 tfm.set_oil(2)
+    def fuel_c172(self):
+        self.dlg = a2a_fuel.fuelControllerC172()
+        wl = self.dlg.dialog.get_value("fuel", "wing_left")
+        wr = self.dlg.dialog.get_value("fuel", "wing_right")
+        oil = self.dlg.dialog.get_value("fuel", "oil")
+        if self.dlg.response == widgetUtils.OK:
+            if wl != "":
+                tfm.set_fuel(0, wl)
+            if wr != "":
+                tfm.set_fuel(1, wr)
+            if oil:
+                tfm.set_oil(2.25)
 
+    
     def fuel_c182(self):
         self.dlg = a2a_fuel.fuelControllerC182()
         wl = self.dlg.dialog.get_value("fuel", "wing_left")

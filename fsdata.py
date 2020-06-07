@@ -45,6 +45,7 @@ InstrOffsets = {'Com1Freq': (0x034E,'H'),	# com1freq
         'PropSync': (0x243c, 'u'), # propeller sync
         'ApAutoRudder': (0x0278, 'h'), # auto-rudder switch
         'BatteryMaster': (0x281c, 'u'), # battery master swtich
+        'Alternator': (0x3101, 'b'),
         'Heading': (0x0580,'u'), # Heading, *360/(65536*65536) for degrees TRUE.[Can be set in slew or pause states]
         'MagneticVariation': (0x02a0,'h'), # Magnetic variation (signed, –ve = West). For degrees *360/65536. Convert True headings to Magnetic by subtracting this value, Magnetic headings to True by adding this value.
         'Transponder': (0x0354,'H'), # transponder in BCD format
@@ -182,6 +183,7 @@ BonanzaOffsets = {
     'fan': (0x66c6, 'b'), # a2a cabin fan
     'CabinHeat': (0x66c7, 'b'),
     'defrost': (0x66c8, 'b'),
+    'AlternatorSwitch': (0x66c9, 'b'),
     'PayloadWeight': (0x4222, 'H'),
 
 }
@@ -197,12 +199,25 @@ CherokeeOffsets = {
     'ScriptRunning': (0x66c7, 'b'), # flag to detect if the lua script is running
     'PayloadWeight': (0x4222, 'H'),
 }
+C172Offsets = {
+    "BatterySwitch": (0x66c0, 'b'), # a2a battery switch
+    'FuelSelector': (0x66c1, 'b'), # a2a fuel selector
+    'window': (0x66c2, 'b'), # a2a windows
+    'CabinHeat': (0x66c3, 'b'),
+    'defrost': (0x66c4, 'b'),
+    'FuelCutoff': (0x66c5, 'b'),
+    'AlternatorSwitch': (0x66c6, 'b'),
+    'PayloadWeight': (0x4222, 'H'),
+}
+
+
 C182Offsets = {
     "BatterySwitch": (0x66c0, 'b'), # a2a battery switch
     'FuelSelector': (0x66c1, 'b'), # a2a fuel selector
     'window': (0x66c2, 'b'), # a2a windows
     'CabinHeat': (0x66c3, 'b'),
     'defrost': (0x66c4, 'b'),
+    'AlternatorSwitch': (0x66c5, 'b'),
     'PayloadWeight': (0x4222, 'H'),
 }
 

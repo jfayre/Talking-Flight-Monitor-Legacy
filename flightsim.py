@@ -66,6 +66,7 @@ class TFM(threading.Thread):
                 self.pyuipcAttitude = pyuipc.prepare_data(list (fsdata.AttitudeOffsets.values()))
                 self.pyuipcBonanza = pyuipc.prepare_data(list (fsdata.BonanzaOffsets.values()))
                 self.pyuipcCherokee = pyuipc.prepare_data(list (fsdata.CherokeeOffsets.values()))
+                self.pyuipcC172 = pyuipc.prepare_data(list (fsdata.C172Offsets.values()))
                 self.pyuipcC182 = pyuipc.prepare_data(list (fsdata.C182Offsets.values()))
                 self.pyuipcRadioAlt = pyuipc.prepare_data ([(0x31e4, 'u')])
                 
@@ -1251,6 +1252,10 @@ class TFM(threading.Thread):
             self.read_bonanza()
             self.read_cabin()
         # read cherokee instruments
+        if 'C172' in fsdata.instr['AircraftName'].decode():
+            self.read_c172()
+            self.read_cabin()
+
         if 'Cherokee' in fsdata.instr['AircraftName'].decode():
             self.read_cherokee()
             self.read_cabin()
@@ -1262,6 +1267,7 @@ class TFM(threading.Thread):
         self.oldInstr = copy.deepcopy(fsdata.instr)
     def read_bonanza(self):
         self.readToggle('BatterySwitch', "battery", "active", "off")
+        self.readToggle('AlternatorSwitch', "alternator", "active", "off")
         self.readToggle('TipTankLeftPump', 'left tip tank pump', 'active', 'off')
         self.readToggle('TipTankRightPump', 'right tip tank pump', 'active', 'off')
         self.readToggle('TipTanksAvailable', 'tip tanks', 'installed', 'not installed')
@@ -1286,8 +1292,27 @@ class TFM(threading.Thread):
             self.output (F"Payload weight now {int(fsdata.instr['PayloadWeight'])} pounds")
             
 
+    
+    def read_c172(self):
+        self.readToggle('BatterySwitch', "battery", "active", "off")
+        self.readToggle('AlternatorSwitch', "alternator", "active", "off")
+        self.readToggle('FuelCutoff', 'fuel cut off valve', 'open', 'closed')
+        # fuel selector
+        fsel_state = {
+            0: 'left',
+            1: 'both',
+            2: 'right',
+        }
+        if fsdata.instr['FuelSelector'] != self.old_a2a_fsel:
+            fsel = fsdata.instr['FuelSelector']
+            self.output (F"fuel selector {fsel_state[fsel]}")
+            self.old_a2a_fsel = fsdata.instr['FuelSelector']
+        if fsdata.instr['PayloadWeight'] != self.oldInstr['PayloadWeight']:
+            self.output (F"Payload weight now {int(fsdata.instr['PayloadWeight'])} pounds")
+        
     def read_c182(self):
         self.readToggle('BatterySwitch', "battery", "active", "off")
+        self.readToggle('AlternatorSwitch', "alternator", "active", "off")
         self.readToggle('window', 'window', 'open', 'closed')
         # fuel selector
         fsel_state = {
@@ -1646,6 +1671,7 @@ class TFM(threading.Thread):
                 # prepare A2A aircraft data
                 fsdata.bonanza = dict(zip(fsdata.BonanzaOffsets.keys(), pyuipc.read(self.pyuipcBonanza)))
                 fsdata.cherokee = dict(zip(fsdata.CherokeeOffsets.keys(), pyuipc.read(self.pyuipcCherokee)))
+                fsdata.c172 = dict(zip(fsdata.C172Offsets.keys(), pyuipc.read(self.pyuipcC172)))
                 fsdata.c182 = dict(zip(fsdata.C182Offsets.keys(), pyuipc.read(self.pyuipcC182)))
                 self.ac = fsdata.instr['AircraftName'].decode()
                 if "Bonanza" in self.ac:
@@ -1653,6 +1679,9 @@ class TFM(threading.Thread):
                     fsdata.instr['OilQuantity'] = round(self.read_long_var(0x66e4, 'Eng1_OilQuantity'), 1)
                 if 'Cherokee' in self.ac:
                     fsdata.instr.update(fsdata.cherokee)
+                    fsdata.instr['OilQuantity'] = round(self.read_long_var(0x66e4, 'Eng1_OilQuantity'), 1)
+                if 'C172' in self.ac:
+                    fsdata.instr.update(fsdata.c172)
                     fsdata.instr['OilQuantity'] = round(self.read_long_var(0x66e4, 'Eng1_OilQuantity'), 1)
                 if 'C182' in self.ac:
                     fsdata.instr.update(fsdata.c182)
@@ -1815,4 +1844,48 @@ class TFM(threading.Thread):
         if seat == 4:
             pyuipc.write([(0x4220, 'H', weight)])
         
-    
+    def repair_all(self):
+        # the A2A lua script traps offset 0x4240 to initiate the repair
+        pyuipc.write([(0x4240, 'b', 1)])
+    def annunciator_panel(self):
+        # Writing to offset 0x4238 will trigger the lua script to read annunciator values into offsets 0x4230-0x4237
+        # 0x4230: Left vacuum pump light
+        # 0x4231: Right vacuum pump light
+        # 0x4232: Vacuum pump light
+        # 0x4233: Left fuel light
+        # 0x4234: Right fuel light
+        # 0x4235: Oil pressure light
+        # 0x4236: voltage light
+        # 0x4237: pitch trim light
+        self.output ("annunciator panel: ")
+        pyuipc.write([(0x4238, 'b', 1)])
+        time.sleep(0.5)
+        lights = pyuipc.read([
+            (0x4230, 'b'),
+            (0x4231, 'b'),
+            (0x4232, 'b'),
+            (0x4233, 'b'),
+            (0x4234, 'b'),
+            (0x4235, 'b'),
+            (0x4236, 'b'),
+            (0x4237, 'b'),
+        ])
+        if lights[0]:
+            self.output ("left vacuum pump, ")
+        if lights[1]:
+            self.output ("Right vacuum pump, ")
+        if lights[2]:
+            self.output ("vacuum pump, ")
+        if lights[3]:
+            self.output ("left fuel, ")
+        if lights[4]:
+            self.output ("Right fuel, ")
+        if lights[5]:
+            self.output ("oil pressure, ")
+        if lights[6]:
+            self.output ("low voltage, ")
+        if lights[7]:
+            self.output ("pitch trim, ") 
+
+
+        

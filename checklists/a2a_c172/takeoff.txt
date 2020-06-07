@@ -1,0 +1,17 @@
+1. Wing Flaps - SET (0-10)
+2. Mixture - RICH (lean &gt; 3k ft for max RPM)
+3. Throttle - Slowly advance to FULL OPEN
+4. Lightly LIFT NOSE WHEEL at 55 kts
+5. Climb Speed - 70-80 kts
+6. Wing Flaps - RETRACT
+
+ENROUTE CLIMB
+1. Airspeed 70 - 85 kts
+2. Throttle - FULL OPEN
+3. Mixture - RICH (Lean > 3k ft for max RPM
+
+CRUISE
+1. Power - 2000-2400 RPM
+2. Elevator Trim - ADJUST
+3. Mixture - LEAN
+

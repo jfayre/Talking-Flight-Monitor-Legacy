@@ -13,7 +13,7 @@ keys = {}
 key = 1
 for i = 1, 56, 1 do
     offset = 0x3210 + count
-    shift = offset + 1
+    shift = ipc.readUB(offset + 1)
     if ipc.readUD(offset) == 0 or shift == 16 or shift == 17 then 
         -- we found a free slot
         keys[key] = {offset = offset, flag = offset+ 3}
@@ -124,7 +124,7 @@ function fuel_selector(offset, value)
         f = 0
     end
     ipc.writeLvar("FSelBonanzaState", f)
-    ipc.writeUB(0x66c3, f)
+    
     ipc.writeUB(keys[5].flag,0)
 end
 event.offset(keys[5].flag, "UB", "fuel_selector")
@@ -215,6 +215,14 @@ function tt_available(varname, value)
     ipc.writeUB(0x66c4, value)
 end
 event.Lvar("TipTanksPresent", 3000, "tt_available")
+function alternator(varname, value)
+    ipc.writeUB(0x66c9, value)
+end
+event.Lvar("Eng1_GeneratorSwitch",1000,"alternator")
+function read_fsel(varname, value)
+    ipc.writeUB(0x66c3, f)
+end
+event.lvar("FSelBonanzaState", 1000, "read_fsel")
 
 -- functions to set fuel quantity.
 function fuel_wl (offset, value)
@@ -316,3 +324,14 @@ function payload_weight(varname, value)
 end
 event.Lvar("PayloadWeight", 3000, "payload_weight")
 
+function repair_all(offset, value)
+    if value == 0 then return end
+    ipc.log ("repair all")
+    ipc.writeLvar("IsInspected", 1)
+    ipc.writeLvar("SystemCondSelectFSX", 100)
+    ipc.writeLvar("SystemCondValueFSX", 0)
+    ipc.writeLvar("Prop1Strike", 0)
+    ipc.writeLvar("RepairAllClickSound", 1)
+    ipc.writeLvar("RepairAllButton", 1)
+end
+event.intercept(0x4240, "UB", "repair_all")
