@@ -1,13 +1,26 @@
-[LuaFiles]
-1=tfm_bonanza
-2=tfm_cherokee
-3=tfm_c182
-
 [Auto.Bonanza]
 1=Lua tfm_bonanza
 
 [Auto.Cherokee]
 1=Lua tfm_cherokee
 
+[Auto.C172]
+1=Lua tfm_c172
+
 [Auto.C182]
 1=Lua tfm_c182
+
+[Profile.Bonanza]
+1=Bonanza
+
+[Profile.C172]
+1=C172
+
+[Profile.C182]
+1=C182
+
+[Profile.Cherokee]
+1=Piper PA-28-180 Cherokee
+
+
+
