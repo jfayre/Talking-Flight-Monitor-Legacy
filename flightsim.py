@@ -42,7 +42,6 @@ class tank:
 class TFM(threading.Thread):
     ## Setup the tfm object.
     def __init__(self,queue, sapi_queue):
-        # global keyboard_handler
         threading.Thread.__init__(self)
         self.q = queue
         self.sapi_q = sapi_queue
@@ -80,6 +79,7 @@ class TFM(threading.Thread):
         
         # variables to track states of various aircraft instruments
         self.oldAircraftName = None
+        self.flag_a2a = None
         self.old_a2a_bat = None
         self.old_a2a_ttl = None
         self.old_a2a_ttr = None
@@ -1127,19 +1127,22 @@ class TFM(threading.Thread):
         self.readToggle('Door2', 'Door 2', 'open', 'closed')
         self.readToggle('Door3', 'Door 3', 'open', 'closed')
         self.readToggle('Door4', 'Door 4', 'open', 'closed')
-        self.readToggle('Eng1Starter', 'Number 1 starter', 'engaged', 'off')
-        self.readToggle('Eng2Starter', 'Number 2 starter', 'engaged', 'off')
-        self.readToggle('Eng3Starter', 'Number 3 starter', 'engaged', 'off')
-        self.readToggle('Eng4Starter', 'Number 4 starter', 'engaged', 'off')
-        self.readToggle('Eng1Combustion', 'Number 1 ignition', 'on', 'off')
-        self.readToggle('Eng2Combustion', 'Number 2 ignition', 'on', 'off')
-        self.readToggle('Eng3Combustion', 'Number 3 ignition', 'on', 'off')
-        self.readToggle('Eng4Combustion', 'Number 4 ignition', 'on', 'off')
-        self.readToggle('Eng1Generator', 'Number 1 generator', 'active', 'off')
-        self.readToggle('Eng2Generator', 'Number 2 generator', 'active', 'off')
-        self.readToggle('Eng3Generator', 'Number 3 generator', 'active', 'off')
-        self.readToggle('Eng4Generator', 'Number 4 generator', 'active', 'off')
-        self.readToggle('BeaconLights', 'Beacon light', 'on', 'off')
+        # These instruments are not necessary for A2A aircraft.
+        if self.flag_a2a == False:
+            print(self.flag_a2a)
+            self.readToggle('Eng1Starter', 'Number 1 starter', 'engaged', 'off')
+            self.readToggle('Eng2Starter', 'Number 2 starter', 'engaged', 'off')
+            self.readToggle('Eng3Starter', 'Number 3 starter', 'engaged', 'off')
+            self.readToggle('Eng4Starter', 'Number 4 starter', 'engaged', 'off')
+            self.readToggle('Eng1Combustion', 'Number 1 ignition', 'on', 'off')
+            self.readToggle('Eng2Combustion', 'Number 2 ignition', 'on', 'off')
+            self.readToggle('Eng3Combustion', 'Number 3 ignition', 'on', 'off')
+            self.readToggle('Eng4Combustion', 'Number 4 ignition', 'on', 'off')
+            self.readToggle('Eng1Generator', 'Number 1 generator', 'active', 'off')
+            self.readToggle('Eng2Generator', 'Number 2 generator', 'active', 'off')
+            self.readToggle('Eng3Generator', 'Number 3 generator', 'active', 'off')
+            self.readToggle('Eng4Generator', 'Number 4 generator', 'active', 'off')
+            self.readToggle('BeaconLights', 'Beacon light', 'on', 'off')
         self.readToggle('LandingLights', 'Landing Lights', 'on', 'off')
         self.readToggle('TaxiLights', 'Taxi Lights', 'on', 'off')
         self.readToggle('NavigationLights', 'Nav lights', 'on', 'off')
@@ -1251,17 +1254,33 @@ class TFM(threading.Thread):
         if 'Bonanza' in fsdata.instr['AircraftName'].decode():
             self.read_bonanza()
             self.read_cabin()
+            self.flag_a2a = True
+        else:
+            self.flag_a2a = False
         # read cherokee instruments
         if 'C172' in fsdata.instr['AircraftName'].decode():
             self.read_c172()
             self.read_cabin()
+            self.a2a = True
+        else:
+            self.a2a = False
+        
 
         if 'Cherokee' in fsdata.instr['AircraftName'].decode():
             self.read_cherokee()
             self.read_cabin()
+            self.a2a = True
+        else:
+            self.a2a = False
+        
+        
         if 'C182' in fsdata.instr['AircraftName'].decode():
             self.read_c182()
             self.read_cabin()
+            self.a2a = True
+        else:
+            self.a2a = False
+        
 
         # maintain state of instruments so we can check on the next run.
         self.oldInstr = copy.deepcopy(fsdata.instr)
