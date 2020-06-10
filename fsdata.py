@@ -71,6 +71,8 @@ InstrOffsets = {'Com1Freq': (0x034E,'H'),	# com1freq
         'FuelBurn': (0x61a8,'f'), # estimated fuel burn in gallons
         'FuelQuantity': (0x126c, 'u'), # Fuel: total quantity weight in pounds (32-bit integer)
         'ElevatorTrim': (0x2ea0, 'f'), # elevator trim deflection in radions
+        'AileronTrim': (0x2eb0, 'f'), # Aileron trim deflection, in radians, as a double (FLOAT64). Right turn positive, left turn negative.
+        'RudderTrim': (0x2ec0, 'f'), # Rudder trim deflection, in radians, as a double (FLOAT64).
         'VerticalSpeed': (0x0842, 'h'), # 2 byte Vertical speed in metres per minute, but with –ve for UP, +ve for DOWN. Multiply by 3.28084 and reverse the sign for the normal fpm measure.
         'AirTemp': (0x0e8c, 'h'), # Outside air temp Outside Air Temperature (OAT), degrees C * 256 (“Ambient Temperature
         'Nav1GS': (0x0c4c, 'b'), # nav 1 GS alive flag
