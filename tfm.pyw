@@ -162,6 +162,7 @@ def a2a_command_mode():
     try:
         ac = fsdata.instr['AircraftName'].decode()
         if 'Bonanza' in ac or 'Cherokee' in ac or 'C182' in ac or 'C172' in ac:
+            log.debug(F"a2a command mode: [fsdata.instr['AircraftName']")
             keyboard_handler.unregister_all_keys()
             # send a message indicating that the next speech event has been triggered by a hotkey.
             pub.sendMessage("triggered", msg=True)
@@ -183,7 +184,6 @@ def a2a_command_mode():
                 config.app['hotkeys']['a2a_fuel_quantity']: tfm.fuel_quantity,
                 config.app['hotkeys']['a2a_oil_quantity']: tfm.oil_quantity,
                 config.app['hotkeys']['a2a_cabin_temp']: tfm.cabin_temp,
-                config.app['hotkeys']['a2a_command_key']: tfm.exit_command_mode,
                 config.app['hotkeys']['a2a_tip_tank']: tfm.toggle_tip_tank,
                 config.app['hotkeys']['a2a_annunciator']: tfm.annunciator_panel,
 
@@ -192,6 +192,7 @@ def a2a_command_mode():
 
             keyboard_handler.register_keys(keymap)
         else:
+            log.debug("A2A aircraft not detected")
             output.speak ("not available")
     except Exception as e:
         log.exception("error in a2a command mode")

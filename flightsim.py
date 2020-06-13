@@ -1279,25 +1279,25 @@ class TFM(threading.Thread):
         if 'C172' in fsdata.instr['AircraftName'].decode():
             self.read_c172()
             self.read_cabin()
-            self.a2a = True
+            self.flag_a2a = True
         else:
-            self.a2a = False
+            self.flag_a2a = False
         
 
         if 'Cherokee' in fsdata.instr['AircraftName'].decode():
             self.read_cherokee()
             self.read_cabin()
-            self.a2a = True
+            self.flag_a2a = True
         else:
-            self.a2a = False
+            self.flag_a2a = False
         
         
         if 'C182' in fsdata.instr['AircraftName'].decode():
             self.read_c182()
             self.read_cabin()
-            self.a2a = True
+            self.flag_a2a = True
         else:
-            self.a2a = False
+            self.flag_a2a = False
         
 
         # maintain state of instruments so we can check on the next run.
@@ -1779,13 +1779,6 @@ class TFM(threading.Thread):
         ])
 
 
-
-
-
-    
-
-    
-
     def fuel_quantity(self):
         tank_left = round(self.read_long_var(0x66e4, 'FuelLeftWingTank'), 1)
         tank_right = round(self.read_long_var(0x66e4, 'FuelRightWingTank'), 1)
@@ -1803,14 +1796,17 @@ class TFM(threading.Thread):
         self.output(F'Oil quantity: {oil} gallons, {oil * 4} quarts. ')
         pub.sendMessage('reset', arg1=True)
     def cht(self):
+        log.debug ("reading CHT")
         cht = round(self.read_long_var(0x66e8, 'Eng1_CHT'))
         self.output(F'CHT: {cht}')
         pub.sendMessage('reset', arg1=True)
     def egt(self):
+        log.debug ("reading EGT")
         egt = round(self.read_long_var(0x66d0, 'Eng1_EGTGauge'))
         self.output(F'EGT: {egt}')
         pub.sendMessage('reset', arg1=True)
     def manifold(self):
+        log.debug ("reading manifold")
         manifold = round(self.read_long_var(0x66d4,'Eng1_ManifoldPressure'), 1)
         self.output(F'Manifold pressure: {manifold}')
         pub.sendMessage('reset', arg1=True)
@@ -1819,26 +1815,32 @@ class TFM(threading.Thread):
         self.output(F'Fuel flow: {gph}')
         pub.sendMessage('reset', arg1=True)
     def oil_temp(self):
+        log.debug("reading oil temp")
         oil_temp  = round(self.read_long_var(0x66dc, 'Eng1_OilTemp'), 1)
         self.output(F'oil temperature: {oil_temp}')
         pub.sendMessage('reset', arg1=True)
     def oil_pressure(self):
+        log.debug("reading oil pressure")
         oil_pressure = round(self.read_long_var(0x66e0, 'Eng1_OilPressureGauge'), 1)
         self.output(F'oil pressure: {oil_pressure}')
         pub.sendMessage('reset', arg1=True)
     def ammeter(self):
+        log.debug("reading ammeter")
         ammeter = round(self.read_long_var(0x66ec, 'Ammeter1'), 2)
         self.output(F'Ammeter: {ammeter}')
         pub.sendMessage('reset', arg1=True)
     def voltmeter(self):
+        log.debug("reading volt meer")
         voltmeter = round(self.read_long_var(0x66ec, 'Voltmeter') * 100) / 100
         self.output(F'Volt meter: {voltmeter}')
         pub.sendMessage('reset', arg1=True)
     def cabin_temp(self):
-     temp = round(self.read_long_var(0x66ec, 'CabinTemp'))
-     self.output(F'cabin temperature: {temp}')
-     pub.sendMessage('reset', arg1=True)
+        log.debug("reading cabin temp")
+        temp = round(self.read_long_var(0x66ec, 'CabinTemp'))
+        self.output(F'cabin temperature: {temp}')
+        pub.sendMessage('reset', arg1=True)
     def toggle_tip_tank(self):
+        log.debug("add or remove tip tanks")
         # install or remove tip tanks on bonanza aircraft
         if fsdata.instr['TipTanksAvailable']:
             self.write_var("TipTank", 0.0)
