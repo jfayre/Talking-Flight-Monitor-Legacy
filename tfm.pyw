@@ -152,6 +152,8 @@ def commandMode():
             config.app['hotkeys']['tank8_key']: tfm.fuel_t8,
             config.app['hotkeys']['tank9_key']: tfm.fuel_t9,
             config.app['hotkeys']['tank10_key']: tfm.fuel_t10,
+            config.app['hotkeys']['tcas_air_key']: tfm.tcas_air,
+            config.app['hotkeys']['tcas_ground_key']: tfm.tcas_ground,
 
 
         }
@@ -555,10 +557,10 @@ if __name__ == '__main__':
     keyboard_handler = WXKeyboardHandler(frame)
     # register the command key
     keyboard_handler.register_keys({
-        config.app['hotkeys']['command_key']: commandMode,
-        config.app['hotkeys']['a2a_command_key']: a2a_command_mode
-        })    
-    # register the listener for resetting hotkeys
+    config.app['hotkeys']['command_key']: commandMode,
+    config.app['hotkeys']['a2a_command_key']: a2a_command_mode
+         })    
+    # # register the listener for resetting hotkeys
     pub.subscribe(reset_hotkeys, "reset")
     # breakpoint()
     # setup the queue to receive speech messages
