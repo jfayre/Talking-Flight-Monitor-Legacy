@@ -6,14 +6,17 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
-
+from io import BytesIO 
+from collections import namedtuple
+from operator import itemgetter
+import struct
 from math import degrees, floor
 
 import numpy as np
 import pyglet
 import requests
 import wx
-from aviationFormula.aviationFormula import calcBearing
+from aviationFormula.aviationFormula import *
 from babel import Locale
 from babel.dates import get_timezone, get_timezone_name
 from pubsub import pub
@@ -210,6 +213,29 @@ class TFM(threading.Thread):
         self.PitchDownPlayer.queue(self.PitchDownSource)
         self.BankPlayer.queue(self.BankSource)
         self.BankPlayer.min_distance = 10
+        # dictionary of aircraft states
+        self.ac_state = {
+            0x80: 'Initialising',
+            0x81: 'Sleeping',
+            0x82: 'Filing flight plan',
+            0x83: 'Obtaining clearance',
+            0x84: 'Pushback (back?)',
+            0x85: 'Pushback (turn?)',
+            0x86: 'Starting up',
+            0x87: 'Preparing to taxi',
+            0x88: 'Taxiing out',
+            0x89: 'Take off (prep/wait)',
+            0x8A: 'Taking off',
+            0x8B: 'Departing',
+            0x8C: 'Enroute',
+            0x8D: 'In the pattern',
+            0x8E: 'Landing',
+            0x8F: 'Rolling out',
+            0x90: 'Going around',
+            0x91: 'Taxiing in',
+            0x92: 'Shutting down',
+
+        }
         
         if self.FFEnabled:
             self.AnnounceInfo(triggered=0, dt=0)
@@ -1147,7 +1173,6 @@ class TFM(threading.Thread):
         self.readToggle('Door4', 'Door 4', 'open', 'closed')
         # These instruments are not necessary for A2A aircraft.
         if self.flag_a2a == False:
-            print(self.flag_a2a)
             self.readToggle('Eng1Starter', 'Number 1 starter', 'engaged', 'off')
             self.readToggle('Eng2Starter', 'Number 2 starter', 'engaged', 'off')
             self.readToggle('Eng3Starter', 'Number 3 starter', 'engaged', 'off')
@@ -1279,25 +1304,25 @@ class TFM(threading.Thread):
         if 'C172' in fsdata.instr['AircraftName'].decode():
             self.read_c172()
             self.read_cabin()
-            self.a2a = True
+            self.flag_a2a = True
         else:
-            self.a2a = False
+            self.flag_a2a = False
         
 
         if 'Cherokee' in fsdata.instr['AircraftName'].decode():
             self.read_cherokee()
             self.read_cabin()
-            self.a2a = True
+            self.flag_a2a = True
         else:
-            self.a2a = False
+            self.flag_a2a = False
         
         
         if 'C182' in fsdata.instr['AircraftName'].decode():
             self.read_c182()
             self.read_cabin()
-            self.a2a = True
+            self.flag_a2a = True
         else:
-            self.a2a = False
+            self.flag_a2a = False
         
 
         # maintain state of instruments so we can check on the next run.
@@ -1779,13 +1804,6 @@ class TFM(threading.Thread):
         ])
 
 
-
-
-
-    
-
-    
-
     def fuel_quantity(self):
         tank_left = round(self.read_long_var(0x66e4, 'FuelLeftWingTank'), 1)
         tank_right = round(self.read_long_var(0x66e4, 'FuelRightWingTank'), 1)
@@ -1803,14 +1821,17 @@ class TFM(threading.Thread):
         self.output(F'Oil quantity: {oil} gallons, {oil * 4} quarts. ')
         pub.sendMessage('reset', arg1=True)
     def cht(self):
+        log.debug ("reading CHT")
         cht = round(self.read_long_var(0x66e8, 'Eng1_CHT'))
         self.output(F'CHT: {cht}')
         pub.sendMessage('reset', arg1=True)
     def egt(self):
+        log.debug ("reading EGT")
         egt = round(self.read_long_var(0x66d0, 'Eng1_EGTGauge'))
         self.output(F'EGT: {egt}')
         pub.sendMessage('reset', arg1=True)
     def manifold(self):
+        log.debug ("reading manifold")
         manifold = round(self.read_long_var(0x66d4,'Eng1_ManifoldPressure'), 1)
         self.output(F'Manifold pressure: {manifold}')
         pub.sendMessage('reset', arg1=True)
@@ -1819,26 +1840,32 @@ class TFM(threading.Thread):
         self.output(F'Fuel flow: {gph}')
         pub.sendMessage('reset', arg1=True)
     def oil_temp(self):
+        log.debug("reading oil temp")
         oil_temp  = round(self.read_long_var(0x66dc, 'Eng1_OilTemp'), 1)
         self.output(F'oil temperature: {oil_temp}')
         pub.sendMessage('reset', arg1=True)
     def oil_pressure(self):
+        log.debug("reading oil pressure")
         oil_pressure = round(self.read_long_var(0x66e0, 'Eng1_OilPressureGauge'), 1)
         self.output(F'oil pressure: {oil_pressure}')
         pub.sendMessage('reset', arg1=True)
     def ammeter(self):
+        log.debug("reading ammeter")
         ammeter = round(self.read_long_var(0x66ec, 'Ammeter1'), 2)
         self.output(F'Ammeter: {ammeter}')
         pub.sendMessage('reset', arg1=True)
     def voltmeter(self):
+        log.debug("reading volt meer")
         voltmeter = round(self.read_long_var(0x66ec, 'Voltmeter') * 100) / 100
         self.output(F'Volt meter: {voltmeter}')
         pub.sendMessage('reset', arg1=True)
     def cabin_temp(self):
-     temp = round(self.read_long_var(0x66ec, 'CabinTemp'))
-     self.output(F'cabin temperature: {temp}')
-     pub.sendMessage('reset', arg1=True)
+        log.debug("reading cabin temp")
+        temp = round(self.read_long_var(0x66ec, 'CabinTemp'))
+        self.output(F'cabin temperature: {temp}')
+        pub.sendMessage('reset', arg1=True)
     def toggle_tip_tank(self):
+        log.debug("add or remove tip tanks")
         # install or remove tip tanks on bonanza aircraft
         if fsdata.instr['TipTanksAvailable']:
             self.write_var("TipTank", 0.0)
@@ -1925,6 +1952,138 @@ class TFM(threading.Thread):
             self.output("low voltage, ")
         if lights[7]:
             self.output("pitch trim, ") 
+
+    def tcas_air(self):
+        # aircraft data is stored in a series of 96 40-byte structures at offset 0xf080
+        log.debug ("running tcas")
+        high_alt = fsdata.instr['Altitude'] + 2000
+        low_alt = fsdata.instr['Altitude'] - 2000
+        ac = self.read_ai_air()
+        # if the list is empty, then no aircraft are in range
+        if len(ac) == 0:
+            self.output("no aircraft in range")
+            return
+        if len(ac) < 3: 
+            num_ac = len(ac)
+        else:
+            num_ac = 3
+            self.output("closest aircraft: ")
+            for i in range(0, num_ac):
+                if ac[i]['alt'] >= high_alt or ac[i]['alt'] <= low_alt:
+                    continue
+                atc = ac[i]['atc'].replace(b'\x00', b'')
+                atc = atc.decode()
+                self.output(F"{atc}. ")
+                self.output (F"{ac[i]['distance']} nautical miles.  ")
+                self.output (F"heading: {round(ac[i]['hdg'])}. ")
+                self.output (F"Altitude: {round(ac[i]['alt'])} feet. ")
+        pub.sendMessage('reset', arg1=True)
+    
+    def tcas_ground(self):
+        log.debug ("running tcas ground")
+        ac = self.read_ai_ground()
+        # if the list is empty, then no aircraft are in range
+        if len(ac) == 0:
+            self.output("no aircraft in range")
+            return
+        if len(ac) < 3: 
+            num_ac = len(ac)
+        else:
+            num_ac = 3
+            self.output("closest aircraft: ")
+            for i in range(0, num_ac):
+                atc = ac[i]['atc'].replace(b'\x00', b'')
+                atc = atc.decode()
+
+                self.output(F"{atc}. {self.ac_state[ac[i]['state']]}.")
+        
+        pub.sendMessage('reset', arg1=True)
+    
+    def read_ai_ground(self):
+        ac_lat = fsdata.instr['Lat']
+        ac_lon = fsdata.instr['Long']
+        data = pyuipc.read([
+            (0xe080, 3840),
+            (0XD040, 1920),
+            ])
+        ac = []
+        tcas2 = []
+        # read aircraft records from offset
+        with BytesIO(data[0]) as stream:
+            records = [stream.read(40) for _ in range(96)]
+        for record in records:
+            keys = ['id', 'lat', 'lon', 'alt', 'hdg', 'gs', 'vs', 'atc', 'state', 'com']
+            values = struct.unpack("i 3f 2H h 15s B h", record)
+            ac.append(dict(zip(keys, values)))    
+        # read ADDITIONAL AIRCRAFT DATA records from offset
+        with BytesIO(data[1]) as stream:
+            records = [stream.read(20) for _ in range(96)]
+        for record in records:
+            keys = ['GateName', 'GateType', 'GateNumber', 'Unused', 'Pitch', 'Departure', 'arrival', 'Runway', 'RunwayDesignator', 'Bank']
+            values = struct.unpack("2B 2H h 4s 4s 2B h", record)
+            tcas2.append(dict(zip(keys, values)))    
+        
+        # loop through the new list and calculate distances
+        for i, record in enumerate(ac):
+            if ac[i]['id'] != 0:
+                ac[i]['GateName'] = tcas2[i]['GateName']
+                ac[i]['GateType'] = tcas2[i]['GateType']
+                ac[i]['GateNumber'] = tcas2[i]['GateNumber']
+                ac[i]['Runway'] = tcas2[i]['Runway']
+                ac[i]['RunwayDesignator'] = tcas2[i]['RunwayDesignator']
+
+        ac_filtered = [ i for i in ac if i['id'] != 0 ]
+        # sort the list by distance
+        # ac_filtered.sort(key=itemgetter('distance'))
+        return ac_filtered
+
+    def read_ai_air(self):
+        ac_lat = fsdata.instr['Lat']
+        ac_lon = fsdata.instr['Long']
+        data = pyuipc.read([(0xf080, 3840)])
+        ac_temp = []
+        # read aircraft records from offset
+        with BytesIO(data[0]) as stream:
+            records = [stream.read(40) for _ in range(96)]
+        for record in records:
+            keys = ['id', 'lat', 'lon', 'alt', 'hdg', 'gs', 'vs', 'atc', 'stat', 'com']
+            values = struct.unpack("i 3f 2H h 15s b h", record)
+            ac_temp.append(dict(zip(keys, values)))    
+        # filter out anything with an ID of 0
+        ac = [ i for i in ac_temp if i['id'] != 0 ]
+        # loop through the new list and calculate distances
+        for i, record in enumerate(ac):
+            ac[i]['distance'] = round(gcDistanceNm(ac_lat, ac_lon, ac[i]['lat'], ac[i]['lon']), 1)
+            ac[i]['hdg'] = ac[i]['hdg'] *360/65536
+        # sort the list by distance
+        ac.sort(key=itemgetter('distance'))
+        return ac
+
+
+    def get_ai_detail(self, id, cmd):
+        #     The command values available are:
+        # 1 = Tail Number
+        # 2 = Airline name + Flight number
+        # 3 = ATC aircraft type, plus ATC aircraft model *
+        # 4 = Aircraft title
+        # 5 = ATC aircraft type + last 3 digits of tail number
+        # The aircraft type is one zero-terminated string, and the model
+        # is another, following immediately. If either are missing you’ll
+        # still get the null string (i.e. just the zero terminator).
+        pyuipc.write([(0xd004, 'u', cmd)])
+        pyuipc.write([(0xd00c, 'd', id)])
+        pyuipc.write([(0xd000, 'u', 1000)])
+        time.sleep(0.01)
+        result = pyuipc.read([(0xd010, 48)])
+        if cmd == 3:
+            result = result[0].decode('UTF-8', 'ignore')
+            result = result.split('\x00')
+            return result[0] + " " + result[1]
+        else:
+            result = result[0].decode('UTF-8', 'ignore')
+            result = result.replace('\x00', '')
+            return result
+
 
 
         
