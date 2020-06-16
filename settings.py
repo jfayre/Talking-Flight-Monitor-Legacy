@@ -77,6 +77,14 @@ class settingsController(object):
         self.dialog.set_value("hotkeys", "tank8_key", config.app['hotkeys']['tank8_key'])
         self.dialog.set_value("hotkeys", "tank9_key", config.app['hotkeys']['tank9_key'])
         self.dialog.set_value("hotkeys", "tank10_key", config.app['hotkeys']['tank10_key'])
+        self.dialog.set_value("hotkeys", "tcas_air_key", config.app['hotkeys']['tcas_air_key'])
+        self.dialog.set_value("hotkeys", "tcas_ground_key", config.app['hotkeys']['tcas_ground_key'])
+        self.dialog.set_value("hotkeys", "eng1_key", config.app['hotkeys']['eng1_key'])
+        self.dialog.set_value("hotkeys", "eng2_key", config.app['hotkeys']['eng2_key'])
+        self.dialog.set_value("hotkeys", "eng3_key", config.app['hotkeys']['eng3_key'])
+        self.dialog.set_value("hotkeys", "eng4_key", config.app['hotkeys']['eng4_key'])
+
+
         self.dialog.realize()
         self.response = self.dialog.get_response()
         

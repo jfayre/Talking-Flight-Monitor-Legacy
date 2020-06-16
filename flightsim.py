@@ -27,6 +27,7 @@ import pyuipc
 from logger import logger
 
 log = logging.getLogger("tfm")
+l = threading.Lock()
         
 # Data class for fuel tanks
 # We don't strictly need to use a dataclass here, it was a bit of an experiment
@@ -48,6 +49,8 @@ class TFM(threading.Thread):
         threading.Thread.__init__(self)
         self.q = queue
         self.sapi_q = sapi_queue
+        
+
 
     def run(self):
         # Init log.
@@ -879,6 +882,33 @@ class TFM(threading.Thread):
         fsdata.a2a_payload['Seat3Weight'] = int(self.read_long_var(0x66e4, "Character3Weight"))
         fsdata.a2a_payload['Seat4Weight'] = int(self.read_long_var(0x66e4, "Character4Weight"))
 
+    def read_eng1(self):
+        self.output("Engine 1: ")
+        self.output (F"N1: {round(fsdata.instr['Eng1N1'])}. ")
+        self.output (F"N2: {round(fsdata.instr['Eng1N2'])}. ")
+        pub.sendMessage('reset', arg1=True)
+    def read_eng2(self):
+        self.output("Engine 2: ")
+        self.output (F"N1: {round(fsdata.instr['Eng2N1'])}. ")
+        self.output (F"N2: {round(fsdata.instr['Eng2N2'])}. ")
+        pub.sendMessage('reset', arg1=True)
+    def read_eng3(self):
+        if fsdata.instr['num_engines'] >= 3:
+            self.output("Engine 3: ")
+            self.output (F"N1: {round(fsdata.instr['Eng3N1'])}. ")
+            self.output (F"N2: {round(fsdata.instr['Eng3N2'])}. ")
+        else:
+            self.output ("Not available. ")
+        pub.sendMessage('reset', arg1=True)
+    def read_eng4(self):
+        if fsdata.instr['num_engines'] >= 3:
+            self.output("Engine 4: ")
+            self.output (F"N1: {round(fsdata.instr['Eng4N1'])}. ")
+            self.output (F"N2: {round(fsdata.instr['Eng4N2'])}. ")
+        else:
+            self.output ("not available. ")
+        pub.sendMessage('reset', arg1=True)
+
     def fuel_t1(self):
         try:
             self.output(F'{self.tanks[1].name}: ')
@@ -1659,6 +1689,7 @@ class TFM(threading.Thread):
     # Read data from the simulator
     def getPyuipcData(self, type=0, dt=0):
         try:
+            l.acquire()
             # read types: 0 - all, 1 - instrumentation, 2 - SimConnect, 3 - attitude    
             if type == 0 or type == 1:
                 fsdata.instr = dict(zip(fsdata.InstrOffsets.keys(), pyuipc.read(self.pyuipcOffsets)))
@@ -1770,6 +1801,7 @@ class TFM(threading.Thread):
                 self.attitude = dict(zip(fsdata.AttitudeOffsets.keys(), pyuipc.read(self.pyuipcAttitude)))
                 self.attitude['Pitch'] = self.attitude['Pitch'] * 360 /(65536 * 65536)
                 self.attitude['Bank'] = self.attitude['Bank'] * 360 /(65536 * 65536)
+            l.release()
         except pyuipc.FSUIPCException as e:
             log.exception("error reading from simulator. This could be normal. Exiting.")
             pub.sendMessage("exit", msg="")
@@ -1991,10 +2023,9 @@ class TFM(threading.Thread):
         else:
             num_ac = 3
             self.output("closest aircraft: ")
-            for i in range(0, num_ac):
+            for i in range(0, len(ac)):
                 atc = ac[i]['atc'].replace(b'\x00', b'')
                 atc = atc.decode()
-
                 self.output(F"{atc}. {self.ac_state[ac[i]['state']]}.")
         
         pub.sendMessage('reset', arg1=True)
@@ -2032,7 +2063,7 @@ class TFM(threading.Thread):
                 ac[i]['Runway'] = tcas2[i]['Runway']
                 ac[i]['RunwayDesignator'] = tcas2[i]['RunwayDesignator']
 
-        ac_filtered = [ i for i in ac if i['id'] != 0 ]
+        ac_filtered = [ i for i in ac if i['id'] != 0 and i['state'] != 0x81]
         # sort the list by distance
         # ac_filtered.sort(key=itemgetter('distance'))
         return ac_filtered

@@ -154,6 +154,10 @@ def commandMode():
             config.app['hotkeys']['tank10_key']: tfm.fuel_t10,
             config.app['hotkeys']['tcas_air_key']: tfm.tcas_air,
             config.app['hotkeys']['tcas_ground_key']: tfm.tcas_ground,
+            config.app['hotkeys']['eng1_key']: tfm.read_eng1,
+            config.app['hotkeys']['eng2_key']: tfm.read_eng2,
+            config.app['hotkeys']['eng3_key']: tfm.read_eng3,
+            config.app['hotkeys']['eng4_key']: tfm.read_eng4,
 
 
         }
