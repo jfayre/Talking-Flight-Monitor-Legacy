@@ -328,3 +328,7 @@ function repair_all(offset, value)
 end
 event.intercept(0x4240, "UB", "repair_all")
 
+function quit(offset, value)
+    ipc.exit()
+end
+event.offset(0x3d00, "STR", 255, "quit")

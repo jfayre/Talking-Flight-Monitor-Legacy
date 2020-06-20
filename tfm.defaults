@@ -17,6 +17,7 @@ read_ils = boolean(default=True)
 read_groundspeed = boolean(default=False)
 # Use metric for measurement units
 use_metric = boolean(default=True)
+online_mode = boolean(default=False)
 
 [timing]
 # time interval for reading of nearest city, in minutes

@@ -242,3 +242,74 @@ AttitudeOffsets = {'Pitch': (0x0578,'d'), # Pitch, *360/(65536*65536) for degree
 
 
 }
+# ground aircraft gate name designations
+tcas_gate_name = {
+    1: 'Ramp parking',
+    2: 'North Ramp parking',
+    3: 'North-East Ramp parking',
+    4: 'East Ramp parking',
+    5: 'South-East Ramp parking',
+    6: 'South Ramp parking',
+    7: 'South-west Ramp parking',
+    8: 'West Ramp parking',
+    9: 'North-west Ramp parking',
+    10: 'Gate',
+    11: 'Dock',
+    12: 'a',
+    13: 'b',
+    14: 'c',
+    15: 'd',
+    16: 'e',
+    17: 'f',
+    18: 'g',
+    19: 'h',
+    20: 'i',
+    21: 'j',
+    22: 'k',
+    23: 'l',
+    24: 'm',
+    25: 'n',
+    26: 'o',
+    27: 'p',
+    28: 'q',
+    29: 'r',
+    30: 's',
+    31: 't',
+    32: 'u',
+    33: 'v',
+    34: 'w',
+    35: 'x',
+    36: 'y',
+    37: 'z'
+}
+# ground aircraft gate type designations
+tcas_gate_type = {
+    1: 'Ramp (GA)',
+    2: 'Ramp small',
+    3: 'Ramp medium',
+    4: 'Ramp large',
+    5: 'Ramp Cargo',
+    6: 'Ramp Military Cargo',
+    7: 'Ramp Military Combat',
+    8: 'Gate small',
+    9: 'Gate medium',
+    10: 'Gate heavy',
+    11: 'Dock (GA)',
+
+}
+# ground aircraft runway asignment. 1 to 36 or one of below designations
+tcas_runway = {
+    37: 'North',
+    38: 'North-east',
+    39: 'East',
+    40: 'South-east',
+    41: 'South',
+    42: 'South-west',
+
+}
+tcas_runway_designator = {
+    1: 'left',
+    2: 'right',
+    3: 'center',
+    4: 'water',
+}
