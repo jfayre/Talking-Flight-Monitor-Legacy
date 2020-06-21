@@ -7,3 +7,4 @@ urllib3==1.25.8
 wxpython==4.0.3
 pypubsub==4.0.3
 configobj==5.0.6
+pandas
