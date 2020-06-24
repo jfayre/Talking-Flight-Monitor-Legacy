@@ -1,0 +1,16 @@
+GROUND CHECK
+1. Throttle - 2000 RPM
+2. Mags RPM - 125 max drop
+3. Carb Heat - CHECK FOR RPM DROP
+4. Engine Instruments - CHECK
+
+TAKEOFF
+1. Seats, Belts, and Doors - CHECK SECURE
+2. Flight Controls - FREE and CORRECT
+3. Elevator Trim - SET      
+4. Mixture - RICH
+5. Carb Heat - OFF
+6. Fuel Selector - FULLEST TANK
+7. Electric Fuel Pump - ON
+8. Engine Gauges - NORMAL
+9. Wing Flaps - AS REQUIRED

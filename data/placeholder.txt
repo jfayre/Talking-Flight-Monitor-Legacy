@@ -1,0 +1,1 @@
+This file serves no useful purpose, other than to allow the data folder to be included in the installer.

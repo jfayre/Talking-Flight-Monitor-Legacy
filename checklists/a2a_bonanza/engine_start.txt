@@ -1,0 +1,16 @@
+ENGINE STARTING\{nr}
+1. Mixture - RICH
+2. Prop - FULL
+3. Throttle - FULL
+4. BAT and ALT switches - ON
+5. Check Gear Lights - GREEN
+6. Aux pump - ON until ff goes into the green then OFF
+7. Throttle - CRACKED 1/4" (Clear prop!)
+8. Mag/Start switch - START
+9. Oil Pressure - CHECK
+10. Ammeter - CHECK
+11. Mixture - LEAN
+12. Avionics - ON
+13. Cowl Flaps - OPEN
+
+

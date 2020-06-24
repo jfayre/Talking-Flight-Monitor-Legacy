@@ -1,0 +1,15 @@
+CLIMB
+1. Fuel Pressure - CHECK
+2. MAX - 2,500 rpm, 25 MP
+3. SPEED:  Best angle - 77 kts               
+Best rate - 96 kts               
+Best en route - 107 kts
+4. CHT - CHECK
+5. MIXTURE - SET FUEL FLOW
+
+
+CRUISE
+1. Cowl Flaps - CLOSED
+2. Power - SET
+3. RPM - AS DESIRED (2100-2500)
+4. Mixture - SET FUEL FLOW

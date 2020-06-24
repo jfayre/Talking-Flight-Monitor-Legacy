@@ -1,0 +1,16 @@
+UPON ENTERING CABIN\{nr}
+
+1. Airplane Weight and Balance - CHECKED
+2. Parking Brake - SET
+3. Control Wheel Lock - REMOVE
+4. Ignition and Avionics - OFF
+6. Master Switch - ON
+7. Check Fuel Quantity
+8. Static Pressure Alt Source Valve - OFF.
+9. Annunciator Panel Switch - TEST
+10. Fuel Selector Valve - BOTH
+11. Fuel Shutoff Valve - ON (Push Full In)
+12. Flaps - EXTEND
+13. Master Switch - OFF
+14. Elevator Trim - SET for takeoff
+

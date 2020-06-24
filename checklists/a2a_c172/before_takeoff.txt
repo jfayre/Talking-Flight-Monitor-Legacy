@@ -1,0 +1,18 @@
+BEFORE TAKEOFF
+1. Seats, Belts, and Doors - CHECK SECURE
+2. Flight Controls - FREE and CORRECT
+3. Flight Instruments - CHECK and SET
+4. Fuel Quantity - CHECK
+5. Mixture - RICH
+6. Fuel Selector Valve - RECHECK BOTH
+7. Throttle - 1800 RPM   
+a. Mags RPM - 150 max drop / 50 diff   
+b. Engine, Vacuum, Ammeter - CHECK   
+c. Annunciator Panel - nothing illuminated
+8. Throttle - IDLE, then SET 1000RPM
+9. Radios and lights - SET
+10. Elevator Trim - SET
+11. Wing Flaps - SET (0-10)
+
+
+

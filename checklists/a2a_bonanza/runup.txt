@@ -1,0 +1,17 @@
+RUNUP
+1. Brakes - HOLD
+2. Fuel Quantity - CHECK
+3. Fuel Selectors - DESIRED TANK
+4. Mixture - SET
+5. Throttle - 1700 rpm
+6. Engine Instruments - CHECK      
+Oil press, Oil temp, Fuel Flow       
+Ammeter, Vacuum, CHT, EGT
+
+7. Magnetos - CHECK       
+max drop: 150 rpm / max diff: 50 rpm
+8. Prop	Cycle - 1 to 3 times
+
+
+
+

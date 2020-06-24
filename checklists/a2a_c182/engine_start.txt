@@ -1,0 +1,21 @@
+ENGINE STARTING
+
+1. Throttle - CRACKED 
+2. Mixture - OUT
+3. Prop Control - IN
+4. Master Switch - ON
+5. Beacon - ON
+6. Cowl Flaps - OPEN
+NOTE:  Skip to step 10 for a WARM Engine
+7. Fuel Pump - ON
+8. Mixture - RICH until stable fuel flow for 3-5 seconds, then set to IDLE CUTOFF
+9. Fuel Pump - OFF
+10. Area - CLEAR
+11. Ignition Switch - START
+12. Mixture - ADVANCE
+13. Oil Pressure - CHECK and Amps - POSITIVE
+14. Navigation Lights - ON as required
+15. Avionics - ON 
+16. Radios - ON
+17. Flaps - RETRACT
+

@@ -2,12 +2,21 @@
 
 block_cipher = None
 
+added_files = [
+    ('tfm.html', '.'), 
+    ('changelog.txt', '.'), 
+    ('sounds/*.wav', 'sounds'), 
+    ('tfm.defaults', '.'), 
+    ('scripts/*.*', 'scripts'), 
+    ('checklists', 'checklists'), 
+    ('data', 'data'),
+]
 
 a = Analysis(['tfm.pyw'],
              pathex=['C:\\Users\\jfayr\\projects\\talking-flight-monitor'],
              binaries=[],
              hookspath=[],
-             datas=[('tfm.html', '.'), ('changelog.txt', '.'), ('sounds/*.wav', 'sounds'), ('tfm.defaults', '.'), ('scripts/*.lua', 'scripts'), ],
+             datas= added_files,
              hiddenimports=['babel.numbers'],
 
              runtime_hooks=[],

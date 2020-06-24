@@ -1,0 +1,17 @@
+
+AFTER LANDING
+1. Landings and Taxi lights - AS REQUIRED
+2. Flaps - UP
+3. Trim - NEUTRAL
+4. Cowl flaps - OPEN
+
+SHUTDOWN
+1. Brakes - SET
+2. Electrical and Radios - OFF
+3. Throttle - CLOSE
+4. Mixture - OFF 
+5. Magnetos - OFF
+6. Battery and Alternator - OFF 
+7. Controls - LOCK
+8. Parking Brake - RELEASE
+9. Wheel Chocks - INSTALL

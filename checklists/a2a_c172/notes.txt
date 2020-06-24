@@ -1,0 +1,13 @@
+NOTES:
+- Priming for cold engine.  Run fuel pump   
+until fuel pressure rises for 3 sec
+- Lean on ground to avoid fouling plugs
+- Check oil temp before runup
+- Idle under 1000RPM with cold engine
+- Stall speed = 51 kts
+- Max flap extension speeds:   
+(0°-10° below 110 kts)   
+(10°-30° below 85 kts)
+- Approach speed 65-75 kts
+- Max crosswind - 15 kts
+

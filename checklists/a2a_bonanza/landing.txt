@@ -1,0 +1,13 @@
+APPROACH / LANDING
+1. Autopilot - OFF
+2. Fuel Selectors - DESIRED TANK
+3. Fuel levels - CHECK
+4. Mixture - RICH
+5. Altimeter - SET
+6. Cowl Flaps - CLOSED
+7. If airport elevation is over 4,000 ft - LEAN
+8. Gear - DOWN (max speed 154 kts)
+9. GUMP - CHECK
+10. Flaps - FULL DOWN (max speed 123 kts)
+11. Propeller - HIGH RPM
+12. Final - GEAR DOWN CHECK

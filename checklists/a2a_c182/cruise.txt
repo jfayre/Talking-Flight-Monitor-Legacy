@@ -1,0 +1,18 @@
+CRUISE
+1. Power - 15 - 23 Inches at 2000 - 2400 RPM
+2. Elevator and Rudder Trim - ADJUST
+3. Mixture Control - LEAN
+4. Cowl flaps - CLOSED    
+
+Recommended (EGT 50°F ROP)     
+Economy (peak EGT)             Power (EGT 125° ROP)
+
+DESCENT
+1. Power - AS DESIRED
+2. Mixture - ADJUST (if needed to smoothen engine)
+3. Cowl Flaps - CLOSED
+4. Altimeter (BARO) - SET
+5. FUEL SELECTOR Valve - BOTH
+6. Wing Flaps - AS DESIRED    
+Max: (10 - 140 kts), (20 - 120 kts), (FULL - 100 kts)
+

@@ -1,0 +1,16 @@
+CLIMB
+1. Wing Flaps - RETRACTED
+2. Throttle - FULL OPEN
+3. Mixture - RICH (>5k ft LEAN for max RPM)
+4. Climb Speed - 74-90 mph
+5. Fuel pump - OFF
+
+
+CRUISE
+1. Power - 2200-2650- RPM
+2. Elevator Trim - ADJUST
+
+Manual Leaning (by ear):
+- LEAN until rough, then RICHEN
+Leaning using EGT:
+- LEAN until PEAK or 50° ROP   

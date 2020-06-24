@@ -1,0 +1,16 @@
+LANDING
+1. Airspeed - 70-80 kts (flaps UP)
+2. Wing Flaps - AS DESIRED    
+(0-10 - 140 kts)    
+(10-20 - 120 kts)    
+(Full - 100 kts)
+3. Airspeed - 60-70 kts (flaps DOWN)
+4. Touchdown - MAIN WHEELS FIRST
+5. Landing Roll - GENTLY LOWER NOSE
+6. Braking - MINIMUM REQUIRED
+
+AFTER LANDING
+1. Wing Flaps - UP 
+2. Cowl Flaps - OPEN 
+
+

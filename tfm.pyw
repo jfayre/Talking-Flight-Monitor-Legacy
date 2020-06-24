@@ -27,6 +27,7 @@ import sys
 import time
 import warnings
 import config
+import fsdata
 import winsound
 #redirect the original stdout and stderr
 stdout = sys.stdout
@@ -60,7 +61,8 @@ from keyboard_handler.wx_handler import WXKeyboardHandler
 import queue
 import flightsim
 import settings
-# import pyglet
+import a2a_fuel
+import a2a_controls
 import threading
 from accessible_output2.outputs import sapi5
 from accessible_output2.outputs import auto
@@ -150,6 +152,12 @@ def commandMode():
             config.app['hotkeys']['tank8_key']: tfm.fuel_t8,
             config.app['hotkeys']['tank9_key']: tfm.fuel_t9,
             config.app['hotkeys']['tank10_key']: tfm.fuel_t10,
+            config.app['hotkeys']['tcas_air_key']: tfm.tcas_air,
+            config.app['hotkeys']['tcas_ground_key']: tcas_ground,
+            config.app['hotkeys']['eng1_key']: tfm.read_eng1,
+            config.app['hotkeys']['eng2_key']: tfm.read_eng2,
+            config.app['hotkeys']['eng3_key']: tfm.read_eng3,
+            config.app['hotkeys']['eng4_key']: tfm.read_eng4,
 
 
         }
@@ -158,7 +166,9 @@ def commandMode():
         log.exception ("error in command mode.")
 def a2a_command_mode():
     try:
-        if 'Bonanza' in tfm.instr['AircraftName'].decode():
+        ac = fsdata.instr['AircraftName'].decode()
+        if 'Bonanza' in ac or 'Cherokee' in ac or 'C182' in ac or 'C172' in ac:
+            log.debug(F"a2a command mode: [fsdata.instr['AircraftName']")
             keyboard_handler.unregister_all_keys()
             # send a message indicating that the next speech event has been triggered by a hotkey.
             pub.sendMessage("triggered", msg=True)
@@ -178,25 +188,23 @@ def a2a_command_mode():
                 config.app['hotkeys']['a2a_voltmeter']: tfm.voltmeter,
                 config.app['hotkeys']['a2a_fuel_flow']: tfm.gph,    
                 config.app['hotkeys']['a2a_fuel_quantity']: tfm.fuel_quantity,
-                config.app['hotkeys']['a2a_tip_tank_left']: tfm.tip_tank_left_toggle,
-                config.app['hotkeys']['a2a_tip_tank_right']: tfm.tip_tank_right_toggle,
-                config.app['hotkeys']['a2a_window']: tfm.window_toggle,
-                config.app['hotkeys']['a2a_fan']: tfm.fan_toggle,
+                config.app['hotkeys']['a2a_oil_quantity']: tfm.oil_quantity,
                 config.app['hotkeys']['a2a_cabin_temp']: tfm.cabin_temp,
-                config.app['hotkeys']['a2a_cabin_heat_inc']: tfm.cabin_heat_inc,
-                config.app['hotkeys']['a2a_cabin_heat_dec']: tfm.cabin_heat_dec,
-                config.app['hotkeys']['a2a_defrost_inc']: tfm.defrost_inc,
-                config.app['hotkeys']['a2a_defrost_dec']: tfm.defrost_dec,
-                config.app['hotkeys']['a2a_command_key']: tfm.exit_command_mode,
+                config.app['hotkeys']['a2a_tip_tank']: tfm.toggle_tip_tank,
+                config.app['hotkeys']['a2a_annunciator']: tfm.annunciator_panel,
 
                 }
 
 
             keyboard_handler.register_keys(keymap)
         else:
+            log.debug("A2A aircraft not detected")
             output.speak ("not available")
     except Exception as e:
         log.exception("error in a2a command mode")
+def tcas_ground():
+    log.debug("sending tcas message")
+    pub.sendMessage("tcas_ground", msg=True)
 class Form(wx.Panel):
     ''' The Form class is a wx.Panel that creates a bunch of controls
         and handlers for callbacks. Doing the layout of the controls is 
@@ -211,8 +219,8 @@ class Form(wx.Panel):
 
     def createControls(self):
         self.logger = wx.TextCtrl(self, style=wx.TE_MULTILINE|wx.TE_READONLY)
-        sys.stdout = self.logger
-        sys.stderr = self.logger
+        # sys.stdout = self.logger
+        # sys.stderr = self.logger
         self.hdg_label = wx.StaticText(self, label='heading:')
         self.hdg_edit = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         self.alt_label = wx.StaticText(self, label='Altitude:')
@@ -333,6 +341,10 @@ class TFMFrame(wx.Frame):
         app_menu = wx.Menu()
         app_settings = app_menu.Append(wx.ID_ANY, "&Settings")
         app_exit = app_menu.Append (wx.ID_EXIT,"E&xit"," Terminate the program")
+        # aircraft menu
+        aircraft_menu = wx.Menu()
+        aircraft_fuel = aircraft_menu.Append(wx.ID_ANY, "A2A &fuel and payload manager")
+        aircraft_repair = aircraft_menu.Append(wx.ID_ANY, "&repair all aircraft damage")
         # help menu
         help_menu = wx.Menu()
         help_website = help_menu.Append(wx.ID_ANY, "visit &website")
@@ -341,11 +353,14 @@ class TFMFrame(wx.Frame):
         # set up the menu bar
         menu_bar = wx.MenuBar()
         menu_bar.Append(app_menu, '&Application')
+        menu_bar.Append(aircraft_menu, 'A&ircraft')
         menu_bar.Append(help_menu, '&Help')
         self.SetMenuBar(menu_bar)  # Adding the MenuBar to the Frame content.
         # bind menu events
         self.Bind(wx.EVT_MENU, self.onSettings, app_settings)
         self.Bind(wx.EVT_MENU, self.onExit, app_exit)
+        self.Bind(wx.EVT_MENU, self.onFuel, aircraft_fuel)
+        self.Bind(wx.EVT_MENU, self.onRepair, aircraft_repair)
         self.Bind(wx.EVT_MENU, self.onWebsite, help_website)
         self.Bind(wx.EVT_MENU, self.onAbout, help_about)
         self.Bind(wx.EVT_MENU, self.onIssue, help_issue)
@@ -363,7 +378,126 @@ class TFMFrame(wx.Frame):
  
     def onExit(self, event):
         self.Close()
+    def onFuel(self, event):
+        if 'Bonanza' in fsdata.instr['AircraftName'].decode():
+            self.fuel_bonanza()
+        if 'Cherokee' in fsdata.instr['AircraftName'].decode():
+            self.fuel_cherokee()
+        if 'C172' in fsdata.instr['AircraftName'].decode():
+            self.fuel_c172()
+        if 'C182' in fsdata.instr['AircraftName'].decode():
+            self.fuel_c182()
+        self.payload()
+    def onRepair(self, event):
+        if any(x in fsdata.instr['AircraftName'].decode() for x in ["Bonanza", "Cherokee", "C172", "C182"]):
+            tfm.repair_all()
+        else:
+            wx.MessageBox("Not supported with current aircraft", "error", wx.OK | wx.ICON_ERROR)
+    def fuel_bonanza(self):
+        self.dlg = a2a_fuel.fuelControllerBonanza()
+        wl = self.dlg.dialog.get_value("fuel", "wing_left")
+        wr = self.dlg.dialog.get_value("fuel", "wing_right")
+        oil = self.dlg.dialog.get_value("fuel", "oil")
+        if self.dlg.response == widgetUtils.OK:
+            if wl != "":
+                # tfm.write_var("FuelLeftWingTank", float(wl))
+                tfm.set_fuel(0, wl)
+                time.sleep(0.25)
+            if wr != "":
+                # tfm.write_var("FuelRightWingTank", float(wr))
+                tfm.set_fuel(1, wr)
+                time.sleep(0.25)
+            if tfm.tt:
+                tl = self.dlg.dialog.get_value("fuel", "tip_left")
+                tr = self.dlg.dialog.get_value("fuel", "tip_right")
+                if tl != "":
+                    tfm.set_fuel(2, tl)
+                    time.sleep(0.25)
+                if tr != "":
+                    tfm.set_fuel(3, tr)
+                    time.sleep(0.25)
+            if oil:
+                tfm.set_oil(2.5)
 
+    def fuel_cherokee(self):
+        self.dlg = a2a_fuel.fuelControllerCherokee()
+        wl = self.dlg.dialog.get_value("fuel", "wing_left")
+        wr = self.dlg.dialog.get_value("fuel", "wing_right")
+        oil = self.dlg.dialog.get_value("fuel", "oil")
+        if self.dlg.response == widgetUtils.OK:
+            if wl != "":
+                tfm.set_fuel(0, wl)
+            if wr != "":
+                tfm.set_fuel(1, wr)
+            if oil:
+                tfm.set_oil(2)
+    def fuel_c172(self):
+        self.dlg = a2a_fuel.fuelControllerC172()
+        wl = self.dlg.dialog.get_value("fuel", "wing_left")
+        wr = self.dlg.dialog.get_value("fuel", "wing_right")
+        oil = self.dlg.dialog.get_value("fuel", "oil")
+        if self.dlg.response == widgetUtils.OK:
+            if wl != "":
+                tfm.set_fuel(0, wl)
+            if wr != "":
+                tfm.set_fuel(1, wr)
+            if oil:
+                tfm.set_oil(2.25)
+
+    
+    def fuel_c182(self):
+        self.dlg = a2a_fuel.fuelControllerC182()
+        wl = self.dlg.dialog.get_value("fuel", "wing_left")
+        wr = self.dlg.dialog.get_value("fuel", "wing_right")
+        oil = self.dlg.dialog.get_value("fuel", "oil")
+        if self.dlg.response == widgetUtils.OK:
+            if wl != "":
+                tfm.set_fuel(0, wl)
+            if wr != "":
+                tfm.set_fuel(1, wr)
+            if oil:
+                tfm.set_oil(2.25)
+
+    def payload(self):
+        # get payload fields from dialog
+        # checkboxes for occupied seats
+        s1 = self.dlg.dialog.get_value('payload', 'seat1')
+        s2 = self.dlg.dialog.get_value('payload', 'seat2')
+        s3 = self.dlg.dialog.get_value('payload', 'seat3')
+        s4 = self.dlg.dialog.get_value('payload', 'seat4')
+
+
+        # fields for passenger weights
+        s1_weight = self.dlg.dialog.get_value('payload', 'seat1_weight')
+        s2_weight = self.dlg.dialog.get_value('payload', 'seat2_weight')
+        s3_weight = self.dlg.dialog.get_value('payload', 'seat3_weight')
+        s4_weight = self.dlg.dialog.get_value('payload', 'seat4_weight')
+        # Seat 1 is the pilot. If there is no pilot, clear the other seats
+        if s1:
+            tfm.set_seat(1, s1_weight)
+            time.sleep(0.25)
+        else:
+            tfm.set_seat(1, 0)
+            return
+        if s2:
+            tfm.set_seat(2, s2_weight)
+        else:
+            tfm.set_seat(2, 0)
+        if s3:
+            tfm.set_seat(3, s3_weight)
+        else:
+            tfm.set_seat(3, 0)
+        if s4:
+            tfm.set_seat(4, s4_weight)
+        else:
+            tfm.set_seat(4, 0)
+
+
+
+
+
+
+        
     def onAbout(self, event):
         info = wx.adv.AboutDialogInfo()
         info.SetName(application.name)
@@ -401,8 +535,8 @@ def setup_speech():
     sapi_output.set_rate(voice_rate)
 
     if config.app['config']['use_sapi']:
-        output = sapi5.SAPI5()
         output.set_rate(config.app['config']['voice_rate'])
+        output = sapi5.SAPI5()
     else:
         output = auto.Auto()
     geonames_username = config.app['config']['geonames_username']
@@ -429,10 +563,10 @@ if __name__ == '__main__':
     keyboard_handler = WXKeyboardHandler(frame)
     # register the command key
     keyboard_handler.register_keys({
-        config.app['hotkeys']['command_key']: commandMode,
-        config.app['hotkeys']['a2a_command_key']: a2a_command_mode
-        })    
-    # register the listener for resetting hotkeys
+    config.app['hotkeys']['command_key']: commandMode,
+    config.app['hotkeys']['a2a_command_key']: a2a_command_mode
+         })    
+    # # register the listener for resetting hotkeys
     pub.subscribe(reset_hotkeys, "reset")
     # breakpoint()
     # setup the queue to receive speech messages

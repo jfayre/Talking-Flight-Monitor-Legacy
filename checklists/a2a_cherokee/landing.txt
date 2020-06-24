@@ -1,0 +1,15 @@
+DESCENT\{nr}
+1. Power - AS DESIRED
+2. Mixture - RICH
+3. Electric Fuel Pump - ON
+4. Fuel Selector - FULLEST TANK
+
+
+LANDING
+1. Airspeed - 75 - 85 mph (flaps UP)
+2. Wing Flaps (below 115 mph) - AS DESIRED
+3. Airspeed - 65 - 75 mph (flaps DOWN)
+4. Touchdown - MAIN WHEELS FIRST
+5. Landing Roll - GENTLY LOWER NOSE
+6. Braking - MINIMUM REQUIRED
+

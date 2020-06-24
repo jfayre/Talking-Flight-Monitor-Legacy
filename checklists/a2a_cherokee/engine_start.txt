@@ -1,0 +1,20 @@
+ENGINE STARTING and TAXI
+1. Wheel Brakes - ON    
+2. Carb heat - OFF
+3. Fuel Selector - FULLEST TANK
+4. Master Switch - ON
+5. Electric fuel pump - TEST
+6. Primer:  1 - 3 STROKES
+7. Mixture - RICH  
+8. Throttle - CRACKED
+9. Area - CLEAR   
+10. Ignition - BOTH
+11. Starter - ENGAGE
+12. Oil Pressure - CHECK
+13. Ammeter - POSITIVE INDICATION
+14. Nav Lights - AS REQUIRED
+15. Altimeter - SET        
+16. Heading - SET
+17. Radio Master - ON 
+18. Radios - ON
+

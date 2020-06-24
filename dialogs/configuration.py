@@ -43,6 +43,9 @@ class general(wx.Panel, baseDialog.BaseWXDialog):
   sizer.Add(self.read_groundspeed, 0, wx.ALL, 5)
   self.use_metric = wx.CheckBox(self, -1, "Use metric measurements")
   sizer.Add(self.use_metric, 0, wx.ALL, 5)
+  self.online_mode = wx.CheckBox(self, -1, "Online flying mode (changes reading of ground aircraft)")
+  sizer.Add(self.online_mode, 0, wx.ALL, 5)
+  
   self.SetSizer(sizer)
 
 class timing(wx.Panel, baseDialog.BaseWXDialog):
@@ -125,6 +128,18 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
     self.fuel_report_key = wx.TextCtrl(self, -1)
     self.fuel_flow_label = wx.StaticText(self, wx.ID_ANY, "Fuel Flow Report: ")
     self.fuel_flow_key = wx.TextCtrl(self, -1)
+    self.tcas_air_label = wx.StaticText(self, wx.ID_ANY, "closest airborn aircraft: ")
+    self.tcas_air_key = wx.TextCtrl(self, -1)
+    self.tcas_ground_label = wx.StaticText(self, wx.ID_ANY, "closest ground aircraft: ")
+    self.tcas_ground_key = wx.TextCtrl(self, -1)
+    self.eng1_label = wx.StaticText(self, wx.ID_ANY, "Jet engine 1 info: ")
+    self.eng1_key = wx.TextCtrl(self, -1)
+    self.eng2_label = wx.StaticText(self, wx.ID_ANY, "Jet engine 2 info: ")
+    self.eng2_key = wx.TextCtrl(self, -1)
+    self.eng3_label = wx.StaticText(self, wx.ID_ANY, "Jet engine 3 info: ")
+    self.eng3_key = wx.TextCtrl(self, -1)
+    self.eng4_label = wx.StaticText(self, wx.ID_ANY, "Jet engine 4 info: ")
+    self.eng4_key = wx.TextCtrl(self, -1)
     self.tank1_label = wx.StaticText(self, wx.ID_ANY, "Fuel Tank 1: ")
     self.tank1_key = wx.TextCtrl(self, -1)
     self.tank2_label = wx.StaticText(self, wx.ID_ANY, "Tank 2: ")
@@ -188,7 +203,6 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
                  (self.director_key, expandOption),
                  (self.runway_guidance_label, noOptions),
                  (self.runway_guidance_key, expandOption),
-
                  (self.vspeed_label, noOptions),
                  (self.vspeed_key, expandOption),
                  (self.airtemp_label, noOptions),
@@ -212,6 +226,18 @@ class hotkeys(wx.Panel, baseDialog.BaseWXDialog):
                  (self.fuel_report_key, expandOption),
                  (self.fuel_flow_label, noOptions),
                  (self.fuel_flow_key, expandOption),
+                 (self.tcas_air_label, noOptions),
+                 (self.tcas_air_key, expandOption),
+                 (self.tcas_ground_label, noOptions),
+                 (self.tcas_ground_key, expandOption),
+                 (self.eng1_label, noOptions),
+                 (self.eng1_key, expandOption),
+                 (self.eng2_label, noOptions),
+                 (self.eng2_key, expandOption),
+                 (self.eng3_label, noOptions),
+                 (self.eng3_key, expandOption),
+                 (self.eng4_label, noOptions),
+                 (self.eng4_key, expandOption),
                  (self.tank1_label, noOptions),
                  (self.tank1_key, expandOption),
                  (self.tank2_label, noOptions),

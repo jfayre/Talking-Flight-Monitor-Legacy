@@ -58,34 +58,31 @@ end
 ipc.writeUB(0x66c7, 1)
 
 -- define hotkeys
-set_key(1, mod_tab, key_a)
-function toggle_fan(offset, value)
+-- carb heat increase, tab+c
+set_key(1, mod_tab, key_c)
+function carb_inc(offset, value)
     if value == 0 then return end
-    var = "VentCabinFanSwitch"
-    local f = ipc.readLvar(var)
-    if f == 0 then
-        ipc.writeLvar(var, 1)
-        f = 1
-    else
-        ipc.writeLvar(var, 0)
-        f = 0
-    end
-    ipc.writeUB(0x66c6, f)
+    local c = ipc.readLvar("Eng1_CarbHeatSwitch")
+    c = c + 10
+    if c > 100 then c = 100 end
+    ipc.writeLvar("Eng1_CarbHeatSwitch", c)
+    ipc.writeUB(0x66c5, c)
     ipc.writeUB(keys[1].flag, 0)
 end
-event.offset(keys[1].flag, "UB", "toggle_fan")
+event.offset(keys[1].flag, "UB", "carb_inc")
 
--- fan speed
-set_key (2, mod_tab, key_s)
-function fan_speed(offset, value)
+-- carb heat decrease, shift+tab+c
+set_key(2, mod_shift_tab, key_c)
+function carb_dec(offset, value)
     if value == 0 then return end
-    local s = ipc.readLvar("VentCabinOverheadFreshAirControl")
-    s = s + 1
-    if s >4 then s = 0 end
-    ipc.writeLvar("VentCabinOverheadFreshAirControl", s)
-    ipc.writeUB(keys[2].flag, 0)
+    local c = ipc.readLvar("Eng1_CarbHeatSwitch")
+    c = c - 10
+    if c < 0 then c = 0 end
+    ipc.writeLvar("Eng1_CarbHeatSwitch", c)
+    ipc.writeUB(0x66c5, c)
+    ipc.writeUB(keys[2].flag,0)
 end
-event.offset(keys[2].flag, "UB", "fan_speed")
+event.offset(keys[2].flag, "UB", "carb_dec")
 
 -- defroster increase, tab+d
 set_key(3, mod_tab, key_d)
@@ -95,7 +92,7 @@ function defrost_inc(offset, value)
     t = t + 10
     if t > 100 then t = 100 end
     ipc.writeLvar("WindowDefrosterControlKnob", t)
-    ipc.writeUB(0x66c8, t)
+    ipc.writeUB(0x66c4, t)
     ipc.writeUB(keys[3].flag,0)
 end
 event.offset(keys[3].flag, "UB", "defrost_inc")
@@ -108,7 +105,7 @@ function defrost_dec(offset, value)
     t = t - 10
     if t < 0 then t = 0 end
     ipc.writeLvar("WindowDefrosterControlKnob", t)
-    ipc.writeUB(0x66c8, t)
+    ipc.writeUB(0x66c4, t)
     ipc.writeUB(keys[4].flag,0)
 end
 event.offset(keys[4].flag, "UB", "defrost_dec")
@@ -118,13 +115,13 @@ event.offset(keys[4].flag, "UB", "defrost_dec")
 set_key(5, mod_tab, key_f)
 function fuel_selector(offset, value)
     if value == 0 then return end
-    local f = ipc.readLvar("FSelBonanzaState")
+    local f = ipc.readLvar("FSelCherokeeState")
     f = f + 1
     if f > 2 then 
         f = 0
     end
-    ipc.writeLvar("FSelBonanzaState", f)
-    
+    ipc.writeLvar("FSelCherokeeState", f)
+    -- ipc.writeUB(0x66c1, f)
     ipc.writeUB(keys[5].flag,0)
 end
 event.offset(keys[5].flag, "UB", "fuel_selector")
@@ -137,7 +134,7 @@ function heat_inc(offset, value)
     t = t + 10
     if t > 100 then t = 100 end
     ipc.writeLvar("CabinTempControl", t)
-    ipc.writeUB(0x66c7, t)
+    ipc.writeUB(0x66c3, t)
     ipc.writeUB(keys[6].flag,0)
 end
 event.offset(keys[6].flag, "UB", "heat_inc")
@@ -150,47 +147,35 @@ function heat_dec(offset, value)
     t = t - 10
     if t < 0 then t = 0 end
     ipc.writeLvar("CabinTempControl", t)
-    ipc.writeUB(0x66c7, t)
+    ipc.writeUB(0x66c3, t)
     ipc.writeUB(keys[7].flag,0)
 end
 event.offset(keys[7].flag, "UB", "heat_dec")
 
 
--- left tip tank pump: tab+l
-set_key(8, mod_tab, key_l)
-function left_pump(offset, value)
+-- primer open: tab+p
+set_key(8, mod_tab, key_p)
+function primer_open(offset, value)
     if value == 0 then return end
-    local var = "TipTankLeftPumpSwitch"
-    local val = ipc.readLvar(var)
-    if val == 0 then
-        ipc.writeLvar(var, 1)
-        val = 1
-    else
-        ipc.writeLvar(var, 0)
-        val = 0
-    end
-    ipc.writeUB(0x66c1, val)
-    ipc.writeUB(keys[8].flag, 0)
+    local p = ipc.readLvar("PrimerState")
+    p = p + 1
+    if p > 2 then p = 2 end
+    ipc.writeLvar("PrimerState", p)
+    ipc.writeUB(0x66c6, p)
+    ipc.writeUB(keys[8].flag,0)
 end
-event.offset(keys[8].flag, "UB", "left_pump")
+event.offset(keys[8].flag, "UB", "primer_open")
 
--- right tip tank pump: tab+r
-set_key(9, mod_tab, key_r)
-function right_pump(offset, value)
+-- primer close, tab+shift+p
+set_key(9, mod_shift_tab, key_p)
+function primer_close(offset, value)
     if value == 0 then return end
-    local var = "TipTankRightPumpSwitch"
-    local val = ipc.readLvar(var)
-    if val == 0 then
-        ipc.writeLvar(var, 1)
-        val = 1
-    else
-        ipc.writeLvar(var, 0)
-        val = 0
-    end
-    ipc.writeUB(0x66c2, val)
-    ipc.writeUB(keys[9].flag, 0)
+    ipc.writeLvar("PrimerState", 0)
+    ipc.writeUB(0x66c6, 0)
+    ipc.writeUB(keys[9].flag,0)
 end
-event.offset(keys[9].flag, "UB", "right_pump")
+event.offset(keys[9].flag, "UB", "primer_close")
+
 
 -- windows
 set_key(10, mod_tab, key_w)
@@ -211,19 +196,10 @@ function battery(varname, value)
     ipc.writeUB(0x66c0, value)
 end
 event.Lvar("Battery1Switch",1000,"battery")
-function tt_available(varname, value)
-    ipc.writeUB(0x66c4, value)
-end
-event.Lvar("TipTanksPresent", 3000, "tt_available")
-function alternator(varname, value)
-    ipc.writeUB(0x66c9, value)
-end
-event.Lvar("Eng1_GeneratorSwitch",1000,"alternator")
 function read_fsel(varname, value)
-    ipc.writeUB(0x66c3, f)
+    ipc.writeUB(0x66c1, value)
 end
-event.lvar("FSelBonanzaState", 1000, "read_fsel")
-
+event.lvar("FSelCherokeeState", 1000, "read_fsel")
 -- functions to set fuel quantity.
 function fuel_wl (offset, value)
     if value == 0 then
@@ -324,15 +300,31 @@ function payload_weight(varname, value)
 end
 event.Lvar("PayloadWeight", 3000, "payload_weight")
 
+-- complete overhaul
 function repair_all(offset, value)
     if value == 0 then return end
-    ipc.log ("repair all")
-    ipc.writeLvar("IsInspected", 1)
+    ipc.log ("complete overhaul")
     ipc.writeLvar("SystemCondSelectFSX", 100)
     ipc.writeLvar("SystemCondValueFSX", 0)
+    ipc.writeLvar("Eng1_DamageFlagOvertorque", 0)
+    ipc.writeLvar("Eng1_DamageFlagHighCAT", 0)
+    ipc.writeLvar("Eng1_DamageFlagNoADI", 0)
+    ipc.writeLvar("Eng1_DamageFlagHighCHT", 0)
+    ipc.writeLvar("Eng1_WearFlag", 0)
+    ipc.writeLvar("Eng1_SuddenDamageFlag", 0)
+    ipc.writeLvar("Eng1_ShockCoolingFlag", 0)
+    ipc.writeLvar("RandStatic1", 0)
+    ipc.writeLvar("RandStatic1b", 0)
+    ipc.writeLvar("RandStatic1c", 0)
+    ipc.writeLvar("RandStatic1d", 0)
+    ipc.writeLvar("E1H", 0)
+    ipc.writeLvar("E1S", 0)
     ipc.writeLvar("Prop1Strike", 0)
-    ipc.writeLvar("RepairAllClickSound", 1)
-    ipc.writeLvar("RepairAllButton", 1)
+    ipc.writeLvar("ExtendLeftGear", 1)
+    ipc.writeLvar("ExtendRightGear", 1)
+    ipc.writeLvar("RepairClickSound", 1)
+    ipc.writeLvar("CompleteOverhaulButton", 1)
+
 end
 event.intercept(0x4240, "UB", "repair_all")
 

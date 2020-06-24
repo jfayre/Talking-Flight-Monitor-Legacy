@@ -1,0 +1,11 @@
+NOTES:
+- Lean on ground to avoid fouling plugs
+- Check CHT temp greater than 200 degrees before run up
+- Max flap extension speeds:   
+(10 - 140 kts)   
+(20 - 120 kts)   
+(FULL - 100 kts)
+- Approach speed 70-80 kts (flaps UP)                         
+60-70 kts (flaps DOWN)
+- Max crosswind - 15 kts
+
