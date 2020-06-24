@@ -9,6 +9,7 @@ added_files = [
     ('tfm.defaults', '.'), 
     ('scripts/*.*', 'scripts'), 
     ('checklists', 'checklists'), 
+    ('data', 'data'),
 ]
 
 a = Analysis(['tfm.pyw'],

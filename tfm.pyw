@@ -153,7 +153,7 @@ def commandMode():
             config.app['hotkeys']['tank9_key']: tfm.fuel_t9,
             config.app['hotkeys']['tank10_key']: tfm.fuel_t10,
             config.app['hotkeys']['tcas_air_key']: tfm.tcas_air,
-            config.app['hotkeys']['tcas_ground_key']: tfm.tcas_ground,
+            config.app['hotkeys']['tcas_ground_key']: tcas_ground,
             config.app['hotkeys']['eng1_key']: tfm.read_eng1,
             config.app['hotkeys']['eng2_key']: tfm.read_eng2,
             config.app['hotkeys']['eng3_key']: tfm.read_eng3,
@@ -202,7 +202,9 @@ def a2a_command_mode():
             output.speak ("not available")
     except Exception as e:
         log.exception("error in a2a command mode")
-
+def tcas_ground():
+    log.debug("sending tcas message")
+    pub.sendMessage("tcas_ground", msg=True)
 class Form(wx.Panel):
     ''' The Form class is a wx.Panel that creates a bunch of controls
         and handlers for callbacks. Doing the layout of the controls is 

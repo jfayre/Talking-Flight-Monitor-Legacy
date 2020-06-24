@@ -43,6 +43,9 @@ class general(wx.Panel, baseDialog.BaseWXDialog):
   sizer.Add(self.read_groundspeed, 0, wx.ALL, 5)
   self.use_metric = wx.CheckBox(self, -1, "Use metric measurements")
   sizer.Add(self.use_metric, 0, wx.ALL, 5)
+  self.online_mode = wx.CheckBox(self, -1, "Online flying mode (changes reading of ground aircraft)")
+  sizer.Add(self.online_mode, 0, wx.ALL, 5)
+  
   self.SetSizer(sizer)
 
 class timing(wx.Panel, baseDialog.BaseWXDialog):

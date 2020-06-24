@@ -4,6 +4,7 @@ import os
 import queue
 import sys
 import threading
+import concurrent.futures
 import time
 from dataclasses import dataclass
 from io import BytesIO 
@@ -14,7 +15,7 @@ from math import degrees, floor
 
 import numpy as np
 import pandas as pd
-from pprint import pprint
+import xml.etree.ElementTree as et 
 import pyglet
 import requests
 import wx
@@ -101,12 +102,39 @@ class TFM(threading.Thread):
             'ThresholdOffset': 'float64',
             'Status': 'object'
         }
-        g_names = ['ICAO', 'GateName', 'GateNumber', 'Latitude', 'Longitude', 'Radius', 'HeadingTrue', 'GateType', 'AirlineCodeList']
-        log.debug("loading runway database")
-        self.r_data = pd.read_csv('data/r5.csv', names=r_names, index_col=False)
-        self.r_data['ICAO'] = self.r_data['ICAO'].astype("object")
-        log.debug("loading airport gates database")
-        self.g_data = pd.read_csv('data/g5.csv', names=g_names)
+        
+        if os.path.exists('data/r5.csv'):
+            log.debug("loading runway database")
+            self.r_data = pd.read_csv('data/r5.csv', names=r_names, index_col=False)
+            self.r_data['ICAO'] = self.r_data['ICAO'].astype("object")
+            self.r_data['Rwy'] = self.r_data['Rwy'].astype("object")
+            self.runways_available = True
+        else:
+            log.debug("r5.csv file not found in data directory. Functionality of online ground traffic will be limited.")
+            self.runways_available = False
+        if os.path.exists('data/g5.csv'):
+            log.debug("loading airport gates database")
+            g_names = ['ICAO', 'GateName', 'GateNumber', 'Latitude', 'Longitude', 'Radius', 'HeadingTrue', 'GateType', 'AirlineCodeList']
+            self.g_data = pd.read_csv('data/g5.csv', names=g_names)
+            self.g_data['GateName'] = self.g_data['GateName'].astype('object')
+            self.gates_available = True
+        else:
+            log.debug("g5.csv file not found in data directory. Functionality of online ground traffic will be limited")
+            self.gates_available = False
+        if os.path.exists('data/airports.dat'):
+            log.debug ("found airport database.")
+            self.a_data = pd.read_pickle('data/airports.dat')
+            self.airports_available = True
+        elif os.path.exists('data/runways.xml'):
+            log.debug ("no airport database, but found runways.xml. Building database")
+            self.build_airport_database()
+            self.airports_available = True
+        else:
+            log.debug("no airport data found")
+            self.airports_available = False
+            wx.MessageBox("Airport data not available. Reading of ground traffic will not function. See instructions in the tfm.html file.", "error", wx.OK | wx.ICON_ERROR)
+        
+        self.cached_airport = None
         # variables to track states of various aircraft instruments
         self.oldAircraftName = None
         self.flag_a2a = None
@@ -274,6 +302,7 @@ class TFM(threading.Thread):
         # Start closest city loop if enabled.
         pub.subscribe(self.set_triggered, "triggered")
         pub.subscribe(self.update_payload_data, "payload")
+        pub.subscribe(self.tcas_ground, "tcas_ground")
 
         
 
@@ -2009,42 +2038,74 @@ class TFM(threading.Thread):
             self.output("pitch trim, ") 
 
     def tcas_air(self):
-        # aircraft data is stored in a series of 96 40-byte structures at offset 0xf080
-        log.debug ("running tcas")
-        high_alt = fsdata.instr['Altitude'] + 2000
-        low_alt = fsdata.instr['Altitude'] - 2000
-        ac = self.read_ai_air()
-        # if the list is empty, then no aircraft are in range
-        if len(ac) == 0:
-            self.output("no aircraft in range")
-            return
-        if len(ac) < 3: 
-            num_ac = len(ac)
+        try:
+            # aircraft data is stored in a series of 96 40-byte structures at offset 0xf080
+            log.debug ("nearest airborn aircraft")
+            high_alt = fsdata.instr['Altitude'] + 5000
+            low_alt = fsdata.instr['Altitude'] - 5000
+            ac_lat = fsdata.instr['Lat']
+            ac_lon = fsdata.instr['Long']
+            data = pyuipc.read([(0xf080, 3840)])
+            ac_temp = []
+            # read aircraft records from offset
+            with BytesIO(data[0]) as stream:
+                records = [stream.read(40) for _ in range(96)]
+            for record in records:
+                keys = ['id', 'lat', 'lon', 'alt', 'hdg', 'gs', 'vs', 'atc', 'state', 'com']
+                values = struct.unpack("i 3f 2H h 15s B h", record)
+                ac_temp.append(dict(zip(keys, values)))    
+            # filter out anything with an ID of 0
+            ac = [ i for i in ac_temp if i['id'] != 0 and i['state'] != 0x81]
+            # loop through the new list and calculate distances
+            for i, record in enumerate(ac):
+                ac[i]['distance'] = round(gcDistanceNm(ac_lat, ac_lon, ac[i]['lat'], ac[i]['lon']), 1)
+                ac[i]['hdg'] = ac[i]['hdg'] *360/65536
+            # sort the list by distance
+            ac.sort(key=itemgetter('distance'))
+        except Exception as e:
+            log.exception("error reading airborn aircraft data")
+            
+        try:
+            # if the list is empty, then no aircraft are in range
+            if len(ac) == 0:
+                self.output("no aircraft")
+                pub.sendMessage('reset', arg1=True)
+                return
+            if len(ac) < 5: 
+                num_ac = len(ac)
+            else:
+                num_ac = 5
+                self.output("closest aircraft: ")
+                for i in range(0, num_ac):
+                    if ac[i]['alt'] >= high_alt or ac[i]['alt'] <= low_alt:
+                        continue
+                    atc = ac[i]['atc'].replace(b'\x00', b'')
+                    atc = atc.decode()
+                    self.output(F"{atc}. ")
+                    self.output(F"{self.ac_state[ac[i]['state']]}. ")
+                    self.output (F"{ac[i]['distance']} nautical miles.  ")
+                    self.output (F"heading: {round(ac[i]['hdg'])}. ")
+                    self.output (F"Altitude: {round(ac[i]['alt'])} feet. ")
+            pub.sendMessage('reset', arg1=True)
+        except Exception as e:
+            log.exception("error processing airborn aircraft info")
+        
+    def tcas_ground(self, msg=None):
+        log.debug ("reading ground traffic")
+        if self.airports_available:
+            if config.app['config']['online_mode']:
+                self.read_online_ground()
+            else:
+                self.read_ai_ground()
         else:
-            num_ac = 3
-            self.output("closest aircraft: ")
-            for i in range(0, num_ac):
-                if ac[i]['alt'] >= high_alt or ac[i]['alt'] <= low_alt:
-                    continue
-                atc = ac[i]['atc'].replace(b'\x00', b'')
-                atc = atc.decode()
-                self.output(F"{atc}. ")
-                self.output (F"{ac[i]['distance']} nautical miles.  ")
-                self.output (F"heading: {round(ac[i]['hdg'])}. ")
-                self.output (F"Altitude: {round(ac[i]['alt'])} feet. ")
-        pub.sendMessage('reset', arg1=True)
-    
-    def tcas_ground(self):
-        log.debug ("running tcas ground")
-        if config.app['config']['online_mode']:
-            self.read_online_ground()
-        else:
-            self.read_ai_ground()
+            self.output (F"no airport data available")
         pub.sendMessage('reset', arg1=True)
     
     def read_ai_ground(self):
         ac_lat = fsdata.instr['Lat']
         ac_lon = fsdata.instr['Long']
+        ap, ap_name = self.find_nearest_airport(ac_lat, ac_lon)
+        log.debug("reading ground AI data from FSUIPC")
         data = pyuipc.read([
             (0xe080, 3840),
             (0XD040, 1920),
@@ -2062,163 +2123,247 @@ class TFM(threading.Thread):
         with BytesIO(data[1]) as stream:
             records = [stream.read(20) for _ in range(96)]
         for record in records:
-            keys = ['GateName', 'GateType', 'GateNumber', 'Unused', 'Pitch', 'Departure', 'arrival', 'Runway', 'RunwayDesignator', 'Bank']
+            keys = ['GateName', 'GateType', 'GateNumber', 'Unused', 'Pitch', 'departure', 'arrival', 'Runway', 'RunwayDesignator', 'Bank']
             values = struct.unpack("2B 2H h 4s 4s 2B h", record)
             tcas2.append(dict(zip(keys, values)))    
         
-        # loop through the new list and calculate distances
-        for i, record in enumerate(ac):
-            if ac[i]['id'] != 0:
-                if tcas2[i]['GateName'] > 0:
-                    ac[i]['GateName'] = fsdata.tcas_gate_name[tcas2[i]['GateName']]
-                ac[i]['GateType'] = tcas2[i]['GateType']
-                ac[i]['GateNumber'] = tcas2[i]['GateNumber']
-                ac[i]['Runway'] = tcas2[i]['Runway']
-                if tcas2[i]['RunwayDesignator'] > 0:
-                    ac[i]['RunwayDesignator'] = fsdata.tcas_runway_designator[tcas2[i]['RunwayDesignator']]
-                
+        # loop through the aircraft list and set properties
+        try:
+            for i, record in enumerate(ac):
+                if ac[i]['id'] != 0:
+                    if tcas2[i]['GateName'] > 0:
+                        ac[i]['GateName'] = fsdata.tcas_gate_name[tcas2[i]['GateName']]
+                    ac[i]['GateType'] = tcas2[i]['GateType']
+                    ac[i]['GateNumber'] = tcas2[i]['GateNumber']
+                    ac[i]['Runway'] = tcas2[i]['Runway']
+                    ac[i]['departure'] = tcas2[i]['departure']
+                    ac[i]['arrival'] = tcas2[i]['arrival']
+                    if tcas2[i]['RunwayDesignator'] > 0:
+                        ac[i]['RunwayDesignator'] = fsdata.tcas_runway_designator[tcas2[i]['RunwayDesignator']]
+                    
+        except Exception as e:
+            log.exception ("error setting ground aircraft properties")
+        
         ac_sleeping = [ i for i in ac if i['id'] != 0 and i['state'] == 0x81]
+        log.debug (F"{len(ac_sleeping)} sleeping")
         ac_taxi_prep = [ i for i in ac if i['id'] != 0 and i['state'] == 0x87]
+        log.debug (F"{len(ac_taxi_prep)} taxi prep")
         ac_taxi_out = [ i for i in ac if i['id'] != 0 and i['state'] == 0x88]
+        log.debug (F"{len(ac_taxi_out)} taxi out")
         ac_takeoff_prep = [ i for i in ac if i['id'] != 0 and i['state'] == 0x89]
+        log.debug (F"{len(ac_takeoff_prep)} takeoff prep")
         ac_takeoff = [ i for i in ac if i['id'] != 0 and i['state'] == 0x8a]
+        log.debug (F"{len(ac_takeoff)} take off")
         ac_taxi_in = [ i for i in ac if i['id'] != 0 and i['state'] == 0x91]
+        log.debug (F"{len(ac_taxi_in)} taxi in")
         ac_filtered = [ i for i in ac if i['id'] != 0]
 
         # sort the list by distance
         # ac_filtered.sort(key=itemgetter('distance'))
         # if the list is empty, then no aircraft are in range
-        if len(ac) == 0:
-            self.output("no aircraft in range")
+        if len(ac_filtered) == 0:
+            self.output("no ground AI aircraft")
             return
         self.output("ground traffic: ")
-        for i in range(len(ac_taxi_out)):
-            atc = ac_taxi_out[i]['atc'].replace(b'\x00', b'')
-            atc = atc.decode()
-            self.output(F"{atc}. Taxiing out to Runway {ac_taxi_out[i]['Runway']} {ac_taxi_out[i]['RunwayDesignator']}. ")
-    
-        for i in range(len(ac_taxi_in)):
-                atc = ac_taxi_in[i]['atc'].replace(b'\x00', b'')
-                atc = atc.decode()
-                self.output (F"{atc}, taxiing in to gate {ac_taxi_in[i]['GateName']} {ac_taxi_in[i]['GateNumber']}. ")
-            
+        self.output (F"{len(ac_filtered)} AI aircraft")
+        self.output (F"{len(ac_sleeping)} inactive")
+        log.debug ("reading taxi prep")
+        try:
+            if len(ac_taxi_prep) > 0:
+                for i in range(len(ac_taxi_prep)):
+                    atc = ac_taxi_prep[i]['atc'].replace(b'\x00', b'')
+                    atc = atc.decode()
+                    arrival = ac_taxi_prep[i]['arrival'].replace(b'\x00', b'')
+                    arrival = arrival.decode()
+                    ap_name = self.a_data[self.a_data['id'] == arrival].name.values[0]
+                    self.output(F"{atc} to {arrival}, {ap_name}. Preparing to taxi to Runway {ac_taxi_prep[i]['Runway']} {ac_taxi_prep[i]['RunwayDesignator']}. ")
+        except Exception as e:
+            log.exception("error reading taxi in aircraft")
+
+        try:
+            if len(ac_taxi_out) > 0:
+                for i in range(len(ac_taxi_out)):
+                    atc = ac_taxi_out[i]['atc'].replace(b'\x00', b'')
+                    atc = atc.decode()
+                    arrival = ac_taxi_out[i]['arrival'].replace(b'\x00', b'')
+                    arrival = arrival.decode()
+                    ap_name = self.a_data[self.a_data['id'] == arrival].name.values[0]
+                    self.output(F"{atc} to {arrival}, {ap_name}. Taxiing out to Runway {ac_taxi_out[i]['Runway']} {ac_taxi_out[i]['RunwayDesignator']}. ")
+        
+        except Exception as e:
+            log.exception("error reading taxi out aircraft")
+        try:
+            if len(ac_takeoff_prep) > 0:
+                for i in range(len(ac_takeoff_prep)):
+                    atc = ac_takeoff_prep[i]['atc'].replace(b'\x00', b'')
+                    atc = atc.decode()
+                    arrival = ac_takeoff_prep[i]['arrival'].replace(b'\x00', b'')
+                    arrival = arrival.decode()
+                    ap_name = self.a_data[self.a_data['id'] == arrival].name.values[0]
+                    self.output(F"{atc} to {arrival}, {ap_name}. preparing for takeoff,  Runway {ac_takeoff_prep[i]['Runway']} {ac_takeoff_prep[i]['RunwayDesignator']}. ")
+        except Exception as e:
+            log.exception("error reading takeoff prep aircraft")
+        try:
+            if len(ac_takeoff) > 0:
+                for i in range(len(ac_takeoff)):
+                    atc = ac_takeoff[i]['atc'].replace(b'\x00', b'')
+                    atc = atc.decode()
+                    arrival = ac_takeoff[i]['arrival'].replace(b'\x00', b'')
+                    arrival = arrival.decode()
+                    ap_name = self.a_data[self.a_data['id'] == arrival].name.values[0]
+                    self.output(F"{atc} to {arrival}, {ap_name}. taking off,  Runway {ac_takeoff[i]['Runway']} {ac_takeoff[i]['RunwayDesignator']}. ")
+        except Exception as e:
+            log.exception("error reading taking off aircraft")
+
+        try:
+            if len(ac_taxi_in) > 0:
+                for i in range(len(ac_taxi_in)):
+                    atc = ac_taxi_in[i]['atc'].replace(b'\x00', b'')
+                    atc = atc.decode()
+                    departure = ac_taxi_in[i]['departure'].replace(b'\x00', b'')
+                    departure = departure.decode()
+                    ap_name = self.a_data[self.a_data['id'] == departure].name.values[0]
+                    self.output (F"{atc} from {departure}, {ap_name}. taxiing in to gate {ac_taxi_in[i]['GateName']} {ac_taxi_in[i]['GateNumber']}. ")
+        except Exception as e:
+            log.exception("error reading taxi in aircraft")
+
         
         
     def read_online_ground(self):
         ac_lat = fsdata.instr['Lat']
         ac_lon = fsdata.instr['Long']
+        if config.app['config']['use_metric']:
+            units = "meters"
+        else:
+            units = "feet"
         data = pyuipc.read([
             (0xe080, 3840),
             ])
         ac = []
-        # read aircraft records from offset
+        ap, ap_name = self.find_nearest_airport(ac_lat, ac_lon)
+        log.debug(F"checking ground traffic for {ap}. ")
+        # read aircraft records from ground data structure
         with BytesIO(data[0]) as stream:
             records = [stream.read(40) for _ in range(96)]
         for record in records:
             keys = ['id', 'lat', 'lon', 'alt', 'hdg', 'gs', 'vs', 'atc', 'state', 'com']
             values = struct.unpack("i 3f 2H h 15s B h", record)
             ac.append(dict(zip(keys, values)))    
+        ac = [ i for i in ac if i['id'] != 0]
         # loop through the new list and calculate distances
         for i, record in enumerate(ac):
-            if ac[i]['id'] != 0:
-                atc = ac[i]['atc'].replace(b'\x00', b'')
-                atc = atc.decode('UTF-8', 'ignore')
-                ng = self.find_nearest_gate(ac[i]['lat'], ac[i]['lon'])
-                if len(ng) > 0:
-                    self.output (F"{atc}, gate {ng[0]['gate']}")
-                    continue
-                nr = self.find_nearest_runway(ac[i]['lat'], ac[i]['lon'])
-                if len(nr) > 0:
-                    self.output (F"{atc}, runway {nr[0]['runway']}")
-                    continue
-                dist = self.calc_distance(ac[i]['lat'], ac[i]['lon'], ac_lat, ac_lon) * 1000
-                self.output (F"{atc}, {round(dist)} meters. speed: {ac[i]['gs']} knotts. ")
-
-
-
+            if units == "meters":
+                ac[i]['distance'] = self.calc_distance(ac[i]['lat'], ac[i]['lon'], ac_lat, ac_lon) * 1000
+            else:
+                ac[i]['distance'] = self.calc_distance(ac[i]['lat'], ac[i]['lon'], ac_lat, ac_lon) * 1000 * 3.28084
         # sort the list by distance
-        # ac_filtered.sort(key=itemgetter('distance'))
+        ac.sort(key=itemgetter('distance'))
+        for i, record in enumerate(ac):
+            atc = ac[i]['atc'].replace(b'\x00', b'')
+            atc = atc.decode('UTF-8', 'ignore')
+            ng = self.find_nearest_gate(ap, ac[i]['lat'], ac[i]['lon'])
+            if len(ng) > 0:
+                self.output (F"{atc}, gate {ng[0]['gate']}")
+                continue
+            nr = self.find_nearest_runway(ap, ac[i]['lat'], ac[i]['lon'])
+            if len(nr) > 0:
+                self.output (F"{atc}, runway {nr[0]['runway']}")
+                continue
+            if ac[i]['gs'] > 0:
+                self.output (F"{atc}, {round(ac[i]['distance'], 0)} {units}. speed: {ac[i]['gs']} knotts. ")
+            else:
+                self.output (F"{atc}, {round(ac[i]['distance'], 0)} {units}.")
 
-    def find_nearest_gate(self, lat, lon):
+
+
+        
+    def find_nearest_airport(self, lat, lon):
+        if self.cached_airport != None:
+            dist = self.calc_distance(fsdata.instr['Lat'], fsdata.instr['Long'], self.cached_airport[0], self.cached_airport[1])
+            if dist < 25:
+                ap = self.cached_airport[2]
+                ap_name = self.cached_airport[3]
+                return ap, ap_name
+        for i, row in self.a_data.iterrows():
+            # filter out bogus ICAO codes added by Traffic Global
+            if row['id'][0:2] == "JF":
+                continue
+            dist = self.calc_distance(lat, lon, row['latitude'], row['longitude'])
+            if dist < 5:
+                
+                ap = row['id']
+                ap_name = row['name']
+        self.cached_airport = [lat, lon, ap, ap_name]
+        self.output(F"airport: {ap}, {ap_name}. ")
+        return ap, ap_name
+
+    def find_nearest_gate(self, ap, lat, lon):
         gates = []
         g_distance = {}
         # extract data for our airport location
         g = self.g_data[
-            (self.g_data['ICAO'] == 'CYYZ') &
-            (self.g_data['GateName'].notnull())
+            self.g_data['ICAO'] == ap 
             ]
         for i, row in g.iterrows():
             dist = self.calc_distance(lat, lon, row['Latitude'], row['Longitude']) * 1000
             if dist < 50:
                 g_distance['distance'] = dist
-                g_distance['gate'] = row['GateName'] + str(row['GateNumber'])
+                if pd.isna(row['GateName']):
+                    continue
+                else:
+                    g_distance['gate'] = str(row['GateName']) + str(row['GateNumber'])
                 gates.append(g_distance)
         # gates.sort(key=itemgetter('distance'))
         return gates
 
-    def find_nearest_runway(self, lat, lon):
+    def find_nearest_runway(self, ap, lat, lon):
         runways = []
         r_distance = {}
         # extract data for our airport location
         r = self.r_data[
-            self.r_data['ICAO'] == 'CYYZ' 
+            self.r_data['ICAO'] == ap 
             ]
         for i, row in r.iterrows():
             
             dist = self.calc_distance(lat, lon, row['Latitude'], row['Longitude']) * 1000
             if dist < 100:
+                rwy = str(row['Rwy'])
+                
+                rwy_no = rwy[0:-1]
+                rwy_des = fsdata.tcas_runway_designator[int(rwy[-1])]
                 r_distance['distance'] = dist
-                r_distance['runway'] = row['Rwy']
+                r_distance['runway'] = rwy_no + " " + rwy_des
                 runways.append(r_distance)
-        # gates.sort(key=itemgetter('distance'))
         return runways
 
     def read_ai_air(self):
-        ac_lat = fsdata.instr['Lat']
-        ac_lon = fsdata.instr['Long']
-        data = pyuipc.read([(0xf080, 3840)])
-        ac_temp = []
-        # read aircraft records from offset
-        with BytesIO(data[0]) as stream:
-            records = [stream.read(40) for _ in range(96)]
-        for record in records:
-            keys = ['id', 'lat', 'lon', 'alt', 'hdg', 'gs', 'vs', 'atc', 'stat', 'com']
-            values = struct.unpack("i 3f 2H h 15s b h", record)
-            ac_temp.append(dict(zip(keys, values)))    
-        # filter out anything with an ID of 0
-        ac = [ i for i in ac_temp if i['id'] != 0 ]
-        # loop through the new list and calculate distances
-        for i, record in enumerate(ac):
-            ac[i]['distance'] = round(gcDistanceNm(ac_lat, ac_lon, ac[i]['lat'], ac[i]['lon']), 1)
-            ac[i]['hdg'] = ac[i]['hdg'] *360/65536
-        # sort the list by distance
-        ac.sort(key=itemgetter('distance'))
-        return ac
+        try:
+            ac_lat = fsdata.instr['Lat']
+            ac_lon = fsdata.instr['Long']
+            data = pyuipc.read([(0xf080, 3840)])
+            ac_temp = []
+            # read aircraft records from offset
+            with BytesIO(data[0]) as stream:
+                records = [stream.read(40) for _ in range(96)]
+            for record in records:
+                keys = ['id', 'lat', 'lon', 'alt', 'hdg', 'gs', 'vs', 'atc', 'state', 'com']
+                values = struct.unpack("i 3f 2H h 15s B h", record)
+                ac_temp.append(dict(zip(keys, values)))    
+            # filter out anything with an ID of 0
+            ac = [ i for i in ac_temp if i['id'] != 0 ]
+            # loop through the new list and calculate distances
+            for i, record in enumerate(ac):
+                ac[i]['distance'] = round(gcDistanceNm(ac_lat, ac_lon, ac[i]['lat'], ac[i]['lon']), 1)
+                ac[i]['hdg'] = ac[i]['hdg'] *360/65536
+
+            # sort the list by distance
+            ac.sort(key=itemgetter('distance'))
+            return ac
+        except Exception as e:
+            log.exception("error reading airborn aircraft")
+            
 
 
-    def get_ai_detail(self, id, cmd):
-        #     The command values available are:
-        # 1 = Tail Number
-        # 2 = Airline name + Flight number
-        # 3 = ATC aircraft type, plus ATC aircraft model *
-        # 4 = Aircraft title
-        # 5 = ATC aircraft type + last 3 digits of tail number
-        # The aircraft type is one zero-terminated string, and the model
-        # is another, following immediately. If either are missing you’ll
-        # still get the null string (i.e. just the zero terminator).
-        pyuipc.write([(0xd004, 'u', cmd)])
-        pyuipc.write([(0xd00c, 'd', id)])
-        pyuipc.write([(0xd000, 'u', 1000)])
-        time.sleep(0.01)
-        result = pyuipc.read([(0xd010, 48)])
-        if cmd == 3:
-            result = result[0].decode('UTF-8', 'ignore')
-            result = result.split('\x00')
-            return result[0] + " " + result[1]
-        else:
-            result = result[0].decode('UTF-8', 'ignore')
-            result = result.replace('\x00', '')
-            return result
     def calc_distance(self, lat1, lon1, lat2, lon2):
         """
         Calculate the great circle distance between two points
@@ -2235,5 +2380,33 @@ class TFM(threading.Thread):
         km = 6367 * c
         return km
 
+    def build_airport_database(self):
+        self.output ("building airport data file.")
+        xtree = et.parse("data/runways.xml")
+        xroot = xtree.getroot()
+        df_cols = ['id', 'name', 'country', 'state', 'city', 'longitude', 'latitude', 'altitude']
+        rows = []
+        for node in xroot:
+            a_id = node.attrib.get("id")
+            a_name = node.find("ICAOName").text if node is not None else None
+            a_country = node.find("Country").text if node is not None else None
+            a_city = node.find("City").text if node is not None else None
+            a_latitude = node.find("Latitude").text if node is not None else None
+            a_longitude = node.find("Longitude").text if node is not None else None
+            a_altitude = node.find("Altitude").text if node is not None else None
+            rows.append({
+                "id": a_id, 
+                "name": a_name,
+                "country": a_country,
+                "city": a_city,
+                "latitude": a_latitude,
+                "longitude": a_longitude,
+                "altitude": a_altitude
+                })
 
-            
+        a_data = pd.DataFrame(rows, columns = df_cols)
+        a_data['latitude'] = a_data['latitude'].astype("float64")
+        a_data['longitude'] = a_data['longitude'].astype("float64")
+        a_data['altitude'] = a_data['altitude'].astype("float64")
+        a_data.to_pickle('data/airports.dat')
+        self.output("done. ")

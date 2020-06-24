@@ -34,6 +34,7 @@ class settingsController(object):
         self.dialog.set_value("general", "read_ils", config.app['config']['read_ils'])
         self.dialog.set_value("general", "read_groundspeed", config.app['config']['read_groundspeed'])
         self.dialog.set_value("general", "use_metric", config.app['config']['use_metric'])
+        self.dialog.set_value("general", "online_mode", config.app['config']['online_mode'])
         # timings tab
         self.dialog.create_timing()
         self.dialog.set_value("timing", "flight_following_interval", str(config.app['timing']['flight_following_interval']))
