@@ -128,6 +128,7 @@ class TFM(threading.Thread):
         elif os.path.exists('data/runways.xml'):
             log.debug ("no airport database, but found runways.xml. Building database")
             self.build_airport_database()
+            self.a_data = pd.read_pickle('data/airports.dat')
             self.airports_available = True
         else:
             log.debug("no airport data found")
@@ -2270,9 +2271,9 @@ class TFM(threading.Thread):
                 self.output (F"{atc}, runway {nr[0]['runway']}")
                 continue
             if ac[i]['gs'] > 0:
-                self.output (F"{atc}, {round(ac[i]['distance'], 0)} {units}. speed: {ac[i]['gs']} knotts. ")
+                self.output (F"{atc}, {round(ac[i]['distance'])} {units}. speed: {ac[i]['gs']} knotts. ")
             else:
-                self.output (F"{atc}, {round(ac[i]['distance'], 0)} {units}.")
+                self.output (F"{atc}, {round(ac[i]['distance'])} {units}.")
 
 
 

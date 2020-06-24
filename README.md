@@ -59,6 +59,7 @@ The currently available keys are:
 
 * ]: enters command mode (use before all other keys)
 * numbers 1 through 0: read info for individual fuel tanks
+* shift+numbers 1 through 4: red N1 and N2 values for given engine
 * a: read altitude above sea level (ASL).
 * shift+a: toggle GPWS (ground proximity warning system) announcements
 * b: fuel burn rate (in pounds per hour)
