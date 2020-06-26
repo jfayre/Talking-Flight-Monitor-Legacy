@@ -117,7 +117,7 @@ In order for these facilities to work, you will need some files which are genera
 
 TFM will detect these files and generate an airport database when it starts.
 
-You can press left bracket, p, to get a list of the nearest airborn aircraft. Pressing left bracket, shift+p, will give you a list of ground aircraft at your current airport.
+You can press right bracket, p, to get a list of the nearest airborn aircraft. Pressing right bracket, shift+p, will give you a list of ground aircraft at your current airport.
 
 Note that when at a new airport, it will take around 10 seconds to locate your current airport. Subsequent use of the ground traffic command at the same airport won't have this delay.
 

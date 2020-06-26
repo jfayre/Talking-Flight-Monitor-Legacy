@@ -363,9 +363,9 @@ class TFM(threading.Thread):
                 self.FFEnabled = False
                 self.output('Flight Following  announcements disabled.')
             if config.app['config']['read_instrumentation']:
-                fsdata.instrEnabled = True
+                self.instrEnabled = True
             else:
-                fsdata.instrEnabled = False
+                self.instrEnabled = False
                 self.output('instrumentation disabled.')
             if config.app['config']['read_simconnect']:
                 self.SimCEnabled = True
@@ -408,19 +408,19 @@ class TFM(threading.Thread):
             log.exception(F'Error in manual flight. Pitch: {pitch}, Bank: {bank}' + str(e))
     def set_speed(self, speed):
         # set the autopilot airspeed
-        offset, type = fsdata.instrOffsets['ApAirspeed']
+        offset, type = fsdata.InstrOffsets['ApAirspeed']
         data = [(offset, type, int(speed))]
         pyuipc.write(data)
     def set_heading(self, heading):
         # set the auto pilot heading
-        offset, type = fsdata.instrOffsets['ApHeading']
+        offset, type = fsdata.InstrOffsets['ApHeading']
         # convert the supplied heading into the proper FSUIPC format(degrees*65536/360)
         heading = int(heading)
         heading = int(heading * 65536 / 360)
         data = [(offset, type, heading)]
         pyuipc.write(data)
     def set_altitude(self, altitude):
-        offset, type = fsdata.instrOffsets['ApAltitude']
+        offset, type = fsdata.InstrOffsets['ApAltitude']
         # convert the supplied altitude into the proper FSUIPC format.
         #  FSUIPC needs the altitude as metres*65536
         altitude =int(altitude)
@@ -429,7 +429,7 @@ class TFM(threading.Thread):
         pyuipc.write(data)
     def set_mach(self, mach):
         # set mach speed
-        offset, type = fsdata.instrOffsets['ApMach']
+        offset, type = fsdata.InstrOffsets['ApMach']
         # convert the supplied mach value into the proper FSUIPC format.
         #  FSUIPC needs the mach multiplied by 65536
         mach = float(mach) * 65536
@@ -439,18 +439,18 @@ class TFM(threading.Thread):
         pyuipc.write(data)
     def set_vspeed(self, vspeed):
         # set the autopilot vertical speed
-        offset, type = fsdata.instrOffsets['ApVerticalSpeed']
+        offset, type = fsdata.InstrOffsets['ApVerticalSpeed']
         data = [(offset, type, int(vspeed))]
         pyuipc.write(data)
 
     def set_transponder(self, transponder):
         # set the transponder
-        offset, type = fsdata.instrOffsets['Transponder']
+        offset, type = fsdata.InstrOffsets['Transponder']
         data = [(offset, type, int(transponder, 16))]
         pyuipc.write(data)
     def set_com1(self, com1):
         # set com 1 frequency
-        offset, type = fsdata.instrOffsets['Com1Freq']
+        offset, type = fsdata.InstrOffsets['Com1Freq']
         freq = float(com1) * 100
         freq = int(freq) - 10000
         freq = F"{freq}"
@@ -458,7 +458,7 @@ class TFM(threading.Thread):
         pyuipc.write(data)
     def set_com2(self, com2):
         # set com 1 frequency
-        offset, type = fsdata.instrOffsets['Com2Freq']
+        offset, type = fsdata.InstrOffsets['Com2Freq']
         freq = float(com2) * 100
         freq = int(freq) - 10000
         freq = F"{freq}"
@@ -467,13 +467,13 @@ class TFM(threading.Thread):
 
     
     def set_qnh(self, qnh):
-        offset, type = fsdata.instrOffsets['Altimeter']
+        offset, type = fsdata.InstrOffsets['Altimeter']
         qnh = int(qnh) * 16
         data = [(offset, type, qnh)]
         pyuipc.write(data)
     def set_inches(self, inches):
         # we need to convert altimeter value to qnh, since that is what the fsuipc expects
-        offset, type = fsdata.instrOffsets['Altimeter']
+        offset, type = fsdata.InstrOffsets['Altimeter']
         qnh = float(inches) * 33.864
         qnh = round(qnh, 1) * 16
         qnh = int(qnh)
