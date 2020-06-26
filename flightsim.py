@@ -312,7 +312,7 @@ class TFM(threading.Thread):
             log.debug("scheduling flight following function")
             pyglet.clock.schedule_interval(self.AnnounceInfo, self.FFInterval * 60)
         # Periodically poll for instrument updates. If not enabled, just poll sim data to keep hotkey functions happy
-        if fsdata.instrEnabled:
+        if self.instrEnabled:
             log.debug('scheduling instrumentation')
             pyglet.clock.schedule_interval(self.readInstruments, 1)
         else:
