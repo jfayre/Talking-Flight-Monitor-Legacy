@@ -56,6 +56,13 @@ function set_key(slot, shift, key)
 end
 -- set flag to let tfm know that the script is running
 ipc.writeUB(0x66c7, 1)
+-- if aircraft has changed, stop the script
+function quit(offset, value)
+    if string.find(value, "Bonanza") then return end
+	ipc.log ("aircraft changed. stopping Bonanza script")
+	ipc.exit()
+end
+event.offset(0x3d00, "STR", 255, "quit")
 
 -- define hotkeys
 set_key(1, mod_tab, key_a)
@@ -220,7 +227,7 @@ function alternator(varname, value)
 end
 event.Lvar("Eng1_GeneratorSwitch",1000,"alternator")
 function read_fsel(varname, value)
-    ipc.writeUB(0x66c3, f)
+    ipc.writeUB(0x66c3, value)
 end
 event.lvar("FSelBonanzaState", 1000, "read_fsel")
 
@@ -336,7 +343,3 @@ function repair_all(offset, value)
 end
 event.intercept(0x4240, "UB", "repair_all")
 
-function quit(offset, value)
-    ipc.exit()
-end
-event.offset(0x3d00, "STR", 255, "quit")

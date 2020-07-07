@@ -56,6 +56,13 @@ function set_key(slot, shift, key)
 end
 -- set flag to let tfm know that the script is running
 ipc.writeUB(0x66c7, 1)
+-- if aircraft has changed, stop the script
+function quit(offset, value)
+    if string.find(value, "C172") then return end
+	ipc.log ("aircraft changed. stopping C172 script")
+	ipc.exit()
+end
+event.offset(0x3d00, "STR", 255, "quit")
 
 -- define hotkeys
 -- fuel cutoff valve
@@ -169,7 +176,7 @@ end
 event.Lvar("Eng1_GeneratorSwitch",1000,"alternator")
 
 function read_fsel(varname, value)
-    ipc.writeUB(0x66c1, f)
+    ipc.writeUB(0x66c1, value)
 end
 event.lvar("FSelC172State", 1000, "read_fsel")
 -- functions to set fuel quantity.
@@ -354,8 +361,3 @@ function repair_all(offset, value)
 
 end
 event.intercept(0x4240, "UB", "repair_all")
-
-function quit(offset, value)
-    ipc.exit()
-end
-event.offset(0x3d00, "STR", 255, "quit")

@@ -56,6 +56,13 @@ function set_key(slot, shift, key)
 end
 -- set flag to let tfm know that the script is running
 ipc.writeUB(0x66c7, 1)
+-- if aircraft has changed, stop the script
+function quit(offset, value)
+    if string.find(value, "Cherokee") then return end
+	ipc.log ("aircraft changed. stopping Cherokee script")
+	ipc.exit()
+end
+event.offset(0x3d00, "STR", 255, "quit")
 
 -- define hotkeys
 -- carb heat increase, tab+c
@@ -328,7 +335,3 @@ function repair_all(offset, value)
 end
 event.intercept(0x4240, "UB", "repair_all")
 
-function quit(offset, value)
-    ipc.exit()
-end
-event.offset(0x3d00, "STR", 255, "quit")
