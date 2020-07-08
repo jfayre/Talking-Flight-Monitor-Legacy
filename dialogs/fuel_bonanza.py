@@ -66,7 +66,7 @@ class payload(wx.Panel, baseDialog.BaseWXDialog):
         seat3_box = wx.BoxSizer(wx.HORIZONTAL)
         seat3_box.Add(self.seat3, 0, wx.ALL, 5)
         seat3_box.Add(seat3_label, 0, wx.ALL, 5)
-        seat3_box.Add(self.seat2_weight, 0, wx.ALL, 5)
+        seat3_box.Add(self.seat3_weight, 0, wx.ALL, 5)
         sizer.Add(seat3_box, 0, wx.ALL, 5)
         self.seat4 = wx.CheckBox(self, -1, "Passenger 3")
         seat4_label = wx.StaticText(self, wx.ID_ANY, "Passenger 3 weight in pounds (min 100, max 300): ")
