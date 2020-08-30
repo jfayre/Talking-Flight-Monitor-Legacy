@@ -158,6 +158,7 @@ def commandMode():
             config.app['hotkeys']['eng2_key']: tfm.read_eng2,
             config.app['hotkeys']['eng3_key']: tfm.read_eng3,
             config.app['hotkeys']['eng4_key']: tfm.read_eng4,
+            "e": tfm.ReadSimulationRate,
 
 
         }

@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Talking Flight Monitor Beta"
-#define MyAppVersion "1.3 Beta6"
+#define MyAppVersion "1.3 Beta7"
 #define MyAppPublisher "Jason Fayre"
 #define MyAppURL "http://www.bvipilots.net"
 #define MyAppExeName "tfm.exe"

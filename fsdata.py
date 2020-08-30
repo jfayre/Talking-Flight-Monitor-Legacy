@@ -16,6 +16,7 @@ InstrOffsets = {'Com1Freq': (0x034E,'H'),	# com1freq
         'Long': (0x0568,'l'),	# ac Longitude
         'Flaps': (0x30f0,'h'),	# flaps angle
         'OnGround': (0x0366,'h'),	# on ground flag: 0 = airborne
+        'SimulationRate': (0x0c1a, 'H'), # simulation rate * 256
         'ParkingBrake': (0x0bc8,'h'),	# parking Brake: 0 off, 32767 on
         'Gear': (0x0be8, 'u'), # Gear control: 0=Up, 16383=Down
         'Altitude': (0x3324,'d'),	#altitude in feet or meters

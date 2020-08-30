@@ -936,6 +936,10 @@ class TFM(threading.Thread):
         fsdata.a2a_payload['Seat3Weight'] = int(self.read_long_var(0x66e4, "Character3Weight"))
         fsdata.a2a_payload['Seat4Weight'] = int(self.read_long_var(0x66e4, "Character4Weight"))
 
+    def ReadSimulationRate(self):
+        self.output(F"Simulation rate: {fsdata.instr['SimulationRate']}")
+        pub.sendMessage('reset', arg1=True)
+
     def read_eng1(self):
         self.output("Engine 1: ")
         self.output (F"N1: {round(fsdata.instr['Eng1N1'])}. ")
@@ -1086,6 +1090,11 @@ class TFM(threading.Thread):
         # self.output(fsdata.instr['test'].decode())
         if fsdata.instr['TextDisplay'] != self.oldInstr['TextDisplay']:
             self.output(fsdata.instr['TextDisplay'].decode())
+        # read simulation rate
+        if fsdata.instr['SimulationRate'] != self.oldInstr['SimulationRate'] and fsdata.instr['SimulationRate'] >= 0.25:
+            self.output(F"Simulation rate: {fsdata.instr['SimulationRate']}")
+
+
         # read aircraft name and set up fuel tank info
         if fsdata.instr['AircraftName'] != self.oldAircraftName:
             self.output(f"current aircraft: {fsdata.instr['AircraftName'].decode('UTF-8')}")
@@ -1783,6 +1792,7 @@ class TFM(threading.Thread):
                 self.AGLAltitude = fsdata.instr['Altitude'] - fsdata.instr['GroundAltitude']
                 self.RadioAltitude = fsdata.instr['RadioAltimeter']  / 65536 * 3.28084
                 fsdata.instr['APUPercentage'] = round(fsdata.instr['APUPercentage'])
+                fsdata.instr['SimulationRate'] = fsdata.instr['SimulationRate'] / 256
                 self.EngSelect = list(map(int, '{0:08b}'.format(fsdata.instr['EngineSelectFlags'])))
                 fsdata.instr['Eng1Select'] = self.EngSelect[7]
                 fsdata.instr['Eng2Select'] = self.EngSelect[6]
