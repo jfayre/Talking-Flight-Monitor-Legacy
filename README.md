@@ -1,5 +1,9 @@
 # Talking Flight Monitor (TFM)
 An accessibility layer for Microsoft FSX and Lockhede Martin Prepar3d.
+## NO LONGER MAINTAINED
+This is the Python version of Talking Flight Monitor and is no longer being maintained. This repository will continue to be available for reference purposes.
+
+All new development on Talking Flight Monitor can be found at [Talking Flight Monitor: .net](http://www.github.com/jfayre/talking-flight-monitor-net]
 
 ## downloading
 * [download the latest version](https://www.bvipilots.net/files/addons/tfm-setup.exe)
