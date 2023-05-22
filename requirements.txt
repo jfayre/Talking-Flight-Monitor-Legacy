@@ -2,7 +2,7 @@ accessible-output2==0.16
 Babel==2.9.1
 numpy==1.21.0
 pyglet==1.4.10
-requests==2.22.0
+requests==2.31.0
 urllib3==1.26.5
 wxpython==4.0.3
 pypubsub==4.0.3
